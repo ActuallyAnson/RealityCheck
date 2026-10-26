@@ -1,0 +1,19 @@
+build/
+cmake-build-*/
+.DS_Store
+.vscode/
+.idea/
+
+# secrets: never commit keys
+.env
+.env.*
+*.key
+*.pem
+*api_key*
+*apikey*
+secrets/
+.claude/
+
+# private evaluation ground truth lives in data/ground_truth.private.json at run time
+runs/
+*.log
