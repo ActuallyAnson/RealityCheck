@@ -1,0 +1,124 @@
+#include "rules/checker.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <set>
+#include <utility>
+
+namespace rc {
+
+const std::vector<RuleInfo>& rule_catalog() {
+  static const std::vector<RuleInfo> cat = {
+      {"no_nan", "Every position, velocity and energy value stays finite."},
+      {"in_arena", "Every body stays inside the 20 x 12 arena (centre +/- radius within the bounds, tolerance 0.15)."},
+      {"no_wall_penetration", "No body overlaps a wall box by more than 0.15."},
+      {"no_tunneling", "No body centre ever crosses through a wall box between consecutive steps."},
+      {"energy_bound", "Total mechanical energy never exceeds initial energy plus controller work, beyond a 10% + 5 J tolerance."},
+      {"controller_force_limit", "The controller never commands a force above its declared fmax."},
+  };
+  return cat;
+}
+
+namespace {
+
+bool segment_hits_box(double x0, double y0, double x1, double y1, const WallDef& w) {
+  double t0 = 0, t1 = 1;
+  double dx = x1 - x0, dy = y1 - y0;
+  const double lo[2] = {w.x, w.y}, hi[2] = {w.x + w.w, w.y + w.h};
+  const double o[2] = {x0, y0}, d[2] = {dx, dy};
+  for (int a = 0; a < 2; ++a) {
+    if (std::fabs(d[a]) < 1e-15) {
+      if (o[a] <= lo[a] || o[a] >= hi[a]) return false;
+    } else {
+      double ta = (lo[a] - o[a]) / d[a], tb = (hi[a] - o[a]) / d[a];
+      if (ta > tb) std::swap(ta, tb);
+      t0 = std::fmax(t0, ta);
+      t1 = std::fmin(t1, tb);
+      if (t0 >= t1) return false;
+    }
+  }
+  return true;
+}
+
+std::string fmt(const char* f, double a, double b = 0, double c = 0) {
+  char buf[200];
+  std::snprintf(buf, sizeof buf, f, a, b, c);
+  return buf;
+}
+
+}  // namespace
+
+std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec) {
+  std::vector<Violation> out;
+  std::set<std::pair<std::string, int>> seen;
+  auto add = [&](Violation v) {
+    if (seen.insert({v.rule, v.body}).second) out.push_back(std::move(v));
+  };
+  const double e0 = tr.rec.empty() ? 0 : tr.rec[0].energy;
+
+  for (int k = 0; k <= tr.steps(); ++k) {
+    const StepRecord& s = tr.rec[static_cast<size_t>(k)];
+    bool finite = std::isfinite(s.energy) && std::isfinite(s.work) && std::isfinite(s.fmag);
+    for (size_t i = 0; i < s.body.size(); ++i) {
+      const BodyState& q = s.body[i];
+      const BodyDef& d = sc.bodies[i];
+      int bi = static_cast<int>(i);
+      if (!(std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.vx) && std::isfinite(q.vy))) {
+        add({"no_nan", k, bi, 0, 0, "non-finite position or velocity"});
+        finite = false;
+        continue;
+      }
+      double over = std::fmax(std::fmax(d.r - q.x, q.x + d.r - sc.arena_w), std::fmax(d.r - q.y, q.y + d.r - sc.arena_h));
+      if (over > spec.pen_tol)
+        add({"in_arena", k, bi, over, spec.pen_tol, fmt("body extends %.4f beyond the arena (limit %.4f)", over, spec.pen_tol)});
+      for (size_t wi = 0; wi < sc.walls.size(); ++wi) {
+        const WallDef& w = sc.walls[wi];
+        double cx = std::fmax(w.x, std::fmin(q.x, w.x + w.w));
+        double cy = std::fmax(w.y, std::fmin(q.y, w.y + w.h));
+        double dist = std::hypot(q.x - cx, q.y - cy);
+        double pen = d.r - dist;
+        if (pen > spec.pen_tol)
+          add({"no_wall_penetration", k, bi, pen, spec.pen_tol,
+               fmt("overlaps wall %.0f by %.4f (limit %.4f)", static_cast<double>(wi), pen, spec.pen_tol)});
+        if (k > 0) {
+          const BodyState& p = tr.rec[static_cast<size_t>(k - 1)].body[i];
+          if (std::isfinite(p.x) && std::isfinite(p.y) && segment_hits_box(p.x, p.y, q.x, q.y, w))
+            add({"no_tunneling", k, bi, 0, 0,
+                 fmt("body centre moved through wall %.0f between steps %.0f and %.0f", static_cast<double>(wi),
+                     static_cast<double>(k - 1), static_cast<double>(k))});
+        }
+      }
+    }
+    if (!finite) {
+      add({"no_nan", k, -1, 0, 0, "non-finite energy, work or force"});
+      continue;
+    }
+    double scale = std::fabs(e0) + std::fabs(s.work);
+    double limit = e0 + s.work + spec.energy_rel * scale + spec.energy_abs;
+    if (s.energy > limit)
+      add({"energy_bound", k, -1, s.energy, limit,
+           fmt("energy %.3f exceeds allowed %.3f (E0 %.3f)", s.energy, limit, e0)});
+    if (sc.ctrl.enabled && k > 0 && s.fmag > sc.ctrl.fmax * (1 + spec.force_tol))
+      add({"controller_force_limit", k, sc.ctrl.body, s.fmag, sc.ctrl.fmax,
+           fmt("controller force %.3f exceeds limit %.3f", s.fmag, sc.ctrl.fmax)});
+  }
+  std::stable_sort(out.begin(), out.end(), [](const Violation& a, const Violation& b) {
+    if (a.step != b.step) return a.step < b.step;
+    return a.rule < b.rule;
+  });
+  return out;
+}
+
+Json to_json(const Violation& v) {
+  Json j = Json::object();
+  j["rule"] = v.rule;
+  j["step"] = v.step;
+  j["body"] = v.body;
+  j["value"] = v.value;
+  j["limit"] = v.limit;
+  j["detail"] = v.detail;
+  return j;
+}
+
+}  // namespace rc
