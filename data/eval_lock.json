@@ -1,0 +1,19 @@
+{
+  "_note": "LOCKED before any agent code exists. Do not edit after the first agent run; the harness prints this file's hash into every results file.",
+  "version": 1,
+  "budget": {"max_steps": 300000, "max_wall_ms": 60000},
+  "test_seeds": [101, 202, 303, 404, 505],
+  "control_seeds": [901, 902, 903],
+  "bugs": [
+    {"id": "b01", "split": "dev"},
+    {"id": "b02", "split": "dev"},
+    {"id": "b03", "split": "dev"},
+    {"id": "b04", "split": "heldout"},
+    {"id": "b05", "split": "dev"},
+    {"id": "b06", "split": "dev"},
+    {"id": "b07", "split": "heldout"},
+    {"id": "b08", "split": "dev"},
+    {"id": "b09", "split": "heldout"},
+    {"id": "b10", "split": "dev"}
+  ]
+}
