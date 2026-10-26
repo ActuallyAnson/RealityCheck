@@ -12,4 +12,12 @@ Entry for the Meta Global AI Developer Hackathon (Indie Developer track, "Push t
 
     cmake -S . -B build && cmake --build build -j && ctest --test-dir build
 
-See `WHAT_WE_BUILT.md` for what was created during the hackathon. License: MIT.
+Run the baseline evaluation (writes `results/baseline.{json,md}`):
+
+    ./build/rc_eval baseline --lock data/eval_lock.json --out results
+
+Developer tool CLI (bugs chosen by the operator, never visible to a tester):
+
+    echo '{"tool":"run_scenario","args":{"scenario":{...}}}' | ./build/rc_tool --bugs b05
+
+See `docs/STEP0_API_NOTES.md` for the Meta Model API notes and `WHAT_WE_BUILT.md` for what was created during the hackathon. License: MIT.
