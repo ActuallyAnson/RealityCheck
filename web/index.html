@@ -3,31 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>RealityCheck</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header id="top">
-  <div class="brand"><span class="logo" aria-hidden="true"></span><b>RealityCheck</b><span class="tag">adversarial tester for simulations</span></div>
-  <nav class="tabs" role="tablist">
-    <button class="tab on" data-tab="run" role="tab">Run</button>
-    <button class="tab" data-tab="score" role="tab">Scoreboard</button>
+  <a class="brand" href="./" aria-label="RealityCheck home">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#4cc9f0" stroke-width="2.4"/><circle cx="16" cy="16" r="5.2" fill="#ff5c6c"/><path d="M16 1.5v6M16 24.5v6M1.5 16h6M24.5 16h6" stroke="#4cc9f0" stroke-width="2" stroke-linecap="round"/></svg>
+    <span class="name">RealityCheck</span><span class="tag">adversarial tester for simulations</span>
+  </a>
+  <nav class="seg" role="tablist" aria-label="View">
+    <button class="tab on" data-tab="run" role="tab" aria-selected="true">Run</button>
+    <button class="tab" data-tab="score" role="tab" aria-selected="false">Scoreboard</button>
   </nav>
   <div class="spacer"></div>
-  <label class="pick">run <select id="runSel"></select></label>
-  <span id="modeBadge" class="badge rec" title="This session replays a saved run. Every number comes from files in the repo.">RECORDED</span>
+  <label class="field">Run<select id="runSel"></select></label>
+  <span id="modeBadge" class="badge rec" title="Replaying a saved run. Every number comes from files in the repo.">RECORDED</span>
   <div class="meter" title="API spend for this run against its cap"><div id="meterFill"></div><span id="meterText">$0.0000</span></div>
-  <button id="soundBtn" class="icon" title="Sound (M)" aria-pressed="false">sound off</button>
+  <button id="soundBtn" class="btn icon" title="Sound (M)" aria-pressed="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path id="waves" d="M16 8.5a5 5 0 010 7M18.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span id="soundTxt">sound off</span></button>
 </header>
 
+<ol id="pipe" class="pipe" aria-label="Agent pipeline">
+  <li data-p="hunt"><i>1</i><b>Hunt</b><span>form hypotheses, run scenarios</span></li>
+  <li data-p="violation"><i>2</i><b>Violation</b><span>engine confirms a broken rule</span></li>
+  <li data-p="shrink"><i>3</i><b>Shrink</b><span>minimal reproduction</span></li>
+  <li data-p="explain"><i>4</i><b>Explain</b><span>cited steps, validated</span></li>
+  <li data-p="verify"><i>5</i><b>Verify</b><span>vision cross-check</span></li>
+</ol>
+
 <main id="runView">
-  <section class="col feed" aria-label="Agent">
-    <div class="colhead"><h2>Agent</h2><span id="modelName" class="dim"></span>
-      <button id="replayBtn" class="primary">Replay agent run</button><button id="skipBtn" class="ghost" title="Show the finished result">Skip</button></div>
+  <section class="panel feed" aria-label="Agent">
+    <div class="phead"><h2>Agent</h2><span id="modelName" class="dim"></span></div>
+    <div class="modebar">
+      <div class="seg small" role="group" aria-label="Source"><button id="modeRec" class="on">Recorded</button><button id="modeLive">Live</button></div>
+      <div id="recCtl" class="ctl"><button id="replayBtn" class="btn primary">Replay run</button><button id="skipBtn" class="btn">Skip to result</button></div>
+      <div id="liveCtl" class="ctl" hidden><select id="bugSel" aria-label="Seeded bug (hidden from the agent)"></select><button id="startBtn" class="btn primary">Start live run</button></div>
+    </div>
+    <div id="liveInfo" class="liveinfo dim small" hidden></div>
     <div id="feed" class="feedlist" aria-live="polite"></div>
   </section>
 
-  <section class="col center" aria-label="Simulation">
+  <section class="panel center" aria-label="Simulation">
     <div id="stages" class="stages">
       <figure class="stage" id="stageOrig"><figcaption><b>Original</b><span class="dim" id="origInfo"></span></figcaption>
         <div class="cwrap"><canvas id="cOrig"></canvas><div class="veil" id="veilOrig">Waiting for the agent to find a failure&hellip;</div></div>
@@ -37,19 +54,19 @@
         <div class="scrub"><input type="range" id="sShr" min="0" max="0" value="0" aria-label="Shrunk timeline"><div class="ticks" id="tShr"></div></div></figure>
     </div>
     <div class="transport">
-      <button id="playBtn" class="ghost" title="Play / pause (Space)">Play</button>
-      <button id="prevV" class="ghost" title="Previous violation (J)">&#8676; violation</button>
-      <button id="nextV" class="ghost" title="Next violation (K)">violation &#8677;</button>
-      <label class="pick">speed <select id="speedSel"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select></label>
-      <label class="pick">signal <select id="sigSel"></select></label>
-      <span class="dim" id="stepRead"></span>
+      <button id="prevV" class="btn icon" title="Previous violation (J)" aria-label="Previous violation"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 5v14M19 5l-9 7 9 7z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="playBtn" class="btn icon play" title="Play / pause (Space)" aria-label="Play"><svg id="icoPlay" viewBox="0 0 24 24" width="18" height="18"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg><svg id="icoPause" viewBox="0 0 24 24" width="18" height="18" hidden><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg></button>
+      <button id="nextV" class="btn icon" title="Next violation (K)" aria-label="Next violation"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 5v14M5 5l9 7-9 7z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <label class="field">Speed<select id="speedSel"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select></label>
+      <label class="field">Signal<select id="sigSel"></select></label>
+      <span class="readout" id="stepRead"></span>
     </div>
-    <div class="plotwrap"><canvas id="plot" aria-label="Signal over time"></canvas></div>
+    <div class="plotwrap"><canvas id="plot" aria-label="Signal over time"></canvas><div id="plotLegend" class="plotlegend"></div></div>
   </section>
 
-  <section class="col evidence" aria-label="Evidence">
-    <div class="colhead"><h2>Evidence</h2><span id="statusChip" class="chip"></span></div>
-    <div id="evidence" class="evlist"><p class="dim">The report appears when the agent submits a failure that survives validation.</p></div>
+  <section class="panel evidence" aria-label="Evidence">
+    <div class="phead"><h2>Evidence</h2><span id="statusChip" class="chip"></span></div>
+    <div id="evidence" class="evlist"></div>
   </section>
 </main>
 

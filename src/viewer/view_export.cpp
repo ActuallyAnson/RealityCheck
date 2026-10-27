@@ -85,7 +85,112 @@ Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label) {
   for (const Violation& x : viol) vj.push(to_json(x));
   v["violations"] = vj;
   v["scenario"] = to_json(sc);
+  v["size"] = scenario_size(sc);
   return v;
+}
+
+
+// ---------------------------------------------------------------- feed compaction
+
+namespace {
+
+std::string brief_for(const std::string& tool, const Json& res) {
+  if (!res.bool_or("ok", true)) return "error: " + clip(res.str_or("error", "failed"), 120);
+  char b[200];
+  if (tool == "run_scenario") {
+    if (res.has("rules_violated") && res.at("rules_violated").is_array() && !res.at("rules_violated").arr().empty()) {
+      std::string rules;
+      for (const auto& r : res.at("rules_violated").arr()) rules += (rules.empty() ? "" : ", ") + r.str();
+      int step = res.has("first_violation") ? static_cast<int>(res.at("first_violation").num_or("step", 0)) : 0;
+      std::snprintf(b, sizeof b, "%d steps | VIOLATED %s (first at step %d)", static_cast<int>(res.num_or("steps", 0)), rules.c_str(), step);
+    } else {
+      std::snprintf(b, sizeof b, "%d steps | no rule violated", static_cast<int>(res.num_or("steps", 0)));
+    }
+    return b;
+  }
+  if (tool == "shrink") {
+    std::snprintf(b, sizeof b, "minimal case found | size %d -> %d | %d candidates tried", static_cast<int>(res.num_or("size_before", 0)),
+                  static_cast<int>(res.num_or("size_after", 0)), static_cast<int>(res.num_or("candidates_tried", 0)));
+    return b;
+  }
+  if (tool == "replay") return res.bool_or("identical_trace", false) ? "replayed: identical trace and violations" : "replayed: DIFFERENT from the original";
+  if (tool == "inspect_state") return "state at step " + std::to_string(static_cast<int>(res.num_or("step", 0)));
+  if (tool == "check_rules") return "rule catalogue returned";
+  if (tool == "render_frames") return "frames rendered";
+  return "ok";
+}
+
+std::string brief_args(const std::string& tool, const Json& a) {
+  if (tool == "run_scenario" && a.has("scenario")) {
+    const Json& s = a.at("scenario");
+    char b[160];
+    int nb = s.has("bodies") ? static_cast<int>(s.at("bodies").arr().size()) : 0, nw = s.has("walls") ? static_cast<int>(s.at("walls").arr().size()) : 0;
+    std::snprintf(b, sizeof b, "%d %s, %d %s, dt %.4g, %d steps%s", nb, nb == 1 ? "body" : "bodies", nw, nw == 1 ? "wall" : "walls", s.num_or("dt", 0), static_cast<int>(s.num_or("steps", 0)),
+                  (s.has("controller") && s.at("controller").bool_or("enabled", false)) ? ", controller on" : "");
+    return b;
+  }
+  if (tool == "shrink") return "rule " + a.str_or("rule", "?");
+  if (tool == "inspect_state") return "step " + std::to_string(static_cast<int>(a.num_or("step", 0)));
+  if (tool == "render_frames") return "steps " + std::to_string(static_cast<int>(a.num_or("from", a.num_or("start", 0)))) + " to " + std::to_string(static_cast<int>(a.num_or("to", a.num_or("end", 0))));
+  if (tool == "submit_report") return "rule " + a.str_or("rule", "?");
+  return "";
+}
+
+}  // namespace
+
+std::vector<Json> LiveFeed::push(const Json& ev) {
+  std::vector<Json> msgs;
+  std::string type = ev.str_or("type", "");
+  Json out = Json::object();
+  out["type"] = type;
+  if (type == "assistant_text") {
+    out["text"] = ev.str_or("text", "");
+  } else if (type == "tool_call") {
+    std::string tool = ev.str_or("tool", "");
+    out["tool"] = tool;
+    if (ev.has("args")) {
+      last_args_ = ev.at("args");
+      out["args"] = clip(ev.at("args").dump(), 1200);
+      out["brief"] = brief_args(tool, ev.at("args"));
+      if (tool == "run_scenario" && first_run_.is_null() && ev.at("args").has("scenario")) first_run_ = ev.at("args").at("scenario");
+    }
+  } else if (type == "tool_result") {
+    std::string tool = ev.str_or("tool", "");
+    const Json& res = ev.at("result");
+    out["tool"] = tool;
+    out["ok"] = res.bool_or("ok", true);
+    out["summary"] = clip(res.dump(), 600);
+    out["brief"] = brief_for(tool, res);
+    bool violated = res.has("rules_violated") && res.at("rules_violated").is_array() && !res.at("rules_violated").arr().empty();
+    out["violated"] = violated;
+    if (tool == "run_scenario" && violated && first_failing_.is_null() && last_args_.is_object() && last_args_.has("scenario"))
+      first_failing_ = last_args_.at("scenario");
+  } else {
+    for (const auto& kv : ev.obj()) {
+      if (kv.second.is_string()) out[kv.first] = clip(kv.second.str(), 600);
+      else if (kv.second.is_bool()) out[kv.first] = kv.second.boolean();
+    }
+  }
+  Json m = Json::object();
+  m["kind"] = "event";
+  m["event"] = out;
+  msgs.push_back(m);
+  // Views for the canvases, as soon as the scenarios exist.
+  try {
+    if (type == "tool_result" && out.bool_or("violated", false) && !original_sent_ && first_failing_.is_object()) {
+      original_sent_ = true;
+      Json v = Json::object();
+      v["kind"] = "view"; v["which"] = "original"; v["view"] = view_rigid2d(scenario_from_json(first_failing_), mask_, "original scenario");
+      msgs.push_back(v);
+    }
+    if (type == "tool_result" && ev.str_or("tool", "") == "shrink" && out.bool_or("ok", false) && !shrunk_sent_ && ev.at("result").has("scenario")) {
+      shrunk_sent_ = true;
+      Json v = Json::object();
+      v["kind"] = "view"; v["which"] = "shrunk"; v["view"] = view_rigid2d(scenario_from_json(ev.at("result").at("scenario")), mask_, "shrunk scenario");
+      msgs.push_back(v);
+    }
+  } catch (const std::exception&) {}
+  return msgs;
 }
 
 Json build_run_view(const std::string& run_dir, BugMask mask) {
@@ -93,47 +198,20 @@ Json build_run_view(const std::string& run_dir, BugMask mask) {
   doc["version"] = 1;
   doc["run"] = run_dir.substr(run_dir.find_last_of('/') == std::string::npos ? 0 : run_dir.find_last_of('/') + 1);
 
-  // Event feed, and the first scenario the agent ran that violated a rule.
+  // Event feed (shared with the live stream) and the first scenario the agent ran that violated a rule.
   Json events = Json::array();
-  Json first_failing_args, first_run_args;
-  Json last_args;
+  LiveFeed feed(mask);
   std::stringstream es(slurp(run_dir + "/events.jsonl"));
   std::string line;
   while (std::getline(es, line)) {
     if (line.empty()) continue;
     Json ev;
     try { ev = Json::parse(line); } catch (const std::exception&) { continue; }
-    std::string type = ev.str_or("type", "");
-    Json out = Json::object();
-    out["type"] = type;
-    if (type == "assistant_text") {
-      out["text"] = ev.str_or("text", "");
-    } else if (type == "tool_call") {
-      out["tool"] = ev.str_or("tool", "");
-      if (ev.has("args")) {
-        last_args = ev.at("args");
-        out["args"] = clip(ev.at("args").dump(), 260);
-        if (ev.str_or("tool", "") == "run_scenario" && first_run_args.is_null() && ev.at("args").has("scenario"))
-          first_run_args = ev.at("args").at("scenario");
-      }
-    } else if (type == "tool_result") {
-      out["tool"] = ev.str_or("tool", "");
-      const Json& res = ev.at("result");
-      out["ok"] = res.bool_or("ok", true);
-      out["summary"] = clip(res.dump(), 240);
-      out["violated"] = res.has("rules_violated") && res.at("rules_violated").is_array() && !res.at("rules_violated").arr().empty();
-      if (ev.str_or("tool", "") == "run_scenario" && res.has("rules_violated") && res.at("rules_violated").is_array() &&
-          !res.at("rules_violated").arr().empty() && first_failing_args.is_null() && last_args.is_object() && last_args.has("scenario"))
-        first_failing_args = last_args.at("scenario");
-    } else {
-      for (const auto& kv : ev.obj()) {
-        if (kv.second.is_string()) out[kv.first] = clip(kv.second.str(), 400);
-        else if (kv.second.is_bool()) out[kv.first] = kv.second.boolean();
-      }
-    }
-    events.push(out);
+    for (const Json& m : feed.push(ev))
+      if (m.str_or("kind", "") == "event") events.push(m.at("event"));
   }
   doc["events"] = events;
+  Json first_failing_args = feed.first_failing(), first_run_args = feed.first_run();
 
   // Cost totals.
   double usd = 0, latency = 0;

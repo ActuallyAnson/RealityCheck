@@ -70,7 +70,7 @@
   function setOn(v) {
     on = v && ensure();
     if (on && ctx.state === "suspended") ctx.resume();
-    btn.setAttribute("aria-pressed", String(on)); btn.textContent = on ? "sound on" : "sound off";
+    btn.setAttribute("aria-pressed", String(on)); const t = document.getElementById("soundTxt"); if (t) t.textContent = on ? "sound on" : "sound off";
     if (!on) droneStop(); else play("click");
     try { localStorage.setItem("rc_sound", on ? "1" : "0"); } catch (e) {}
   }

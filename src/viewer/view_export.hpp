@@ -3,6 +3,7 @@
 // exporter and a renderer for its entity kinds. Nothing here reveals which seeded bugs were enabled.
 #pragma once
 #include <string>
+#include <vector>
 
 #include "sim/bugs.hpp"
 #include "sim/scenario.hpp"
@@ -17,5 +18,22 @@ Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label);
 // violating scenario the agent ran ("original"), the shrunk scenario from the report, the report, a compact event feed
 // and cost totals. `mask` is only used to re-simulate the saved scenarios.
 Json build_run_view(const std::string& run_dir, BugMask mask);
+
+// Turns raw agent events (events.jsonl lines) into the viewer's compact feed events, one at a time. For live runs it
+// also emits {"kind":"view","which":"original"|"shrunk","view":...} messages the moment the first violating scenario
+// and the shrunk scenario exist, so the canvases can start playing while the agent is still working.
+class LiveFeed {
+public:
+  explicit LiveFeed(BugMask mask) : mask_(mask) {}
+  // Returns the messages to send for this raw event (first is always {"kind":"event", ...}).
+  std::vector<Json> push(const Json& raw);
+  // The scenario of the first violating run_scenario seen so far (null until then).
+  const Json& first_failing() const { return first_failing_; }
+  const Json& first_run() const { return first_run_; }
+private:
+  BugMask mask_;
+  Json last_args_, first_failing_, first_run_;
+  bool original_sent_ = false, shrunk_sent_ = false;
+};
 
 }  // namespace rc

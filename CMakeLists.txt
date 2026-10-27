@@ -39,4 +39,6 @@ add_executable(rc_tests tests/test_main.cpp)
 target_link_libraries(rc_tests rc_core)
 add_test(NAME rc_tests COMMAND rc_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+find_package(Threads REQUIRED)
 add_executable(rc_demo src/demo/demo_main.cpp)
+target_link_libraries(rc_demo rc_core Threads::Threads)
