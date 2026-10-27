@@ -21,6 +21,7 @@ add_library(rc_core
   src/baseline/random_baseline.cpp
   src/model/model.cpp
   src/agent/agent.cpp
+  src/viewer/view_export.cpp
 )
 target_include_directories(rc_core PUBLIC src)
 
@@ -37,3 +38,5 @@ enable_testing()
 add_executable(rc_tests tests/test_main.cpp)
 target_link_libraries(rc_tests rc_core)
 add_test(NAME rc_tests COMMAND rc_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+add_executable(rc_demo src/demo/demo_main.cpp)

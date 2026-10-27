@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RealityCheck</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><b>RealityCheck</b><span class="tag">adversarial tester for simulations</span></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab on" data-tab="run" role="tab">Run</button>
+    <button class="tab" data-tab="score" role="tab">Scoreboard</button>
+  </nav>
+  <div class="spacer"></div>
+  <label class="pick">run <select id="runSel"></select></label>
+  <span id="modeBadge" class="badge rec" title="This session replays a saved run. Every number comes from files in the repo.">RECORDED</span>
+  <div class="meter" title="API spend for this run against its cap"><div id="meterFill"></div><span id="meterText">$0.0000</span></div>
+  <button id="soundBtn" class="icon" title="Sound (M)" aria-pressed="false">sound off</button>
+</header>
+
+<main id="runView">
+  <section class="col feed" aria-label="Agent">
+    <div class="colhead"><h2>Agent</h2><span id="modelName" class="dim"></span>
+      <button id="replayBtn" class="primary">Replay agent run</button><button id="skipBtn" class="ghost" title="Show the finished result">Skip</button></div>
+    <div id="feed" class="feedlist" aria-live="polite"></div>
+  </section>
+
+  <section class="col center" aria-label="Simulation">
+    <div id="stages" class="stages">
+      <figure class="stage" id="stageOrig"><figcaption><b>Original</b><span class="dim" id="origInfo"></span></figcaption>
+        <div class="cwrap"><canvas id="cOrig"></canvas><div class="veil" id="veilOrig">Waiting for the agent to find a failure&hellip;</div></div>
+        <div class="scrub"><input type="range" id="sOrig" min="0" max="0" value="0" aria-label="Original timeline"><div class="ticks" id="tOrig"></div></div></figure>
+      <figure class="stage" id="stageShr"><figcaption><b>Shrunk</b><span class="dim" id="shrInfo"></span></figcaption>
+        <div class="cwrap"><canvas id="cShr"></canvas><div class="veil" id="veilShr">The minimal reproduction appears here.</div></div>
+        <div class="scrub"><input type="range" id="sShr" min="0" max="0" value="0" aria-label="Shrunk timeline"><div class="ticks" id="tShr"></div></div></figure>
+    </div>
+    <div class="transport">
+      <button id="playBtn" class="ghost" title="Play / pause (Space)">Play</button>
+      <button id="prevV" class="ghost" title="Previous violation (J)">&#8676; violation</button>
+      <button id="nextV" class="ghost" title="Next violation (K)">violation &#8677;</button>
+      <label class="pick">speed <select id="speedSel"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select></label>
+      <label class="pick">signal <select id="sigSel"></select></label>
+      <span class="dim" id="stepRead"></span>
+    </div>
+    <div class="plotwrap"><canvas id="plot" aria-label="Signal over time"></canvas></div>
+  </section>
+
+  <section class="col evidence" aria-label="Evidence">
+    <div class="colhead"><h2>Evidence</h2><span id="statusChip" class="chip"></span></div>
+    <div id="evidence" class="evlist"><p class="dim">The report appears when the agent submits a failure that survives validation.</p></div>
+  </section>
+</main>
+
+<main id="scoreView" hidden>
+  <section class="score">
+    <h2 id="scoreTitle">Scoreboard</h2>
+    <p class="dim" id="scoreNote"></p>
+    <div id="scoreTable"></div>
+    <p class="dim small" id="scoreFoot"></p>
+  </section>
+</main>
+
+<footer id="keys"><kbd>Space</kbd> play <kbd>&larr;</kbd><kbd>&rarr;</kbd> step <kbd>J</kbd><kbd>K</kbd> violations <kbd>R</kbd> replay <kbd>M</kbd> mute</footer>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

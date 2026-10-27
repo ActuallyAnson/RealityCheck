@@ -16,6 +16,7 @@
 #include "baseline/random_baseline.hpp"
 #include "eval/ground_truth.hpp"
 #include "shrink/shrink.hpp"
+#include "viewer/view_export.hpp"
 
 using namespace rc;
 
@@ -299,6 +300,54 @@ int main(int argc, char** argv) {
     else if (a == "--reasoning-effort") ao.reasoning_effort = v;
     else if (a == "--only-bug") ao.only_bug = v;
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
+  }
+  if (mode == "export") {  // viewer documents for every saved run under --out/runs, written to --viewer-dir
+    std::string dir = out_dir.empty() ? "results/agent_hosted" : out_dir;
+    EvalLock lock = load_lock(lock_path);
+    std::string vdir = ao.config == "configs/hosted.json" ? "web/data" : ao.config;  // --config reused as the target directory
+    if (std::system(("mkdir -p '" + vdir + "'").c_str()) != 0) return 1;
+    Json index = Json::array();
+    std::vector<PlannedRun> plan = plan_runs(lock, "");
+    for (const auto& pr : plan) {
+      std::string key = run_key(pr.bug, pr.seed), rd = dir + "/runs/" + key;
+      if (!file_exists(rd + "/events.jsonl")) continue;
+      BugMask m = pr.bug == "none" ? 0 : bug_bit(bug_index(pr.bug));
+      Json doc = build_run_view(rd, m);
+      doc["id"] = key;
+      std::ofstream(vdir + "/" + key + ".json") << doc.dump() << "\n";
+      Json row = Json::object();
+      row["id"] = key; row["bug"] = pr.bug; row["split"] = pr.split; row["seed"] = static_cast<double>(pr.seed);
+      row["status"] = doc.str_or("status", "");
+      row["usd"] = doc.at("cost").num_or("usd", 0);
+      index.push(row);
+    }
+    std::ofstream(vdir + "/index.json") << index.dump() << "\n";
+    if (file_exists(dir + "/summary.json") && file_exists("results/baseline.json")) {  // scoreboard: agent vs random baseline
+      Json sum = read_json_file(dir + "/summary.json"), base = read_json_file("results/baseline.json");
+      Json rows = Json::array();
+      for (const auto& b : sum.at("bugs").arr()) {
+        Json r = Json::object();
+        r["bug"] = b.at("bug").str(); r["split"] = b.at("split").str();
+        r["runs"] = b.num_or("runs", 0); r["agent_detected"] = b.num_or("detected", 0); r["agent_valid"] = b.num_or("valid_reports", 0);
+        r["agent_valid_attributable"] = b.num_or("valid_attributable", 0); r["agent_explained"] = b.num_or("explanation_names_cause", 0);
+        r["agent_cost_usd"] = b.num_or("cost_usd", 0);
+        for (const auto& x : base.at("bugs").arr())
+          if (x.at("bug").str() == b.at("bug").str()) {
+            r["baseline_found"] = x.num_or("found_count", 0); r["baseline_attributable"] = x.num_or("attributable_count", 0);
+          }
+        rows.push(r);
+      }
+      Json sb = Json::object();
+      sb["title"] = "Agent v1 vs random baseline (simulator v1, locked set v1)";
+      sb["model"] = sum.str_or("model", "");
+      sb["rows"] = rows;
+      sb["control_runs"] = sum.num_or("control_runs", 0);
+      sb["control_detected"] = sum.num_or("control_detected", 0);
+      sb["total_cost_usd"] = sum.num_or("total_cost_usd", 0);
+      std::ofstream(vdir + "/scoreboard.json") << sb.dump() << "\n";
+    }
+    std::cout << "exported " << index.arr().size() << " runs to " << vdir << "\n";
+    return 0;
   }
   if (mode == "spend") {  // print the lifetime ledger total against the cap
     std::printf("lifetime spend $%.4f of cap $%.2f (%s)\n", ledger_total_usd(default_ledger_path()), default_lifetime_cap_usd(), default_ledger_path().c_str());

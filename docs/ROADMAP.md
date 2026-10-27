@@ -106,3 +106,19 @@ open-weight tool calling is untested.
 - Oct 27: lifetime spend ledger added (6d74233). Simulator v2: substep length follows the current speed; clean-sim check
   0 of 20000 random scenarios, and both agent control scenarios are clean. New bugs b11 to b13 and `data/eval_lock_v2.json`
   (fresh seeds; b11 to b13 are the held-out set; no agent may run on them until the reported agent version is final).
+
+## Multi-domain plan (added Oct 27 at the user's request: "more spread than one physics")
+The viewer already draws from a domain-agnostic document (static layer, entity kinds, flat frames, named signals,
+violations). A new domain needs: a simulator with a hidden-bug mask, declared rules, a scenario generator for the random
+baseline, shrink moves, an exporter, and a renderer for its entity kinds. Tools, agent, shrinker and the validator get a small
+`Domain` interface; the existing rigid-body world becomes the first implementation (adapter, no rewrite of tested code).
+
+| Domain | Type | Rules (examples) | Why it is worth it | Cost |
+|---|---|---|---|---|
+| rigid2d (done) | physics | no tunneling, energy bound, in arena, no NaN, force limit | the proving ground | done |
+| orbits | more physics | energy and angular momentum conserved, no escape, no NaN | cheap, very visual, a different failure class (integrator drift) | ~0.5 day |
+| cart-pole | control / robotics | angle and position bounds, actuator limit, no windup blow-up | closest to "robotics" in the problem statement | ~1 day |
+| traffic signal | software / discrete state machine | never conflicting greens, max wait, no stuck phase | shows the idea is not only about physics | ~1 day |
+
+Cut line: orbits first, then cart-pole; traffic signal only if the viewer, README and video are already done.
+Each added domain gets 3 to 4 seeded bugs, a baseline, and its own lock before the agent runs on it.

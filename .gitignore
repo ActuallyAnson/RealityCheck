@@ -26,3 +26,6 @@ secrets/
 
 # per-run frame images are large and regenerable from trace.json
 results/**/*.png
+
+# viewer exports of saved runs (regenerable); curated demo recordings live in web/demo/
+web/data/
