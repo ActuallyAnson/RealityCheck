@@ -240,6 +240,7 @@ Json ToolSession::shrink_tool(const Json& a) {
   if (!sr.ok) return err("scenario does not violate rule " + rule);
   Trace tr = simulate(sr.scenario, bugs_);
   std::string nid = store(sr.scenario, std::move(tr));
+  shrunk_.insert(nid);
   Json r = Json::object();
   r["ok"] = true;
   r["scenario_id"] = nid;

@@ -3,6 +3,7 @@
 // bugs were enabled.
 #pragma once
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -44,17 +45,24 @@ public:
   const std::string& failure_id() const { return failure_id_; }
   Json failure_scenario_json(const std::string& id) const;  // scenario as stored for an id (null if unknown)
 
-private:
   struct Entry {
     Scenario sc;
     Trace tr;
     std::vector<Violation> viol;
   };
+  const Entry* record(const std::string& id) const {
+    auto it = cache_.find(id);
+    return it == cache_.end() ? nullptr : &it->second;
+  }
+  bool is_shrunk(const std::string& id) const { return shrunk_.count(id) > 0; }
+
+private:
   BugMask bugs_;
   ToolBudget budget_;
   std::string out_dir_;
   ToolUsage usage_;
   std::map<std::string, Entry> cache_;
+  std::set<std::string> shrunk_;
   bool has_failure_ = false;
   std::string failure_id_;
 
