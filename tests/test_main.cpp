@@ -3,8 +3,12 @@
 #include <functional>
 #include <iostream>
 
+#include <fstream>
+
+#include "agent/agent.hpp"
 #include "baseline/random_baseline.hpp"
 #include "eval/ground_truth.hpp"
+#include "model/model.hpp"
 #include "rules/checker.hpp"
 #include "shrink/shrink.hpp"
 #include "sim/world.hpp"
@@ -312,6 +316,282 @@ static void test_ground_truth_scoring() {
   for (int b = 0; b < kNumBugs; ++b) CHECK(gt.at("bugs").has(bug_id(b)));
 }
 
+
+// ------------------------------------------------------------------ step 4: model client + agent (mock only)
+
+static Json last_tool_json(const ModelRequest& req) {
+  for (size_t i = req.messages.size(); i-- > 0;)
+    if (req.messages[i].role == "tool") return Json::parse(req.messages[i].content);
+  return Json::object();
+}
+
+static void test_wire_format() {
+  ModelRequest req;
+  req.model = "muse-spark-1.3";
+  ChatMessage sys; sys.role = "system"; sys.content = "hi";
+  ChatMessage u; u.role = "user"; u.content = "look"; u.images_b64 = {"QUJD"};
+  ChatMessage a; a.role = "assistant"; a.tool_calls.push_back({"c1", "run_scenario", "{\"x\":1}"});
+  ChatMessage t; t.role = "tool"; t.tool_call_id = "c1"; t.content = "{}";
+  req.messages = {sys, u, a, t};
+  req.tools = tool_specs();
+  Json j = build_chat_request(req);
+  CHECK(j.at("model").str() == "muse-spark-1.3");
+  CHECK(!j.has("tool_choice"));  // the API only supports "auto"
+  CHECK(j.at("tools").arr().size() == 6);
+  CHECK(j.at("tools").arr()[0].at("type").str() == "function");
+  CHECK(j.at("tools").arr()[0].at("function").at("name").str() == "run_scenario");
+  const Json& um = j.at("messages").arr()[1];
+  CHECK(um.at("content").arr()[1].at("image_url").at("url").str() == "data:image/png;base64,QUJD");
+  const Json& am = j.at("messages").arr()[2];
+  CHECK(am.at("content").is_null());
+  CHECK(am.at("tool_calls").arr()[0].at("function").at("arguments").is_string());
+  CHECK(j.at("messages").arr()[3].at("tool_call_id").str() == "c1");
+  CHECK(request_key(req) == request_key(req));
+
+  ModelResponse r = parse_chat_response(Json::parse(
+      R"({"choices":[{"finish_reason":"tool_calls","message":{"content":null,"tool_calls":[{"id":"abc","type":"function",
+      "function":{"name":"shrink","arguments":"{\"scenario_id\":\"s1\"}"}}]}}],
+      "usage":{"prompt_tokens":1000,"completion_tokens":500,"prompt_tokens_details":{"cached_tokens":200},
+      "completion_tokens_details":{"reasoning_tokens":300}}})"));
+  CHECK(r.ok && r.message.tool_calls.size() == 1 && r.message.tool_calls[0].name == "shrink");
+  CHECK(r.usage.prompt_tokens == 1000 && r.usage.cached_tokens == 200 && r.usage.reasoning_tokens == 300);
+  CHECK(!parse_chat_response(Json::parse(R"({"error":{"message":"rate limited"}})")).ok);
+  ModelResponse rt = response_from_json(Json::parse(response_to_json(r).dump()));
+  CHECK(rt.ok && rt.message.tool_calls[0].id == "abc" && rt.usage.completion_tokens == 500);
+  Pricing p;
+  double expect = (800 * 1.25 + 200 * 0.15 + 500 * 4.25) / 1e6;
+  CHECK(std::fabs(cost_usd(r.usage, p) - expect) < 1e-12);
+  ApiConfig c = ApiConfig::from_json(Json::parse(read_file("configs/open_weight.json")));
+  CHECK(c.base_url == "https://inference.baseten.co/v1" && c.api_key_env == "BASETEN_API_KEY");
+  ApiConfig h = ApiConfig::from_json(Json::parse(read_file("configs/hosted.json")));
+  CHECK(h.api_key_env == "MODEL_API_KEY" && h.model == "muse-spark-1.3");
+}
+
+static void test_live_backend_refuses_without_key() {
+  ApiConfig cfg;
+  cfg.api_key_env = "RC_TEST_KEY_THAT_IS_NOT_SET";
+  MetaApiBackend b(cfg);
+  ModelRequest req;
+  ModelResponse r = b.complete(req);
+  CHECK(!r.ok && r.error.find("not set") != std::string::npos);  // returns before any network access
+}
+
+static void test_budget() {
+  MockBackend mock([](const ModelRequest&, int) { return MockBackend::text("ok", 10, 1000); });
+  std::remove("test_cost.jsonl");
+  BudgetedModel bm(mock, Pricing(), 0.0100, "test_cost.jsonl");
+  ModelRequest req;
+  req.max_tokens = 1000;  // the pre-check assumes the call may use all of max_tokens
+  ChatMessage m; m.role = "user"; m.content = "x";
+  req.messages = {m};
+  int made = 0;
+  bool stopped = false;
+  try {
+    for (int i = 0; i < 20; ++i) { bm.complete(req, "t"); ++made; }
+  } catch (const BudgetExceeded&) { stopped = true; }
+  CHECK(stopped);
+  CHECK(bm.spent() <= 0.0100 + 1e-12);
+  CHECK(mock.calls() == made);  // the refused call never reached the backend
+  CHECK(made == 2);             // (10*1.25 + 1000*4.25)/1e6 = 0.00426 per call; a third call could cost up to 0.0043 more than the budget allows
+  std::ifstream f("test_cost.jsonl");
+  int lines = 0;
+  std::string line;
+  while (std::getline(f, line)) { ++lines; Json j = Json::parse(line); CHECK(j.at("cost_usd").num() > 0); }
+  CHECK(lines == made);
+  std::remove("test_cost.jsonl");
+}
+
+static Json spent_report(const std::string& id, int step, double x, const std::string& explanation) {
+  Json cit = Json::object();
+  cit["step"] = step; cit["body"] = 0; cit["field"] = "x"; cit["value"] = x; cit["claim"] = "position";
+  Json cits = Json::array(); cits.push(cit);
+  Json r = Json::object();
+  r["scenario_id"] = id; r["rule"] = "in_arena"; r["explanation"] = explanation; r["citations"] = cits;
+  return r;
+}
+
+static void test_citation_validation() {
+  ToolBudget tb;
+  ToolSession ts(bug_bit(kBigRadiusBound), tb, ".");
+  Json a = Json::object(); a["scenario"] = to_json(trigger(kBigRadiusBound));
+  std::string id0 = ts.call("run_scenario", a).at("scenario_id").str();
+  Json sa = Json::object(); sa["scenario_id"] = id0;
+  Json sh = ts.call("shrink", sa);
+  std::string id = sh.at("scenario_id").str();
+  int vstep = static_cast<int>(sh.at("violation").at("step").num());
+  const ToolSession::Entry* run = ts.record(id);
+  CHECK(run != nullptr);
+  double x = run->tr.rec[static_cast<size_t>(vstep)].body[0].x;
+  std::string good = "Body 0 crosses the right boundary by step " + std::to_string(vstep) + ", centre beyond the wall.";
+  CHECK(validate_report(*run, true, spent_report(id, vstep, x, good)).ok);
+  // not shrunk
+  CHECK(!validate_report(*run, false, spent_report(id, vstep, x, good)).ok);
+  // nonexistent step
+  CHECK(!validate_report(*run, true, spent_report(id, run->tr.steps() + 1, x, good)).ok);
+  // nonexistent step only in the prose
+  CHECK(!validate_report(*run, true, spent_report(id, vstep, x, "Body 0 leaves the arena at step 987654 which is late.")).ok);
+  // nonexistent body in prose
+  CHECK(!validate_report(*run, true, spent_report(id, vstep, x, "Body 5 leaves the arena at step " + std::to_string(vstep) + ".")).ok);
+  // wrong value
+  CHECK(!validate_report(*run, true, spent_report(id, vstep, x + 3.0, good)).ok);
+  // no citation of the violating step
+  if (vstep > 0) CHECK(!validate_report(*run, true, spent_report(id, vstep - 1, run->tr.rec[static_cast<size_t>(vstep - 1)].body[0].x, "Body 0 is near the boundary before it fails.")).ok);
+  // wrong rule
+  Json wrong = spent_report(id, vstep, x, good); wrong["rule"] = "energy_bound";
+  CHECK(!validate_report(*run, true, wrong).ok);
+  // missing citations
+  Json none = spent_report(id, vstep, x, good); none["citations"] = Json::array();
+  CHECK(!validate_report(*run, true, none).ok);
+}
+
+struct ScriptState {
+  std::string shrunk_id;
+  int vstep = 0;
+};
+
+static MockBackend::Script hunt_script(ScriptState& st) {
+  return [&st](const ModelRequest& req, int i) -> ModelResponse {
+    switch (i) {
+      case 0: {
+        Json a = Json::object(); a["scenario"] = to_json(trigger(kBigRadiusBound));
+        ModelResponse r = MockBackend::tool("run_scenario", a, "call0");
+        r.message.content = "Hypothesis: a large body moving fast toward the right wall may leave the arena.";
+        return r;
+      }
+      case 1: {
+        Json a = Json::object(); a["scenario_id"] = last_tool_json(req).at("scenario_id").str();
+        return MockBackend::tool("shrink", a, "call1");
+      }
+      case 2: {
+        Json j = last_tool_json(req);
+        st.shrunk_id = j.at("scenario_id").str();
+        st.vstep = static_cast<int>(j.at("violation").at("step").num());
+        Json a = Json::object(); a["scenario_id"] = st.shrunk_id; a["step"] = st.vstep;
+        return MockBackend::tool("inspect_state", a, "call2");
+      }
+      case 3: {  // first report cites a step that does not exist: must be rejected
+        Json j = last_tool_json(req);
+        double x = j.at("bodies").arr()[0].at("x").num();
+        return MockBackend::tool("submit_report",
+                                 spent_report(st.shrunk_id, 999999, x, "Body 0 passes the right boundary at step 999999."), "call3");
+      }
+      case 4: {
+        Json j = last_tool_json(req);
+        CHECK(j.at("ok").boolean() == false);
+        CHECK(j.at("problems").arr().size() >= 1);
+        Json a = Json::object(); a["scenario_id"] = st.shrunk_id; a["step"] = st.vstep;
+        return MockBackend::tool("inspect_state", a, "call4");
+      }
+      case 5: {
+        double x = last_tool_json(req).at("bodies").arr()[0].at("x").num();
+        return MockBackend::tool(
+            "submit_report",
+            spent_report(st.shrunk_id, st.vstep, x, "Body 0 ends step " + std::to_string(st.vstep) + " past the right wall."), "call5");
+      }
+      default:
+        return MockBackend::text(R"({"description":"The red ball is half outside the right edge.","agrees":true,"disagreement":""})");
+    }
+  };
+}
+
+static void test_agent_end_to_end_mock() {
+  ScriptState st;
+  MockBackend mock(hunt_script(st));
+  std::remove("test_agent_cost.jsonl");
+  BudgetedModel bm(mock, Pricing(), 1.0, "test_agent_cost.jsonl");
+  ToolBudget tb; tb.max_steps = 20000;
+  ToolSession ts(bug_bit(kBigRadiusBound), tb, ".");
+  AgentConfig cfg;
+  std::vector<Json> events;
+  AgentResult r = run_agent(bm, ts, cfg, [&](const Json& e) { events.push_back(e); });
+  CHECK(r.stop_reason == "report_accepted");
+  CHECK(r.found_failure && r.report_submitted && r.report_valid);
+  CHECK(r.report_attempts == 2 && r.rejected_reports == 1);
+  CHECK(r.rule == "in_arena");
+  CHECK(r.vision_done && r.vision_agrees);
+  CHECK(!r.frame_strip_path.empty());
+  CHECK(bm.calls() == 7);  // 6 hunt turns + 1 vision call
+  double per_call = (800 * 1.25 + 120 * 4.25) / 1e6;
+  CHECK(std::fabs(bm.spent() - 7 * per_call) < 1e-9);
+  std::ifstream f("test_agent_cost.jsonl");
+  int lines = 0;
+  std::string line;
+  while (std::getline(f, line)) ++lines;
+  CHECK(lines == 7);
+  bool saw_rejection = false;
+  std::string all;
+  for (const auto& e : events) { all += e.dump(); if (e.str_or("type", "") == "report_rejected") saw_rejection = true; }
+  CHECK(saw_rejection);
+  for (int b = 0; b < kNumBugs; ++b) CHECK(all.find(bug_id(b)) == std::string::npos);  // no ground truth leaks into the transcript
+  write_report_files(r, ts, ".");
+  CHECK(!read_file("report.json").empty() && !read_file("trace.json").empty());
+  std::remove("report.json"); std::remove("trace.json"); std::remove("test_agent_cost.jsonl");
+
+  // The system prompt shown to the model carries no bug information.
+  std::string sp = system_prompt(true) + system_prompt(false);
+  for (int b = 0; b < kNumBugs; ++b) CHECK(sp.find(bug_id(b)) == std::string::npos);
+}
+
+static void test_agent_model_budget_stop() {
+  ScriptState st;
+  MockBackend mock(hunt_script(st));
+  BudgetedModel bm(mock, Pricing(), 0.004);  // fits two scripted calls, not three
+  ToolSession ts(bug_bit(kBigRadiusBound), ToolBudget(), ".");
+  AgentResult r = run_agent(bm, ts, AgentConfig());
+  CHECK(r.stop_reason == "model_budget");
+  CHECK(!r.report_valid);
+  CHECK(bm.spent() <= 0.004);
+}
+
+static void test_agent_json_protocol_mode() {
+  MockBackend mock([](const ModelRequest& req, int i) -> ModelResponse {
+    CHECK(req.tools.is_null() || req.tools.arr().empty());  // no native tools in this mode
+    if (i == 0) {
+      Json a = Json::object(); a["tool"] = "run_scenario"; Json args = Json::object();
+      args["scenario"] = to_json(trigger(kBigRadiusBound)); a["args"] = args;
+      return MockBackend::text("I will test a fast large body.\n```json\n" + a.dump() + "\n```");
+    }
+    return MockBackend::text("I am done.");
+  });
+  BudgetedModel bm(mock, Pricing(), 1.0);
+  ToolSession ts(bug_bit(kBigRadiusBound), ToolBudget(), ".");
+  AgentConfig cfg; cfg.native_tools = false;
+  AgentResult r = run_agent(bm, ts, cfg);
+  CHECK(ts.usage().scenarios_run == 1);
+  CHECK(r.found_failure);
+  CHECK(r.stop_reason == "no_tool_calls");
+}
+
+static void test_record_and_replay() {
+  std::remove("test_cache.jsonl");
+  AgentResult first;
+  double first_cost = 0;
+  {
+    ScriptState st;
+    MockBackend mock(hunt_script(st));
+    RecordingBackend rec(mock, "test_cache.jsonl");
+    BudgetedModel bm(rec, Pricing(), 1.0);
+    ToolSession ts(bug_bit(kBigRadiusBound), ToolBudget(), ".");
+    first = run_agent(bm, ts, AgentConfig());
+    first_cost = bm.spent();
+  }
+  CHECK(first.report_valid);
+  ReplayBackend replay("test_cache.jsonl");
+  CHECK(replay.entries() == 7);
+  BudgetedModel bm2(replay, Pricing(), 1.0);
+  ToolSession ts2(bug_bit(kBigRadiusBound), ToolBudget(), ".");
+  AgentResult second = run_agent(bm2, ts2, AgentConfig());
+  CHECK(second.report_valid && second.explanation == first.explanation && second.scenario_id == first.scenario_id);
+  CHECK(std::fabs(bm2.spent() - first_cost) < 1e-12);
+  // a request the cache has never seen is an error, never a live call
+  ModelRequest odd;
+  ChatMessage m; m.role = "user"; m.content = "never recorded";
+  odd.messages = {m};
+  ModelResponse miss = replay.complete(odd);
+  CHECK(!miss.ok && miss.error.find("cache miss") != std::string::npos);
+  std::remove("test_cache.jsonl");
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -320,6 +600,10 @@ int main() {
       {"each bug detectable", test_each_bug_is_detectable_and_isolated}, {"shrinker", test_shrinker},
       {"baseline budget", test_baseline_budget}, {"tools", test_tools}, {"render", test_render},
       {"ground truth scoring", test_ground_truth_scoring},
+      {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
+      {"budget stop", test_budget}, {"citation validation", test_citation_validation},
+      {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay},
   };
   for (auto& t : tests) {
     int before = g_fail;

@@ -17,3 +17,9 @@ secrets/
 # private evaluation ground truth lives in data/ground_truth.private.json at run time
 runs/
 *.log
+
+# test artifacts written to the working directory
+/*.png
+/test_*.jsonl
+/report.json
+/trace.json
