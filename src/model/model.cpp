@@ -275,7 +275,9 @@ ModelResponse MetaApiBackend::complete(const ModelRequest& req) {
       parsed.http_status = status;
       parsed.latency_ms = lat;
       out = parsed;
+      out.raw = payload.substr(0, 3000);
     } catch (const std::exception&) {
+      out.raw = payload.substr(0, 3000);
       out.error = "non-JSON response (HTTP " + std::to_string(status) + "): " + payload.substr(0, 200);
     }
     if (out.ok || !retryable || attempt == cfg_.max_retries) break;

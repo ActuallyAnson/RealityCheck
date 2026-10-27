@@ -18,7 +18,7 @@ using namespace rc;
 
 int main(int argc, char** argv) {
   std::string replay, config_path = "configs/hosted.json", out = "runs/latest", record, bugs_arg;
-  bool live = false;
+  bool live = false, smoke = false;
   double budget_usd = 5.0;
   ToolBudget tb;
   AgentConfig ac;
@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
     };
     if (a == "--replay") replay = val();
     else if (a == "--live") live = true;
+    else if (a == "--smoke") smoke = true;
     else if (a == "--config") config_path = val();
     else if (a == "--bugs") bugs_arg = val();
     else if (a == "--budget-usd") budget_usd = std::atof(val().c_str());
@@ -40,7 +41,39 @@ int main(int argc, char** argv) {
     else if (a == "--record") record = val();
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
-  if (replay.empty() && !live) { std::cerr << "choose --replay CACHE or --live\n"; return 2; }
+  if (!smoke && replay.empty() && !live) { std::cerr << "choose --replay CACHE or --live\n"; return 2; }
+
+  if (smoke) {
+    if (!live) { std::cerr << "--smoke needs --live\n"; return 2; }
+    ApiConfig cfg = ApiConfig::from_json(Json::parse(read_file(config_path)));
+    MetaApiBackend be(cfg);
+    auto show = [&](const char* label, const ModelRequest& rq) {
+      ModelResponse r = be.complete(rq);
+      std::cout << "== " << label << ": ok=" << r.ok << " http=" << r.http_status << " latency_ms=" << r.latency_ms
+                << " finish=" << r.finish_reason << "\n   error=" << r.error << "\n   text=" << r.message.content.substr(0, 200)
+                << "\n   tool_calls=" << r.message.tool_calls.size() << " usage(in/out/cached/reasoning)=" << r.usage.prompt_tokens
+                << "/" << r.usage.completion_tokens << "/" << r.usage.cached_tokens << "/" << r.usage.reasoning_tokens
+                << "\n   raw=" << r.raw << "\n";
+    };
+    ModelRequest a1;
+    a1.model = cfg.model; a1.max_tokens = 2000;
+    a1.messages.push_back({"user", "Reply with the single word: pong", {}, "", {}});
+    show("text", a1);
+    ModelRequest a2 = a1;
+    a2.messages.clear();
+    ChatMessage im{"user", "What colour is this image? One word.", {}, "", {"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="}};
+    a2.messages.push_back(im);
+    show("image", a2);
+    ModelRequest a3 = a1;
+    a3.messages.clear();
+    a3.messages.push_back({"user", "Call the echo tool with text 'hi'.", {}, "", {}});
+    a3.tools = Json::parse(R"([{"name":"echo","description":"Echo text back","parameters":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}])");
+    show("tool", a3);
+    ModelRequest a4 = a1;
+    a4.reasoning_effort = "low";
+    show("text+reasoning_effort=low", a4);
+    return 0;
+  }
 
   BugMask mask = 0;
   std::stringstream ss(bugs_arg);

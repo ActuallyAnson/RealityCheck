@@ -43,6 +43,7 @@ struct ModelResponse {
   std::string finish_reason;
   Usage usage;
   double latency_ms = 0;
+  std::string raw;  // live backend only: response body, truncated (never contains the key)
 };
 
 // USD per 1M tokens.
