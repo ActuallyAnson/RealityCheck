@@ -148,3 +148,9 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line-2); border-bottom-wid
 @keyframes fill { from { width: 0; } }
 @media (max-width: 1180px) { #runView { grid-template-columns: 1fr; } .feedlist, .evlist { max-height: 340px; } .stages { grid-template-columns: 1fr; } .pipe span { display: none; } .brand .tag { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* simple view (default): canvases, verdict, explanation, play. Details toggle reveals the rest. */
+body.simple .pipe span, body.simple #keys, body.simple .plotwrap, body.simple .meter,
+body.simple .transport .field, body.simple #stepRead, body.simple .feedlist, body.simple .liveinfo { display: none; }
+body.simple .evlist .sec:nth-child(n+3) { display: none; }
+body.simple #runView { grid-template-columns: minmax(230px, 20%) minmax(0, 1fr) minmax(300px, 28%); }

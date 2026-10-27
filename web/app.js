@@ -406,3 +406,11 @@ loadIndex().then(() => {
   requestAnimationFrame(tick);
 }).catch((err) => { $("#feed").innerHTML = `<div class="empty">Could not load data/index.json (${esc(err.message)}). Run <code>./build/rc_eval export</code> first.</div>`; });
 window.RC = { bus, emit, S };
+
+(function () {
+  let simple = true; try { simple = localStorage.getItem("rc_simple") !== "0"; } catch (e) {}
+  const apply = () => { document.body.classList.toggle("simple", simple); const b = $("#detailBtn"); b.setAttribute("aria-pressed", String(!simple)); b.classList.toggle("primary", !simple); try { localStorage.setItem("rc_simple", simple ? "1" : "0"); } catch (e) {} };
+  $("#detailBtn").onclick = () => { simple = !simple; apply(); };
+  addEventListener("keydown", (e) => { if ((e.key === "d" || e.key === "D") && e.target.tagName !== "SELECT" && e.target.tagName !== "INPUT") $("#detailBtn").click(); });
+  apply();
+})();
