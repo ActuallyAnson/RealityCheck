@@ -6,6 +6,7 @@
 #include "rules/checker.hpp"
 #include "sim/bugs.hpp"
 #include "sim/scenario.hpp"
+#include "sim/world.hpp"
 
 namespace rc {
 
@@ -19,6 +20,9 @@ struct ShrinkResult {
   int size_before = 0, size_after = 0;
 };
 
-ShrinkResult shrink(const Scenario& sc, BugMask bugs, const std::string& rule, int max_attempts = 600);
+ShrinkResult shrink(const Scenario& sc, const SimFn& sim, const std::string& rule, int max_attempts = 600);
+inline ShrinkResult shrink(const Scenario& sc, BugMask bugs, const std::string& rule, int max_attempts = 600) {
+  return shrink(sc, builtin_sim(bugs), rule, max_attempts);
+}
 
 }  // namespace rc

@@ -27,6 +27,9 @@ struct HuntResult {
   Violation first_violation;
 };
 
-HuntResult random_baseline(BugMask bugs, uint64_t seed, const Budget& budget);
+HuntResult random_baseline(const SimFn& sim, uint64_t seed, const Budget& budget);
+inline HuntResult random_baseline(BugMask bugs, uint64_t seed, const Budget& budget) {
+  return random_baseline(builtin_sim(bugs), seed, budget);
+}
 
 }  // namespace rc

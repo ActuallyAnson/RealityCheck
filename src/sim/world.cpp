@@ -272,3 +272,7 @@ uint64_t Trace::hash() const {
 }
 
 }  // namespace rc
+
+namespace rc {
+SimFn builtin_sim(BugMask bugs) { return [bugs](const Scenario& sc) { return simulate(sc, bugs); }; }
+}  // namespace rc

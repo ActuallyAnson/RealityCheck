@@ -53,7 +53,7 @@ Scenario random_scenario(uint64_t seed) {
   }
 }
 
-HuntResult random_baseline(BugMask bugs, uint64_t seed, const Budget& budget) {
+HuntResult random_baseline(const SimFn& sim, uint64_t seed, const Budget& budget) {
   HuntResult res;
   Rng rng(seed);
   auto t0 = std::chrono::steady_clock::now();
@@ -64,7 +64,7 @@ HuntResult random_baseline(BugMask bugs, uint64_t seed, const Budget& budget) {
     Scenario s = random_scenario(rng.next());
     long long left = budget.max_steps - res.steps_used;
     if (s.steps > left) s.steps = static_cast<int>(left);  // honour the step budget exactly
-    Trace tr = simulate(s, bugs);
+    Trace tr = sim(s);
     res.steps_used += s.steps;
     ++res.scenarios_run;
     auto v = check_rules(s, tr);

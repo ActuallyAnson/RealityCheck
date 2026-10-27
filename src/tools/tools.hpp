@@ -31,6 +31,8 @@ struct ToolUsage {
 class ToolSession {
 public:
   ToolSession(BugMask hidden_bugs, ToolBudget budget, std::string out_dir = "");
+  // Test any other simulator through the same tools (it is called as a pure function of the scenario).
+  ToolSession(SimFn sim, ToolBudget budget, std::string out_dir = "");
 
   // name in {run_scenario, check_rules, inspect_state, render_frames, shrink, replay}.
   // Always returns an object with "ok"; on failure {"ok":false,"error":...}.
@@ -58,6 +60,7 @@ public:
 
 private:
   BugMask bugs_;
+  SimFn sim_;
   ToolBudget budget_;
   std::string out_dir_;
   ToolUsage usage_;

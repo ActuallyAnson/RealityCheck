@@ -1,6 +1,7 @@
 // Deterministic 2D physics world: circles, static boxes, an arena and one controller-driven body.
 #pragma once
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 #include "sim/bugs.hpp"
@@ -30,5 +31,9 @@ struct Trace {
 
 // Pure function of (scenario, bugs). The scenario must pass validate().
 Trace simulate(const Scenario& sc, BugMask bugs);
+
+// Any simulator (ours with a bug mask bound, or an outside engine) as a pure function of the scenario.
+using SimFn = std::function<Trace(const Scenario&)>;
+SimFn builtin_sim(BugMask bugs);
 
 }  // namespace rc

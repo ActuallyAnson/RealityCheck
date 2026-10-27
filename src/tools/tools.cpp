@@ -34,7 +34,10 @@ Json body_json(const BodyState& q) {
 }  // namespace
 
 ToolSession::ToolSession(BugMask hidden_bugs, ToolBudget budget, std::string out_dir)
-    : bugs_(hidden_bugs), budget_(budget), out_dir_(std::move(out_dir)) {}
+    : bugs_(hidden_bugs), sim_(builtin_sim(hidden_bugs)), budget_(budget), out_dir_(std::move(out_dir)) {}
+
+ToolSession::ToolSession(SimFn sim, ToolBudget budget, std::string out_dir)
+    : bugs_(), sim_(std::move(sim)), budget_(budget), out_dir_(std::move(out_dir)) {}
 
 Json ToolSession::budget_json() const {
   Json b = Json::object();
@@ -97,7 +100,7 @@ Json ToolSession::run_scenario(const Json& a) {
   if (left <= 0) return err("step budget exhausted");
   bool truncated = false;
   if (sc.steps > left) { sc.steps = static_cast<int>(left); truncated = true; }
-  Trace tr = simulate(sc, bugs_);
+  Trace tr = sim_(sc);
   usage_.steps_used += sc.steps;
   ++usage_.scenarios_run;
   std::string id = store(sc, std::move(tr));
@@ -235,10 +238,10 @@ Json ToolSession::shrink_tool(const Json& a) {
   if (en->viol.empty()) return err("scenario has no violation to shrink");
   std::string rule = a.str_or("rule", en->viol.front().rule);
   Scenario original = en->sc;  // copy: store() below may rehash the map
-  ShrinkResult sr = rc::shrink(original, bugs_, rule);
+  ShrinkResult sr = rc::shrink(original, sim_, rule);
   usage_.shrink_steps += sr.steps_simulated;
   if (!sr.ok) return err("scenario does not violate rule " + rule);
-  Trace tr = simulate(sr.scenario, bugs_);
+  Trace tr = sim_(sr.scenario);
   std::string nid = store(sr.scenario, std::move(tr));
   shrunk_.insert(nid);
   Json r = Json::object();
@@ -257,7 +260,7 @@ Json ToolSession::replay(const Json& a) {
   std::string e, id;
   const Entry* en = find(a, &e, &id);
   if (!en) return err(e);
-  Trace again = simulate(en->sc, bugs_);
+  Trace again = sim_(en->sc);
   std::vector<Violation> v = check_rules(en->sc, again);
   bool same_hash = again.hash() == en->tr.hash();
   bool same_viol = v.size() == en->viol.size();

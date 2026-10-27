@@ -9,7 +9,7 @@ namespace rc {
 namespace {
 
 struct Shrinker {
-  BugMask bugs;
+  SimFn sim;
   std::string rule;
   int max_attempts;
   int attempts = 0, accepted = 0;
@@ -23,7 +23,7 @@ struct Shrinker {
     if (!validate(c).empty()) return false;
     ++attempts;
     steps_simulated += c.steps;
-    Trace tr = simulate(c, bugs);
+    Trace tr = sim(c);
     for (const Violation& v : check_rules(c, tr)) {
       if (v.rule == rule) {
         if (out) *out = v;
@@ -63,9 +63,9 @@ struct Shrinker {
 
 }  // namespace
 
-ShrinkResult shrink(const Scenario& sc, BugMask bugs, const std::string& rule, int max_attempts) {
+ShrinkResult shrink(const Scenario& sc, const SimFn& sim, const std::string& rule, int max_attempts) {
   Shrinker s;
-  s.bugs = bugs;
+  s.sim = sim;
   s.rule = rule;
   s.max_attempts = max_attempts;
   ShrinkResult res;
