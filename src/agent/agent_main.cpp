@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
     if (!live) { std::cerr << "--smoke needs --live\n"; return 2; }
     ApiConfig cfg = ApiConfig::from_json(Json::parse(read_file(config_path)));
     MetaApiBackend be(cfg);
+    if (ledger_total_usd(default_ledger_path()) + 0.05 > default_lifetime_cap_usd()) { std::cerr << "lifetime spend cap reached\n"; return 2; }
     auto show = [&](const char* label, const ModelRequest& rq) {
       ModelResponse r = be.complete(rq);
       std::cout << "== " << label << ": ok=" << r.ok << " http=" << r.http_status << " latency_ms=" << r.latency_ms
@@ -102,6 +103,7 @@ int main(int argc, char** argv) {
     backend.reset(new ReplayBackend(replay));
   }
   BudgetedModel model(*backend, api.pricing, budget_usd, out + "/cost.jsonl");
+  if (live) model.set_lifetime_ledger(default_ledger_path(), default_lifetime_cap_usd());
   ToolSession tools(mask, tb, out);
   std::ofstream events(out + "/events.jsonl", std::ios::trunc);
   AgentResult res = run_agent(model, tools, ac, [&](const Json& ev) {

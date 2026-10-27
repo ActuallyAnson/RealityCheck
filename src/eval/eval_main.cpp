@@ -112,6 +112,7 @@ Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, 
   MetaApiBackend live(api);
   RecordingBackend rec(live, dir + "/cache.jsonl");
   BudgetedModel model(rec, api.pricing, o.run_budget, dir + "/cost.jsonl");
+  model.set_lifetime_ledger(default_ledger_path(), default_lifetime_cap_usd());
   ToolBudget tb;
   tb.max_steps = lock.max_steps;  // same simulation-step budget as the random baseline
   ToolSession tools(mask, tb, dir);
@@ -250,6 +251,7 @@ int agent_eval(const EvalLock& lock, const AgentEvalOpts& o) {
   if (std::system(("mkdir -p '" + o.out + "/runs'").c_str()) != 0) return 1;
   std::vector<PlannedRun> plan = plan_runs(lock, o.only_bug);
   double spent = spent_on_disk(o.out, plan);
+  std::cout << "lifetime ledger: $" << ledger_total_usd(default_ledger_path()) << " of $" << default_lifetime_cap_usd() << "\n";
   std::cout << "planned runs: " << plan.size() << ", already spent on disk: $" << spent << ", total cap $" << o.total_budget
             << ", per-run cap $" << o.run_budget << "\n";
   int done = 0, skipped_done = 0;
@@ -297,6 +299,10 @@ int main(int argc, char** argv) {
     else if (a == "--reasoning-effort") ao.reasoning_effort = v;
     else if (a == "--only-bug") ao.only_bug = v;
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
+  }
+  if (mode == "spend") {  // print the lifetime ledger total against the cap
+    std::printf("lifetime spend $%.4f of cap $%.2f (%s)\n", ledger_total_usd(default_ledger_path()), default_lifetime_cap_usd(), default_ledger_path().c_str());
+    return 0;
   }
   if (mode == "summarize") {  // regenerate the agent summary from saved runs; no API calls
     ao.out = out_dir.empty() ? "results/agent" : out_dir;

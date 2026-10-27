@@ -592,6 +592,41 @@ static void test_record_and_replay() {
   std::remove("test_cache.jsonl");
 }
 
+
+static void test_lifetime_ledger() {
+  std::string path = "test_ledger.jsonl";
+  std::remove(path.c_str());
+  MockBackend be([](const ModelRequest&, int) { return MockBackend::text("ok", 100000, 1000); });  // ~$0.13 per call
+  Pricing pr;
+  {
+    BudgetedModel m(be, pr, 100.0);
+    m.set_lifetime_ledger(path, 0.30);
+    ModelRequest rq;
+    rq.max_tokens = 100;
+    rq.messages.push_back({"user", "hi", {}, "", {}});
+    m.complete(rq, "a");
+    m.complete(rq, "b");
+    CHECK(ledger_total_usd(path) > 0.25);
+    bool refused = false;
+    rq.max_tokens = 20000;  // worst case now ~$0.085 on top of ~$0.26 spent
+    try { m.complete(rq, "c"); } catch (const BudgetExceeded&) { refused = true; }
+    CHECK(refused);
+  }
+  {  // a second process-like instance sees the same total
+    BudgetedModel m2(be, pr, 100.0);
+    m2.set_lifetime_ledger(path, 0.30);
+    ModelRequest rq;
+    rq.max_tokens = 100;
+    rq.messages.push_back({"user", "hi", {}, "", {}});
+    bool refused = false;
+    rq.max_tokens = 20000;
+    try { m2.complete(rq, "d"); } catch (const BudgetExceeded&) { refused = true; }
+    CHECK(refused);
+  }
+  CHECK(ledger_total_usd("does_not_exist.jsonl") == 0.0);
+  std::remove(path.c_str());
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -601,7 +636,7 @@ int main() {
       {"baseline budget", test_baseline_budget}, {"tools", test_tools}, {"render", test_render},
       {"ground truth scoring", test_ground_truth_scoring},
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
-      {"budget stop", test_budget}, {"citation validation", test_citation_validation},
+      {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
       {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay},
   };

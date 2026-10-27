@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -350,6 +351,42 @@ ModelResponse MockBackend::tool(const std::string& name, const Json& args, const
 BudgetedModel::BudgetedModel(ModelBackend& backend, Pricing pricing, double budget_usd, std::string log_path)
     : backend_(backend), pricing_(pricing), budget_(budget_usd), log_path_(std::move(log_path)) {}
 
+std::string default_ledger_path() {
+  if (const char* e = std::getenv("RC_LEDGER"); e && *e) return e;
+  const char* home = std::getenv("HOME");
+  return std::string(home && *home ? home : ".") + "/.realitycheck/spend_ledger.jsonl";
+}
+
+double default_lifetime_cap_usd() {
+  if (const char* e = std::getenv("RC_LIFETIME_CAP_USD"); e && *e) return std::atof(e);
+  return 100.0;
+}
+
+double ledger_total_usd(const std::string& path) {
+  std::ifstream f(path);
+  double total = 0;
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty()) continue;
+    try { total += Json::parse(line).num_or("cost_usd", 0); } catch (const std::exception&) {}
+  }
+  return total;
+}
+
+void ledger_append(const std::string& path, const std::string& label, double cost_usd) {
+  size_t slash = path.find_last_of('/');
+  if (slash != std::string::npos) {
+    std::string dir = path.substr(0, slash);
+    mkdir(dir.c_str(), 0700);  // single level is enough for ~/.realitycheck
+  }
+  Json j = Json::object();
+  j["label"] = label;
+  j["cost_usd"] = cost_usd;
+  j["time"] = static_cast<double>(std::time(nullptr));
+  std::ofstream(path, std::ios::app) << j.dump() << "\n";
+  chmod(path.c_str(), 0600);
+}
+
 ModelResponse BudgetedModel::complete(const ModelRequest& req, const std::string& label) {
   // Pessimistic pre-check: whole prompt uncached (about 3 characters per token, images at a flat allowance) plus the maximum output.
   // Image bytes are not text tokens: strip them and charge a flat allowance per image instead.
@@ -364,6 +401,15 @@ ModelResponse BudgetedModel::complete(const ModelRequest& req, const std::string
     std::snprintf(b, sizeof b, "budget $%.4f would be exceeded (spent $%.4f, next call up to $%.4f)", budget_, spent_, worst);
     throw BudgetExceeded(b);
   }
+  if (!ledger_path_.empty()) {
+    double total = ledger_total_usd(ledger_path_);
+    if (total + worst > ledger_cap_) {
+      char b[240];
+      std::snprintf(b, sizeof b, "lifetime spend cap $%.2f would be exceeded (ledger total $%.4f, next call up to $%.4f); raise RC_LIFETIME_CAP_USD to continue",
+                    ledger_cap_, total, worst);
+      throw BudgetExceeded(b);
+    }
+  }
   ModelResponse r = backend_.complete(req);
   CostRecord rec;
   rec.call = static_cast<int>(log_.size()) + 1;
@@ -372,6 +418,7 @@ ModelResponse BudgetedModel::complete(const ModelRequest& req, const std::string
   rec.cost = r.ok ? cost_usd(r.usage, pricing_) : 0.0;
   rec.latency_ms = r.latency_ms;
   spent_ += rec.cost;
+  if (!ledger_path_.empty() && rec.cost > 0) ledger_append(ledger_path_, label, rec.cost);
   rec.total_cost = spent_;
   log_.push_back(rec);
   if (!log_path_.empty()) {

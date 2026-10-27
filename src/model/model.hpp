@@ -148,6 +148,9 @@ public:
 class BudgetedModel {
 public:
   BudgetedModel(ModelBackend& backend, Pricing pricing, double budget_usd, std::string log_path = "");
+  // Lifetime guard across every process and run: each call is added to a JSONL ledger outside the repo, and a call that
+  // could push the ledger total past cap_usd is refused. Only live backends should set this.
+  void set_lifetime_ledger(std::string path, double cap_usd) { ledger_path_ = std::move(path); ledger_cap_ = cap_usd; }
   // Throws BudgetExceeded instead of making the call when the budget is exhausted.
   ModelResponse complete(const ModelRequest& req, const std::string& label);
   double spent() const { return spent_; }
@@ -163,6 +166,14 @@ private:
   std::string log_path_;
   double spent_ = 0;
   std::vector<CostRecord> log_;
+  std::string ledger_path_;
+  double ledger_cap_ = 0;
 };
+
+// Ledger helpers. Default path: $RC_LEDGER or ~/.realitycheck/spend_ledger.jsonl. Default cap: $RC_LIFETIME_CAP_USD or 100.
+std::string default_ledger_path();
+double default_lifetime_cap_usd();
+double ledger_total_usd(const std::string& path);  // sum of "cost_usd" over the ledger (0 if missing)
+void ledger_append(const std::string& path, const std::string& label, double cost_usd);
 
 }  // namespace rc
