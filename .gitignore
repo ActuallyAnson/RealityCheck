@@ -23,3 +23,6 @@ secrets/
 /test_*.jsonl
 /report.json
 /trace.json
+
+# per-run frame images are large and regenerable from trace.json
+results/**/*.png
