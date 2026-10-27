@@ -15,7 +15,7 @@ secrets/
 .claude/
 
 # private evaluation ground truth lives in data/ground_truth.private.json at run time
-runs/
+/runs/
 *.log
 
 # test artifacts written to the working directory
