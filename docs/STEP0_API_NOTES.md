@@ -59,7 +59,7 @@ user-role messages only. About 1,300 to 1,500 tokens for a 1280 px image.
 **On Chat Completions with external keys, reasoning does not carry across turns** (`reasoning_content` is redacted); the docs recommend Responses for agent loops.
 
 ## Open-weight path (Baseten)
-- Slug in Baseten docs and library page: **`meta-models/muse-spark-open`**. Your brief says `meta-models/muse-spark-open-1026`. **Conflict: I could not verify the `-1026` suffix.** The first live check should be `GET https://inference.baseten.co/v1/models`.
+- Slug in Baseten docs and library page: **`meta-models/muse-spark-open`**. Your brief says `meta-models/muse-spark-open-1026`. **Resolved by the participant guide:** the docs use `meta-models/muse-spark-open`, but for the hackathon use `meta-models/muse-spark-open-1026`. `configs/open_weight.json` uses the `-1026` slug.
 - Baseten serves it through Chat Completions only (no Responses API documented). Image input works through `image_url`. Tool calling: Baseten says all Model APIs support it, but Meta's and Baseten's Muse Spark Open pages do not confirm it for this model. `n>1` returns 400; `seed` / `temperature: 0` do not guarantee reproducibility.
 - Price on Baseten's library page: $1.25 input, $0.15 cached, $4.25 output per 1M.
 - License: Muse Model License plus the Acceptable Use Policy.
@@ -73,3 +73,12 @@ whether Baseten accepts `reasoning_effort`, and the exact `-1026` slug.
 - The hackathon participant guide (submission requirements, bonus-prize eligibility, deadline) was not reachable from public search. I could not
   verify any of it, including the "Best Build on Meta Open Weight Models" criteria. Please paste the relevant section or URL.
 - Baseten model-API pricing/limit pages for Muse Spark Open specifically.
+
+## Participant guide (pasted by the user, Oct 27)
+- Repo must be public. Max team size 4; solo allowed. 3-minute demo video is a primary judging artifact. Everyone who worked on it is listed on the submission page.
+- Deadline: Wed Nov 4, 9:00 PM Eastern (EST after Nov 1), which is Thu Nov 5, 10:00 AM in Singapore. Target: submit by Nov 3 evening ET.
+- Demo must show only what was built during the hackathon and judges must be able to identify it (see `WHAT_WE_BUILT.md`).
+- Judging: Stage 1 pass/fail (fits theme, reasonably uses Meta models); Stage 2 Impact 30, Meta tooling 25, Demo 25, Technical depth 20.
+- Bonuses we could target: Best Build on Meta Open Weight Models ($10K, Muse Spark Open or Glimmer via partner inference; flagged in round one and verified by the partner); Best Agentic Use-Case ($5K); Most Viral (X post link submitted on the platform; engagement counted until Nov 8).
+- Credits: Meta $150 (card required; set a Spend Limit notification on Billing). Baseten $100 on request (reviewed, emailed), Modal $100 (first 1,000), Fireworks $25 (shortlist).
+- Not building any of the listed anti-projects.
