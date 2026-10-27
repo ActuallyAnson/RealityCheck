@@ -17,6 +17,7 @@ constexpr double kRestSpeed = 0.5;     // below this approach speed contacts are
 constexpr double kSlop = 0.001;
 constexpr double kCorrect = 0.8;       // positional correction fraction
 constexpr double kMaxMove = 0.03;      // target travel per substep, keeps thin walls from being skipped
+constexpr int kMaxSubsteps = 1000;     // per outer step; substep length is re-derived from the CURRENT speed each time
 
 struct Sim {
   const Scenario& sc;
@@ -93,10 +94,11 @@ struct Sim {
     fy = c.kp * (dy * speed - q.vy);
     double f = std::sqrt(fx * fx + fy * fy);
     bool clamp = !(has(kClampSkipNear) && dist < 1.5);  // b08: clamp skipped near the target
-    if (clamp && f > c.fmax) {
-      fx *= c.fmax / f;
-      fy *= c.fmax / f;
-      f = c.fmax;
+    double fcap = (has(kNoisyClampLoose) && c.noise > 0.2 && c.kp > 25) ? 1.3 * c.fmax : c.fmax;  // b13: loose clamp for a noisy, stiff controller
+    if (clamp && f > fcap) {
+      fx *= fcap / f;
+      fy *= fcap / f;
+      f = fcap;
     }
     fmag_step = std::fmax(fmag_step, f);
   }
@@ -163,7 +165,8 @@ struct Sim {
       for (const WallDef& w : sc.walls) {
         double speed = std::sqrt(q.vx * q.vx + q.vy * q.vy);
         if (has(kTunnelFastThin) && std::fmin(w.w, w.h) < 0.3 && speed > 45.0) continue;  // b01
-        double cx = std::fmax(w.x, std::fmin(q.x, w.x + w.w));
+        double reach = (has(kWideWallShortReach) && w.w > 1.5 && w.h > 1.5) ? 0.4 : 0.0;  // b12: block-shaped walls are treated as 0.4 shorter on the right
+        double cx = std::fmax(w.x, std::fmin(q.x, w.x + w.w - reach));
         double cy = std::fmax(w.y, std::fmin(q.y, w.y + w.h));
         double dx = q.x - cx, dy = q.y - cy;
         double d = std::sqrt(dx * dx + dy * dy);
@@ -204,21 +207,29 @@ struct Sim {
         noise_x = sc.ctrl.noise * rng.range(-1, 1);
         noise_y = sc.ctrl.noise * rng.range(-1, 1);
       }
-      double vmax = 0;
-      for (const Body& q : b) vmax = std::fmax(vmax, std::sqrt(q.vx * q.vx + q.vy * q.vy));
-      double acc = sc.gravity + (sc.ctrl.enabled ? sc.ctrl.fmax * b[static_cast<size_t>(sc.ctrl.body)].inv_m : 0.0);
-      double disp = (vmax + acc * sc.dt) * sc.dt;
-      int n = 1;
-      if (std::isfinite(disp)) n = static_cast<int>(std::min(200.0, std::max(1.0, std::ceil(disp / kMaxMove))));
-      double h = sc.dt / n;
       fmag_step = 0;
-      for (int s = 0; s < n; ++s) {
+      double acc = sc.gravity + (sc.ctrl.enabled ? sc.ctrl.fmax * b[static_cast<size_t>(sc.ctrl.body)].inv_m : 0.0);
+      double remaining = sc.dt;
+      int n = 0;
+      while (remaining > 1e-12 && n < kMaxSubsteps) {
+        // Substep length follows the current fastest body, so a speed gained inside the step (e.g. a light body
+        // squeezed against a wall) shortens the following substeps instead of being integrated at the old length.
+        double vmax = 0;
+        for (const Body& q : b) vmax = std::fmax(vmax, std::sqrt(q.vx * q.vx + q.vy * q.vy));
+        double est = vmax + acc * remaining;
+        double h = remaining;
+        if (std::isfinite(est) && est > 0) h = std::fmin(remaining, std::fmax(sc.dt / kMaxSubsteps, kMaxMove / est));
+        if (n == kMaxSubsteps - 1) h = remaining;
+        remaining -= h;
+        ++n;
         for (size_t i = 0; i < b.size(); ++i) {
           Body& q = b[i];
           double fx = 0, fy = 0;
           if (sc.ctrl.enabled && static_cast<int>(i) == sc.ctrl.body) control(q, fx, fy);
           double ox = q.vx, oy = q.vy;
-          double ax = fx * q.inv_m, ay = fy * q.inv_m - sc.gravity * q.gscale;
+          double g = sc.gravity * q.gscale;
+          if (has(kFastGravityOvercount) && h < sc.dt / 40) g *= 6.0;  // b11: gravity impulse counted six times on very finely substepped bodies
+          double ax = fx * q.inv_m, ay = fy * q.inv_m - g;
           if (has(kExplicitOrder)) {  // b02: position advanced with the old velocity
             q.x += ox * h; q.y += oy * h;
             q.vx += ax * h; q.vy += ay * h;

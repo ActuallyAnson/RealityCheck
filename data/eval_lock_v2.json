@@ -1,0 +1,22 @@
+{
+  "_note": "LOCKED for the v2 evaluation. Simulator v2 = substep length follows the current speed (fixes a tunneling weakness the v1 agent found on the clean simulator) plus new bugs b11..b13. b04/b07/b09 were the v1 held-out bugs and have been seen, so they are 'seen_v1_heldout' here. b11..b13 are the fresh held-out bugs: NO agent may be run on them until the agent version to be reported is final. The random baseline may be run on them. The trigger conditions of b11..b13 were calibrated with the random baseline only (to avoid trivially easy or impossible bugs) before this lock; no agent had seen them.",
+  "version": 2,
+  "budget": {"max_steps": 300000, "max_wall_ms": 60000},
+  "test_seeds": [1101, 1202, 1303, 1404, 1505],
+  "control_seeds": [1901, 1902, 1903],
+  "bugs": [
+    {"id": "b01", "split": "dev"},
+    {"id": "b02", "split": "dev"},
+    {"id": "b03", "split": "dev"},
+    {"id": "b04", "split": "seen_v1_heldout"},
+    {"id": "b05", "split": "dev"},
+    {"id": "b06", "split": "dev"},
+    {"id": "b07", "split": "seen_v1_heldout"},
+    {"id": "b08", "split": "dev"},
+    {"id": "b09", "split": "seen_v1_heldout"},
+    {"id": "b10", "split": "dev"},
+    {"id": "b11", "split": "heldout"},
+    {"id": "b12", "split": "heldout"},
+    {"id": "b13", "split": "heldout"}
+  ]
+}

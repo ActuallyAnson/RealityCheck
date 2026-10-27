@@ -91,6 +91,21 @@ static Scenario trigger(int bug) {
       s.gravity = 0; s.steps = 400;
       s.bodies.push_back(ball(15, 6, 10, 0, 1.0));
       break;
+    case kFastGravityOvercount:
+      s.dt = 1.0 / 30; s.steps = 300;
+      s.bodies.push_back(ball(10, 10, 0, -45, 0.5, 5, 0.9));
+      break;
+    case kWideWallShortReach:
+      s.gravity = 0; s.steps = 300;
+      s.walls.push_back({12, 2, 3, 6});
+      s.bodies.push_back(ball(17, 5, -10, 0, 0.5));
+      break;
+    case kNoisyClampLoose:
+      s.gravity = 0; s.steps = 300;
+      s.bodies.push_back(ball(2, 6, 0, 0, 0.5, 1, 0.8));
+      s.ctrl.enabled = true; s.ctrl.body = 0; s.ctrl.kp = 28; s.ctrl.fmax = 20; s.ctrl.vcmd = 6; s.ctrl.noise = 0.25;
+      s.ctrl.waypoints.push_back({14, 6});
+      break;
   }
   return s;
 }

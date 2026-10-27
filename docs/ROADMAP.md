@@ -99,3 +99,10 @@ often cannot capture system audio without a virtual audio device: test this on d
 
 Risks: live API latency is 4 to 11 s per call (hence the recorded fallback); the agent missed held-out b09 in v1 (report it);
 open-weight tool calling is untested.
+
+## Status log
+- Oct 27: v1 agent evaluation finished (commit 049e7fa, simulator v1). Control runs found violations on the clean simulator
+  (a heavy-light-wall squeeze exceeds the substep length chosen at the start of the step).
+- Oct 27: lifetime spend ledger added (6d74233). Simulator v2: substep length follows the current speed; clean-sim check
+  0 of 20000 random scenarios, and both agent control scenarios are clean. New bugs b11 to b13 and `data/eval_lock_v2.json`
+  (fresh seeds; b11 to b13 are the held-out set; no agent may run on them until the reported agent version is final).
