@@ -351,9 +351,14 @@ BudgetedModel::BudgetedModel(ModelBackend& backend, Pricing pricing, double budg
     : backend_(backend), pricing_(pricing), budget_(budget_usd), log_path_(std::move(log_path)) {}
 
 ModelResponse BudgetedModel::complete(const ModelRequest& req, const std::string& label) {
-  // Pessimistic pre-check: whole prompt uncached (about 3 characters per token) plus the maximum output.
-  size_t chars = build_chat_request(req).dump().size();
-  double worst = (static_cast<double>(chars) / 3.0 * pricing_.input + req.max_tokens * pricing_.output) / 1e6;
+  // Pessimistic pre-check: whole prompt uncached (about 3 characters per token, images at a flat allowance) plus the maximum output.
+  // Image bytes are not text tokens: strip them and charge a flat allowance per image instead.
+  ModelRequest text_only = req;
+  size_t n_images = 0;
+  for (ChatMessage& m : text_only.messages) { n_images += m.images_b64.size(); m.images_b64.clear(); }
+  size_t chars = build_chat_request(text_only).dump().size();
+  double in_tokens = static_cast<double>(chars) / 3.0 + 2000.0 * static_cast<double>(n_images);
+  double worst = (in_tokens * pricing_.input + req.max_tokens * pricing_.output) / 1e6;
   if (spent_ + worst > budget_) {
     char b[200];
     std::snprintf(b, sizeof b, "budget $%.4f would be exceeded (spent $%.4f, next call up to $%.4f)", budget_, spent_, worst);
