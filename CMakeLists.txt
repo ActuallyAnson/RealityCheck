@@ -19,11 +19,16 @@ add_library(rc_core
   src/tools/tools.cpp
   src/shrink/shrink.cpp
   src/baseline/random_baseline.cpp
+  src/model/model.cpp
+  src/agent/agent.cpp
 )
 target_include_directories(rc_core PUBLIC src)
 
 add_executable(rc_tool src/tools/rc_tool_main.cpp)
 target_link_libraries(rc_tool rc_core)
+
+add_executable(rc_agent src/agent/agent_main.cpp)
+target_link_libraries(rc_agent rc_core)
 
 add_executable(rc_eval src/eval/eval_main.cpp)
 target_link_libraries(rc_eval rc_core)
@@ -31,4 +36,4 @@ target_link_libraries(rc_eval rc_core)
 enable_testing()
 add_executable(rc_tests tests/test_main.cpp)
 target_link_libraries(rc_tests rc_core)
-add_test(NAME rc_tests COMMAND rc_tests)
+add_test(NAME rc_tests COMMAND rc_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
