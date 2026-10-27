@@ -27,6 +27,15 @@ std::string hex(uint64_t h) {
   return b;
 }
 
+// True when the unmodified simulator (no seeded bug) also breaks the same rule on this scenario. Such a finding is a
+// weakness of the base simulator, not evidence that a seeded bug was detected.
+bool clean_sim_also_violates(const Scenario& sc, const std::string& rule) {
+  Trace t = simulate(sc, 0);
+  for (const Violation& v : check_rules(sc, t))
+    if (v.rule == rule) return true;
+  return false;
+}
+
 Json run_one(BugMask mask, uint64_t seed, const Budget& budget) {
   HuntResult h = random_baseline(mask, seed, budget);
   Json r = Json::object();
@@ -38,6 +47,7 @@ Json run_one(BugMask mask, uint64_t seed, const Budget& budget) {
   if (h.found) {
     r["scenarios_until_first"] = h.scenarios_until_first;
     r["rule"] = h.first_violation.rule;
+    r["attributable"] = mask == 0 ? false : !clean_sim_also_violates(h.first_failure, h.first_violation.rule);
     ShrinkResult s = shrink(h.first_failure, mask, h.first_violation.rule);
     r["shrink_ok"] = s.ok;
     r["size_before"] = s.size_before;
@@ -161,13 +171,13 @@ void write_agent_summary(const AgentEvalOpts& o, const EvalLock& lock, const std
   bool have_baseline = file_exists("results/baseline.json");
   if (have_baseline) baseline = read_json_file("results/baseline.json");
   std::string md =
-      "| bug | split | agent detected | agent valid report | explanation names cause | random baseline found | median scenarios to first violation | median shrunk size | cost USD (sum) |\n"
-      "|---|---|---|---|---|---|---|---|---|\n";
+      "| bug | split | agent detected | agent valid report | valid and attributable | explanation names cause | random baseline found (attributable) | median scenarios to first violation | median shrunk size | cost USD (sum) |\n"
+      "|---|---|---|---|---|---|---|---|---|---|\n";
   Json bugs = Json::array();
   double total_cost = 0, total_latency = 0;
   int total_runs = 0;
   for (const auto& lb : lock.bugs) {
-    int n = 0, det = 0, valid = 0, expl = 0;
+    int n = 0, det = 0, valid = 0, expl = 0, attr = 0;
     std::vector<double> firsts, sizes;
     double cost = 0;
     for (uint64_t seed : lock.test_seeds) {
@@ -178,21 +188,27 @@ void write_agent_summary(const AgentEvalOpts& o, const EvalLock& lock, const std
       cost += r.num_or("cost_usd", 0);
       total_latency += r.num_or("api_latency_ms", 0);
       if (r.bool_or("detected", false)) { ++det; firsts.push_back(r.num_or("scenarios_until_first", 0)); }
-      if (r.bool_or("report_valid", false)) { ++valid; sizes.push_back(r.num_or("shrunk_size", 0)); }
+      if (r.bool_or("report_valid", false)) {
+        ++valid;
+        sizes.push_back(r.num_or("shrunk_size", 0));
+        Json rep = read_json_file(o.out + "/runs/" + run_key(lb.id, seed) + "/report.json");
+        if (!clean_sim_also_violates(scenario_from_json(rep.at("minimal_scenario")), rep.at("rule").str())) ++attr;
+      }
       if (r.bool_or("explanation_names_cause", false)) ++expl;
     }
     total_cost += cost;
     std::string base = "n/a";
     if (have_baseline)
       for (const auto& b : baseline.at("bugs").arr())
-        if (b.at("bug").str() == lb.id) base = pct(static_cast<int>(b.at("found_count").num()), static_cast<int>(b.at("seed_count").num()));
+        if (b.at("bug").str() == lb.id) base = pct(static_cast<int>(b.at("found_count").num()), static_cast<int>(b.at("seed_count").num())) + " (" +
+                 std::to_string(static_cast<int>(b.num_or("attributable_count", -1))) + ")";
     char c[32];
     std::snprintf(c, sizeof c, "%.3f", cost);
-    md += "| " + lb.id + " | " + lb.split + " | " + pct(det, n) + " | " + pct(valid, n) + " | " + pct(expl, n) + " | " + base + " | " +
+    md += "| " + lb.id + " | " + lb.split + " | " + pct(det, n) + " | " + pct(valid, n) + " | " + pct(attr, n) + " | " + pct(expl, n) + " | " + base + " | " +
           (firsts.empty() ? "-" : std::to_string(static_cast<int>(median(firsts)))) + " | " +
           (sizes.empty() ? "-" : std::to_string(static_cast<int>(median(sizes)))) + " | " + c + " |\n";
     Json row = Json::object();
-    row["bug"] = lb.id; row["split"] = lb.split; row["runs"] = n; row["detected"] = det; row["valid_reports"] = valid;
+    row["bug"] = lb.id; row["split"] = lb.split; row["runs"] = n; row["detected"] = det; row["valid_reports"] = valid; row["valid_attributable"] = attr;
     row["explanation_names_cause"] = expl; row["cost_usd"] = cost;
     bugs.push(row);
   }
@@ -282,6 +298,13 @@ int main(int argc, char** argv) {
     else if (a == "--only-bug") ao.only_bug = v;
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
+  if (mode == "summarize") {  // regenerate the agent summary from saved runs; no API calls
+    ao.out = out_dir.empty() ? "results/agent" : out_dir;
+    EvalLock lock = load_lock(lock_path);
+    std::string model = read_json_file(ao.out + "/runs/b01_" + std::to_string(lock.test_seeds.at(0)) + ".json").str_or("model", "unknown");
+    write_agent_summary(ao, lock, model);
+    return 0;
+  }
   if (mode == "agent") {
     ao.out = out_dir.empty() ? "results/agent" : out_dir;
     return agent_eval(load_lock(lock_path), ao);
@@ -302,7 +325,7 @@ int main(int argc, char** argv) {
   out["lock_hash"] = hex(lock.hash);
   out["budget_steps"] = static_cast<double>(lock.max_steps);
   Json bugs = Json::array();
-  std::string md = "| bug | split | found | median scenarios to first violation | rules |\n|---|---|---|---|---|\n";
+  std::string md = "| bug | split | found | found and attributable to the seeded bug | median scenarios to first violation | rules |\n|---|---|---|---|---|---|\n";
   for (const auto& lb : lock.bugs) {
     int idx = bug_index(lb.id);
     if (idx < 0) { std::cerr << "unknown bug in lock: " << lb.id << "\n"; return 2; }
@@ -310,13 +333,14 @@ int main(int argc, char** argv) {
     row["bug"] = lb.id;
     row["split"] = lb.split;
     Json runs = Json::array();
-    int found = 0;
+    int found = 0, attributable = 0;
     std::vector<int> firsts;
     std::string rules;
     for (uint64_t seed : lock.test_seeds) {
       Json r = run_one(bug_bit(idx), seed, budget);
       if (r.at("found").boolean()) {
         ++found;
+        if (r.at("attributable").boolean()) ++attributable;
         firsts.push_back(static_cast<int>(r.at("scenarios_until_first").num()));
         if (rules.find(r.at("rule").str()) == std::string::npos) rules += (rules.empty() ? "" : ", ") + r.at("rule").str();
       }
@@ -324,13 +348,14 @@ int main(int argc, char** argv) {
     }
     row["runs"] = runs;
     row["found_count"] = found;
+    row["attributable_count"] = attributable;
     row["seed_count"] = static_cast<int>(lock.test_seeds.size());
     std::sort(firsts.begin(), firsts.end());
     char med[16] = "-";
     if (!firsts.empty()) std::snprintf(med, sizeof med, "%d", firsts[firsts.size() / 2]);
     bugs.push(row);
     md += "| " + lb.id + " | " + lb.split + " | " + std::to_string(found) + "/" + std::to_string(lock.test_seeds.size()) +
-          " | " + med + " | " + rules + " |\n";
+          " | " + std::to_string(attributable) + "/" + std::to_string(lock.test_seeds.size()) + " | " + med + " | " + rules + " |\n";
   }
   out["bugs"] = bugs;
   // controls: the unmodified simulation must produce no violations
