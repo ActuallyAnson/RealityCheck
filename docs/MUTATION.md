@@ -59,3 +59,8 @@ scenarios of the pool. Tolerances were set on the unmodified simulator only: fiv
 to one significant figure. The first attempt (twice the clean maximum of a 300-scenario pool) gave a false positive on the evaluation pool and was loosened before any mutant was run with it;
 the final tolerances give 0 failures on 1000 clean scenarios in every domain. Calibration also showed that perm and refine do not hold on rigid-body contacts even for the correct simulator
 (deviations 9.8 and 17.7: contact resolution legitimately depends on order and amplifies the step change), so they are not applied there.
+
+## Reproducibility note
+
+Regenerating the locked mutants was checked against the committed benchmark: cart-pole and traffic reproduce byte for byte; orbit reproduces the same 40 mutations at the same lines (the only difference is four lines outside the mutated ranges, the later `clamp_int` fix, which does not change behavior for in-range scenarios); the
+rigid-body mutants were generated from a `world.cpp` that later changed, so the pinned source is `data/mutation_base/rigid2d_world.cpp`, and `scripts/run_mutation_all.sh` uses it (`rc_mutgen` on it reproduces the locked `index.json` and all 40 mutant sources exactly).
