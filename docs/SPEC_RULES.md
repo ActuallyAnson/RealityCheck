@@ -62,3 +62,13 @@ justify: `min_run(any_active == 0, steps 1)` (an all-red of at least one second)
 with the scenario's own `yellow_seconds` and `all_red_seconds`, which were available as signals. Those invariants hold on every clean run and also on the buggy ones.
 It also spent three of twelve slots on the constants being constant. So the language was not the only limit: the model proposes invariants that are safe to keep (they must
 survive clean validation) and therefore loose. I stopped here rather than keep rewording the prompt until it passed.
+
+## A no-model comparison: invariants mined from the clean simulator (`rc_spec --mined`)
+
+Same hunt, same 22 seeded bugs, 300 scenarios each, but the invariants come from `src/spec/miner.cpp` run on 300 clean runs of the trusted simulator instead of from a model (tolerance factors from `results/mutation/mine_factors.tsv`; every mined invariant is also checked on 3000 fresh clean runs; cost $0).
+This is a different protocol from `docs/MINING.md`, where each mutant mined from itself: here the reference is the unmodified simulator, which is what a regression setting provides. Reproduce: `rc_spec --mined --domain D --mine-bound B --mine-drift F --mine-step S --out results/spec_mined_D` and `rc_spec compare ...` (output in `results/spec_mined_compare.md`).
+
+Bugs hit at least once: **model-written 9 of 22, mined from the clean simulator 10 of 22, either 11 of 22, hand-written rules 19 of 22.**
+The mined invariants find what the model missed where a numeric regularity exists (the orbit energy drift o01, the traffic o03-style t03 on 5 of 300 scenarios) and miss what it found by reading the description (b13, the force limit); the union adds only 1 or 2 bugs, so the gap to the hand-written rules (19) is not closed by either source or by both.
+The remaining 8 bugs that the hand-written rules catch and neither source does are the ones that need domain knowledge of what the rule is (a wall that must not be penetrated, a minimum phase duration), which is the knowledge the author supplied.
+

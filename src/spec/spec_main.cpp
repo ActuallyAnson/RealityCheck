@@ -13,6 +13,7 @@
 #include "model/model.hpp"
 #include "rules/checker.hpp"
 #include "sim/domains.hpp"
+#include "spec/miner.hpp"
 #include "spec/spec.hpp"
 
 using namespace rc;
@@ -72,10 +73,29 @@ static int summarize(int argc, char** argv) {
   return 0;
 }
 
+// rc_spec compare MODEL_DIR MINED_DIR [MODEL_DIR MINED_DIR ...] : per bug, which source hit it (model-written, mined from the clean simulator, hand-written) and the union
+static int compare(int argc, char** argv) {
+  std::cout << "| domain | bug | model-written | mined from clean | either | hand-written |\n|---|---|---|---|---|---|\n";
+  int tot = 0, m = 0, d = 0, u = 0, h = 0;
+  for (int i = 2; i + 1 < argc; i += 2) {
+    Json a = Json::parse(read_file(std::string(argv[i]) + "/spec.json")), b = Json::parse(read_file(std::string(argv[i + 1]) + "/spec.json"));
+    for (size_t k = 0; k < a.at("bugs").arr().size(); ++k) {
+      const Json &x = a.at("bugs").arr()[k], &y = b.at("bugs").arr()[k];
+      const bool mm = x.at("attributable").num() > 0, dd = y.at("attributable").num() > 0, hh = x.at("hand_rules_fired").num() > 0;
+      ++tot; m += mm; d += dd; u += mm || dd; h += hh;
+      std::cout << "| " << a.at("domain").str() << " | " << x.at("bug").str() << " | " << (mm ? "yes" : "-") << " | " << (dd ? "yes" : "-") << " | " << (mm || dd ? "yes" : "-") << " | " << (hh ? "yes" : "-") << " |\n";
+    }
+  }
+  std::cout << "\nBugs hit at least once: model-written " << m << "/" << tot << ", mined from the clean simulator " << d << "/" << tot << ", either " << u << "/" << tot << ", hand-written rules " << h << "/" << tot << ".\n";
+  return 0;
+}
+
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "summarize") return summarize(argc, argv);
+  if (argc > 1 && std::string(argv[1]) == "compare") return compare(argc, argv);
   std::string engine = "builtin", domain = "orbit", replay, record, out = "runs/spec", config = "configs/hosted.json";
-  bool live = false;
+  bool live = false, mined = false;
+  MinerConfig mcfg;
   int language = 1, clean_n = 1500, heldout_n = 3000, hunt_n = 300;
   double budget = 0.5;
   for (int i = 1; i < argc; ++i) {
@@ -84,17 +104,20 @@ int main(int argc, char** argv) {
     if (a == "--domain") domain = val(); else if (a == "--live") live = true; else if (a == "--replay") replay = val();
     else if (a == "--engine") engine = val(); else if (a == "--language") language = std::atoi(val().c_str()); else if (a == "--record") record = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val();
     else if (a == "--clean-n") clean_n = std::atoi(val().c_str()); else if (a == "--heldout-n") heldout_n = std::atoi(val().c_str());
+    else if (a == "--mined") mined = true; else if (a == "--mine-bound") mcfg.bound_margin = std::atof(val().c_str()); else if (a == "--mine-drift") mcfg.drift_factor = std::atof(val().c_str()); else if (a == "--mine-step") mcfg.step_factor = std::atof(val().c_str());
     else if (a == "--hunt-n") hunt_n = std::atoi(val().c_str()); else if (a == "--budget-usd") budget = std::atof(val().c_str());
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
-  if (!live && replay.empty()) { std::cerr << "choose --live or --replay CACHE\n"; return 2; }
+  if (!live && replay.empty() && !mined) { std::cerr << "choose --live or --replay CACHE\n"; return 2; }
   if (std::system(("mkdir -p '" + out + "'").c_str()) != 0) return 1;
 
   SimFn clean_sim;  // the system whose "clean" runs validate the invariants (our simulator, or any engine: for an unknown simulator these are its own runs)
   try { clean_sim = make_engine(engine, domain); } catch (const std::exception& e) { std::cerr << e.what() << "\n"; return 2; }
   ApiConfig api = ApiConfig::from_json(Json::parse(read_file(config)));
   std::unique_ptr<ModelBackend> inner, backend;
-  if (live) {
+  if (mined) {
+    backend.reset(new ReplayBackend("/dev/null"));
+  } else if (live) {
     inner.reset(new MetaApiBackend(api));
     if (!record.empty()) backend.reset(new RecordingBackend(*inner, record)); else backend = std::move(inner);
   } else backend.reset(new ReplayBackend(replay));
@@ -105,6 +128,12 @@ int main(int argc, char** argv) {
   msgs.push_back({"user", spec_prompt(domain, language), {}, "", {}});
   std::vector<Invariant> accepted, rejected_all;
   std::vector<std::string> problems, rejected_evidence, rejected_scenarios;
+  if (mined) {  // no model: invariants mined from the trusted (clean) engine's own runs
+    std::vector<Signals> pool;
+    for (int i = 0; i < 300; ++i) { Scenario sc = random_scenario_for(domain, 900000 + static_cast<uint64_t>(i)); pool.push_back(extract_signals(sc, clean_sim(sc))); }
+    accepted = mine_invariants(pool, mcfg);
+    std::cout << "mined " << accepted.size() << " invariants from 300 clean runs\n";
+  } else
   try {
     std::string ans = ask(model, api, msgs, "spec_propose");
     std::vector<Invariant> cand = parse_invariants(ans, domain, &problems, language);
