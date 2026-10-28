@@ -18,4 +18,7 @@ sec "Orbit domain: agent v1" results/orbit_agent/summary.md "Bugs o01-o03, fresh
 sec "Orbit domain: random baseline" results/orbit/baseline.md ""
 sec "Cart-pole domain (envelope 3): agent v1" results/cartpole_agent/summary.md "Bugs c01-c03 had been seen in earlier attempts; see docs/CARTPOLE_DOMAIN.md for the history."
 sec "Cart-pole domain (envelope 3): random baseline" results/cartpole/baseline.md ""
+sec "Traffic-signal domain: agent v1" results/traffic_agent/summary.md "Bugs t01-t03, all fresh. Random testing finds all three in every seed; see docs/TRAFFIC_DOMAIN.md."
+sec "Traffic-signal domain: random baseline" results/traffic/baseline.md ""
+sec "Spec to rules: model-written invariants vs hand-written rules" results/spec_summary.md "One run per domain, 300 scenarios per bug; see docs/SPEC_RULES.md."
 echo "wrote $out"
