@@ -35,6 +35,7 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain = "rigid2d")
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec = RuleSpec());
 
 std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr);
+std::vector<Violation> check_cartpole_rules(const Scenario& sc, const Trace& tr);
 
 Json to_json(const Violation& v);
 

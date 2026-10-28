@@ -11,6 +11,7 @@
 #include "model/model.hpp"
 #include "rules/checker.hpp"
 #include "shrink/shrink.hpp"
+#include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "sim/world.hpp"
 #include "tools/render.hpp"
@@ -723,6 +724,54 @@ static void test_orbit_domain() {
   CHECK(all.find("restitution") == std::string::npos && all.find("controller") == std::string::npos);
 }
 
+static void test_cartpole_domain() {
+  Scenario a = random_cartpole_scenario(5);
+  CHECK(validate(a).empty());
+  CHECK(simulate(a, 0).hash() == simulate(a, 0).hash());
+  CHECK(scenario_from_json(to_json(a)) == a);
+  int clean_flags = 0;
+  for (int i = 0; i < 200; ++i) {
+    Scenario s = random_cartpole_scenario(1000 + static_cast<uint64_t>(i));
+    if (!check_rules(s, simulate(s, 0)).empty()) ++clean_flags;
+  }
+  CHECK(clean_flags == 0);
+  for (int b = 0; b < kNumCartBugs; ++b) {
+    BugMask m = 1u << b;
+    bool found = false;
+    for (int i = 0; i < 3000 && !found; ++i) {
+      Scenario s = random_cartpole_scenario(70000 + static_cast<uint64_t>(i));
+      auto v = check_rules(s, simulate(s, m));
+      if (v.empty()) continue;
+      found = true;
+      CHECK(check_rules(s, simulate(s, 0)).empty());
+      ShrinkResult sr = shrink(s, m, v.front().rule);
+      CHECK(sr.ok);
+      CHECK(validate(sr.scenario).empty());
+      CHECK(sr.size_after <= sr.size_before);
+      bool again = false;
+      for (const auto& x : check_rules(sr.scenario, simulate(sr.scenario, m))) again |= x.rule == v.front().rule;
+      CHECK(again);
+    }
+    CHECK(found);
+  }
+  ToolSession ts(0u, ToolBudget(), "/tmp");
+  ts.set_domain("cartpole");
+  Json args = Json::object();
+  args["scenario"] = to_json(a);
+  Json r = ts.call("run_scenario", args);
+  CHECK(r.at("ok").boolean());
+  Json q = Json::object();
+  q["scenario_id"] = r.at("scenario_id");
+  q["step"] = 3;
+  Json st = ts.call("inspect_state", q);
+  CHECK(st.at("ok").boolean() && st.has("theta") && st.has("pole_angle_margin"));
+  q["from"] = 0; q["to"] = 5;
+  CHECK(ts.call("render_frames", q).at("ok").boolean());
+  std::string all = system_prompt(true, "cartpole") + tool_specs("cartpole").dump();
+  for (int b = 0; b < kNumCartBugs; ++b) CHECK(all.find(cart_bug_id(b)) == std::string::npos);
+  CHECK(all.find("restitution") == std::string::npos && all.find("walls") == std::string::npos);
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -734,7 +783,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain},
   };
   for (auto& t : tests) {
     int before = g_fail;

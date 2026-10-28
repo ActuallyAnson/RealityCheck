@@ -1,7 +1,7 @@
 // rc_agent: runs the tester agent against a simulation with operator-chosen hidden bugs.
 //   rc_agent --replay CACHE.jsonl [options]          serve recorded responses, no network
 //   rc_agent --live --config configs/hosted.json     call the real API (needs the key env var)
-// Options: --domain rigid2d|orbit --bugs b01,b05 (o01.. for orbit) --budget-usd 5 --max-steps N --max-tool-calls N --max-turns N --out DIR
+// Options: --domain rigid2d|orbit|cartpole --bugs b01,b05 (o01.. orbit, c01.. cartpole) --budget-usd 5 --max-steps N --max-tool-calls N --max-turns N --out DIR
 //          --record CACHE.jsonl (append live exchanges for later replay)
 // Without --live, nothing in this program can reach the network.
 #include <sys/stat.h>
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     else if (a == "--smoke") smoke = true;
     else if (a == "--config") config_path = val();
     else if (a == "--bugs") bugs_arg = val();
-    else if (a == "--domain") domain = val();  // rigid2d (default) | orbit
+    else if (a == "--domain") domain = val();  // rigid2d (default) | orbit | cartpole
     else if (a == "--engine") engine = val();  // box2d | box2d-noccd: test an outside engine instead
     else if (a == "--budget-usd") budget_usd = std::atof(val().c_str());
     else if (a == "--max-steps") tb.max_steps = std::atoll(val().c_str());
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
   std::stringstream ss(bugs_arg);
   std::string tok;
   while (std::getline(ss, tok, ',')) {
-    int idx = domain == "orbit" ? orbit_bug_index(tok) : bug_index(tok);
+    int idx = domain_bug_index(domain, tok);
     if (idx < 0) { std::cerr << "unknown bug id: " << tok << "\n"; return 2; }
     mask |= bug_bit(idx);
   }

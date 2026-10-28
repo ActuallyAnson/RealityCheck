@@ -17,7 +17,15 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
       {"momentum_conserved", "Total linear momentum stays within 0.1% of the largest sum of m|v| seen, plus 0.001."},
       {"angular_momentum_conserved", "Total angular momentum about the origin stays within 0.1% of the largest sum of m|r||v| seen, plus 0.001."},
   };
+  static const std::vector<RuleInfo> cart_cat = {
+      {"no_nan", "Every state value and the controller force stay finite."},
+      {"pole_upright", "The pole angle from upright stays within 0.8 rad at every step."},
+      {"cart_in_track", "The cart position stays within the 2.4 m track (|x| <= 2.4)."},
+      {"controller_force_limit", "The controller never applies a force above the scenario's force_limit."},
+      {"energy_bound", "Mechanical energy never exceeds the initial energy plus the work of all external forces, beyond 5% of (|E0|+|work|) plus 0.05."},
+  };
   if (domain == "orbit") return orbit_cat;
+  if (domain == "cartpole") return cart_cat;
   static const std::vector<RuleInfo> cat = {
       {"no_nan", "Every position, velocity and energy value stays finite."},
       {"in_arena", "Every body stays inside the 20 x 12 arena (centre +/- radius within the bounds, tolerance 0.15)."},
@@ -31,6 +39,39 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
 
 namespace {
 std::string fmt(const char* f, double a = 0, double b = 0, double c = 0);
+}
+
+std::vector<Violation> check_cartpole_rules(const Scenario& sc, const Trace& tr) {
+  std::vector<Violation> out;
+  std::set<std::string> seen;
+  auto add = [&](Violation v) {
+    if (seen.insert(v.rule).second) out.push_back(std::move(v));
+  };
+  if (tr.rec.empty()) return out;
+  const double e0 = tr.rec[0].energy;
+  for (int k = 0; k <= tr.steps(); ++k) {
+    const StepRecord& s = tr.rec[static_cast<size_t>(k)];
+    const BodyState& q = s.body[0];
+    if (!(std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.vx) && std::isfinite(q.vy) && std::isfinite(s.energy) &&
+          std::isfinite(s.fmag) && std::isfinite(s.work))) {
+      add({"no_nan", k, -1, 0, 0, "non-finite state or force"});
+      break;
+    }
+    if (std::fabs(q.y) > 0.8)
+      add({"pole_upright", k, 0, std::fabs(q.y), 0.8, fmt("pole angle %.3f rad from upright (limit 0.8)", q.y)});
+    if (std::fabs(q.x) > 2.4)
+      add({"cart_in_track", k, 0, std::fabs(q.x), 2.4, fmt("cart at x=%.3f outside the +/-2.4 track", q.x)});
+    if (k > 0 && s.fmag > sc.cp.fmax * (1 + 1e-6))
+      add({"controller_force_limit", k, 0, s.fmag, sc.cp.fmax, fmt("controller force %.3f exceeds limit %.3f", s.fmag, sc.cp.fmax)});
+    double lim = e0 + s.work + 0.05 * (std::fabs(e0) + std::fabs(s.work)) + 0.05;
+    if (s.energy > lim)
+      add({"energy_bound", k, -1, s.energy, lim, fmt("energy %.3f exceeds allowed %.3f", s.energy, lim)});
+  }
+  std::stable_sort(out.begin(), out.end(), [](const Violation& a, const Violation& b) {
+    if (a.step != b.step) return a.step < b.step;
+    return a.rule < b.rule;
+  });
+  return out;
 }
 
 std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr) {
@@ -112,6 +153,7 @@ std::string fmt(const char* f, double a, double b, double c) {
 
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec) {
   if (sc.domain == "orbit") return check_orbit_rules(sc, tr);
+  if (sc.domain == "cartpole") return check_cartpole_rules(sc, tr);
   std::vector<Violation> out;
   std::set<std::pair<std::string, int>> seen;
   auto add = [&](Violation v) {

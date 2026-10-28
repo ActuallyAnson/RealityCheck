@@ -29,6 +29,7 @@
 
 #include "model/model.hpp"
 #include "sim/bugs.hpp"
+#include "eval/ground_truth.hpp"
 #include "sim/orbit.hpp"
 #include "util/json.hpp"
 #include "viewer/view_export.hpp"
@@ -128,11 +129,15 @@ bool safe_token(const std::string& s) {
 
 // ---- live runs ----
 
-// Orbit bug ids start with "o"; everything else is the rigid-body domain.
-std::string domain_for(const std::string& bug) { return !bug.empty() && bug[0] == 'o' ? "orbit" : "rigid2d"; }
+// Bug ids: o.. = orbit, c.. = cart-pole, b.. = rigid bodies.
+std::string domain_for(const std::string& bug) {
+  if (!bug.empty() && bug[0] == 'o') return "orbit";
+  if (!bug.empty() && bug[0] == 'c') return "cartpole";
+  return "rigid2d";
+}
 BugMask mask_for(const std::string& bug) {
   if (bug == "none") return 0;
-  return bug_bit(domain_for(bug) == "orbit" ? orbit_bug_index(bug) : bug_index(bug));
+  return bug_bit(domain_bug_index(domain_for(bug), bug));
 }
 
 Json status_json() {
@@ -161,7 +166,7 @@ void reaper(pid_t pid) {
 
 // Returns an error message, or "" and fills id on success.
 std::string start_live(const std::string& bug, std::string* id_out) {
-  if (bug != "none" && (domain_for(bug) == "orbit" ? orbit_bug_index(bug) : bug_index(bug)) < 0) return "unknown bug id";
+  if (bug != "none" && domain_bug_index(domain_for(bug), bug) < 0) return "unknown bug id";
   Json st = status_json();
   if (!st.at("key_set").boolean()) return "the API key environment variable " + st.at("key_env").str() + " is not set in the shell that started rc_demo";
   if (ledger_total_usd(default_ledger_path()) + g_opt.budget_usd > default_lifetime_cap_usd()) return "lifetime spend cap would be exceeded";

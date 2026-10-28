@@ -101,6 +101,26 @@ ShrinkResult shrink(const Scenario& sc, const SimFn& sim, const std::string& rul
         }
       });
     }
+    if (s.cur.domain == "cartpole") {
+      for (size_t i = s.cur.cp.pushes.size(); i-- > 0;)
+        progress |= s.try_field([&](Scenario& c) { c.cp.pushes.erase(c.cp.pushes.begin() + static_cast<long>(i)); });
+      for (size_t i = 0; i < s.cur.cp.pushes.size(); ++i) {
+        progress |= s.try_field([i](Scenario& c) { c.cp.pushes[i].len = std::max(c.dt, 0.1); });
+        progress |= s.try_field([i](Scenario& c) { c.cp.pushes[i].force = std::round(c.cp.pushes[i].force); });
+        progress |= s.try_field([i](Scenario& c) { c.cp.pushes[i].t = std::round(c.cp.pushes[i].t * 10) / 10; });
+      }
+      progress |= s.try_field([](Scenario& c) { c.cp.noise = 0; });
+      progress |= s.try_field([](Scenario& c) { c.seed = 1; });
+      progress |= s.try_field([](Scenario& c) { c.cp.x0 = 0; });
+      progress |= s.try_field([](Scenario& c) { c.cp.v0 = 0; });
+      progress |= s.try_field([](Scenario& c) { c.cp.w0 = 0; });
+      progress |= s.try_field([](Scenario& c) { c.cp.g = 9.81; });
+      progress |= s.try_field([](Scenario& c) { c.cp.mc = 1.0; });
+      progress |= s.try_field([](Scenario& c) { c.cp.mp = 0.2; });
+      progress |= s.try_field([](Scenario& c) { c.cp.l = 0.5; });
+      progress |= s.try_field([](Scenario& c) { c.cp.fmax = 30; });
+      progress |= s.try_field([](Scenario& c) { c.cp.th0 = std::round(c.cp.th0 * 20) / 20; });
+    }
     // simplify scalars
     progress |= s.try_field([](Scenario& c) { c.ctrl.noise = 0; });
     progress |= s.try_field([](Scenario& c) { c.seed = 1; });

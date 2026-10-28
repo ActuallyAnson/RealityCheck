@@ -112,6 +112,36 @@ std::vector<uint8_t> encode_png(const Img& im) {
 
 }  // namespace
 
+std::vector<uint8_t> render_cartpole_strip(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int cols) {
+  const double ppu = 50, W = 6.0, H = 2.6;  // 6 m wide view centred on the track, pole drawn at its true length
+  const int tw = static_cast<int>(W * ppu), th = static_cast<int>(H * ppu), gap = 4;
+  int n = std::max<int>(1, static_cast<int>(steps.size()));
+  cols = std::max(1, std::min(cols, n));
+  int rows = (n + cols - 1) / cols;
+  Img im(cols * tw + (cols + 1) * gap, rows * th + (rows + 1) * gap);
+  fill_rect(im, 0, 0, im.w, im.h, {40, 40, 48});
+  for (size_t t = 0; t < steps.size(); ++t) {
+    int k = std::max(0, std::min(steps[t], tr.steps()));
+    int ox = gap + static_cast<int>(t % cols) * (tw + gap), oy = gap + static_cast<int>(t / cols) * (th + gap);
+    fill_rect(im, ox, oy, ox + tw, oy + th, {250, 250, 245});
+    auto sx = [&](double x) { return ox + (x + W / 2) * ppu; };
+    const int ground = oy + th - 20;
+    fill_rect(im, ox, ground, ox + tw, ground + 2, {60, 60, 70});
+    for (double e : {-2.4, 2.4}) fill_rect(im, static_cast<int>(sx(e)) - 1, ground - 30, static_cast<int>(sx(e)) + 2, ground + 4, {200, 60, 60});
+    const BodyState& q = tr.rec[static_cast<size_t>(k)].body[0];
+    if (std::isfinite(q.x) && std::isfinite(q.y)) {
+      double cx = sx(q.x);
+      fill_rect(im, static_cast<int>(cx) - 14, ground - 12, static_cast<int>(cx) + 15, ground, {70, 120, 200});
+      double tipx = cx + sc.cp.l * ppu * std::sin(q.y), tipy = ground - 12 - sc.cp.l * ppu * std::cos(q.y);
+      for (int i = 0; i <= 40; ++i) fill_circle(im, cx + (tipx - cx) * i / 40.0, ground - 12 + (tipy - (ground - 12)) * i / 40.0, 1.6, {50, 50, 60});
+      fill_circle(im, tipx, tipy, 5, std::fabs(q.y) > 0.8 ? Col{215, 40, 40} : Col{230, 150, 30});
+    }
+    fill_rect(im, ox, oy, ox + 40, oy + 12, {255, 255, 255});
+    draw_number(im, ox + 3, oy + 3, k, 2, {0, 0, 0});
+  }
+  return encode_png(im);
+}
+
 std::vector<uint8_t> render_orbit_strip(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int highlight,
                                         int cols, int ppu) {
   const double W = 20, H = 12;
@@ -148,6 +178,7 @@ std::vector<uint8_t> render_orbit_strip(const Scenario& sc, const Trace& tr, con
 std::vector<uint8_t> render_strip_png(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int highlight,
                                       int cols, int ppu) {
   if (sc.domain == "orbit") return render_orbit_strip(sc, tr, steps, highlight, cols, ppu);
+  if (sc.domain == "cartpole") return render_cartpole_strip(sc, tr, steps, cols);
   const int tw = static_cast<int>(sc.arena_w * ppu), th = static_cast<int>(sc.arena_h * ppu), gap = 4;
   int n = std::max<int>(1, static_cast<int>(steps.size()));
   cols = std::max(1, std::min(cols, n));

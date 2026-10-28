@@ -1,5 +1,6 @@
 #include "sim/world.hpp"
 #include "sim/orbit.hpp"
+#include "sim/cartpole.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -256,6 +257,7 @@ struct Sim {
 
 Trace simulate(const Scenario& sc, BugMask bugs) {
   if (sc.domain == "orbit") return simulate_orbit(sc, bugs);
+  if (sc.domain == "cartpole") return simulate_cartpole(sc, bugs);
   Sim s(sc, bugs);
   return s.run();
 }

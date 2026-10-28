@@ -93,6 +93,15 @@ bool extract_json_object(const std::string& text, Json* out) {
 double field_value(const Scenario& sc, const StepRecord& rec, int body, const std::string& f, bool* ok) {
   *ok = true;
   if (f == "energy") return rec.energy;
+  if (sc.domain == "cartpole" && !rec.body.empty()) {  // body index is irrelevant: one cart-pole
+    const BodyState& q = rec.body[0];
+    if (f == "x") return q.x;
+    if (f == "v") return q.vx;
+    if (f == "theta") return q.y;
+    if (f == "omega") return q.vy;
+    if (f == "controller_force") return rec.fmag;
+    if (f == "external_work") return rec.work;
+  }
   if (sc.domain == "orbit") {  // whole-system quantities reported by inspect_state
     double ke, pe;
     if (f == "angular_momentum") return rec.ang;
@@ -117,7 +126,7 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
   CitationCheck c;
   auto bad = [&](const std::string& m) { c.problems.push_back(m); };
   const int steps = run.tr.steps();
-  const int nbodies = static_cast<int>(run.sc.bodies.size());
+  const int nbodies = run.sc.domain == "cartpole" ? 1 : static_cast<int>(run.sc.bodies.size());
   if (!shrunk) bad("scenario_id must be the shrunk scenario returned by the shrink tool");
   std::string rule = report.str_or("rule", "");
   const Violation* viol = nullptr;

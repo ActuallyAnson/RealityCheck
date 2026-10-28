@@ -400,6 +400,95 @@
           "large g"
         ]
       ]
+    },
+    "c01": {
+      "summary": "With sensor noise above 0.008 rad and dt above 0.012, the angular-rate term is dropped from the feedback law, so the loop loses damping and the pole falls.",
+      "expected_rules": [
+        "pole_upright",
+        "cart_in_track"
+      ],
+      "cause_keywords": [
+        [
+          "rate",
+          "derivative",
+          "damping",
+          "angular velocity",
+          "omega",
+          "velocity term",
+          "d-term",
+          "feedback"
+        ],
+        [
+          "noise",
+          "sensor",
+          "dt",
+          "step",
+          "coarse",
+          "sampling",
+          "filter",
+          "drop",
+          "missing",
+          "omit",
+          "zero"
+        ]
+      ]
+    },
+    "c02": {
+      "summary": "When any push exceeds 6 N, the controller force clamp is applied at 1.5 times the declared force_limit, so the applied force exceeds the limit.",
+      "expected_rules": [
+        "controller_force_limit"
+      ],
+      "cause_keywords": [
+        [
+          "clamp",
+          "saturat",
+          "limit",
+          "clip",
+          "cap",
+          "bound"
+        ],
+        [
+          "push",
+          "disturbance",
+          "external",
+          "impulse",
+          "1.5",
+          "scale",
+          "larger",
+          "loose",
+          "exceed"
+        ]
+      ]
+    },
+    "c03": {
+      "summary": "With pole-to-cart mass ratio above 0.3 and pole length above 0.85, the sign of the cart-position term is flipped, so the cart drifts and leaves the track.",
+      "expected_rules": [
+        "cart_in_track",
+        "pole_upright"
+      ],
+      "cause_keywords": [
+        [
+          "sign",
+          "position",
+          "cart position",
+          "x term",
+          "x-gain",
+          "positive feedback",
+          "flipped",
+          "inverted",
+          "reversed",
+          "drift"
+        ],
+        [
+          "heavy",
+          "mass ratio",
+          "long",
+          "pole length",
+          "pole mass",
+          "length",
+          "ratio"
+        ]
+      ]
     }
   }
 }

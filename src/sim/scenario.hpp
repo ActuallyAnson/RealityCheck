@@ -32,8 +32,26 @@ struct ControllerDef {
   std::vector<Waypoint> waypoints;
 };
 
+// Cart-pole domain: a pole balanced on a cart by a fixed state-feedback controller. Only used when
+// Scenario::domain == "cartpole".
+struct PushDef {
+  double t = 0, len = 0.1, force = 0;  // external force on the cart from time t for len seconds
+  bool operator==(const PushDef& o) const { return t == o.t && len == o.len && force == o.force; }
+};
+struct CartPoleDef {
+  double mc = 1.0, mp = 0.2, l = 0.5, g = 9.81;  // cart mass, pole mass (point mass at the tip), pole length, gravity
+  double x0 = 0, v0 = 0, th0 = 0.1, w0 = 0;      // initial cart position/velocity, pole angle from upright/angular velocity
+  double fmax = 30;                               // controller force limit
+  double noise = 0;                               // seeded angle-sensor noise amplitude (rad)
+  std::vector<PushDef> pushes;
+  bool operator==(const CartPoleDef& o) const {
+    return mc == o.mc && mp == o.mp && l == o.l && g == o.g && x0 == o.x0 && v0 == o.v0 && th0 == o.th0 && w0 == o.w0 &&
+           fmax == o.fmax && noise == o.noise && pushes == o.pushes;
+  }
+};
+
 struct Scenario {
-  std::string domain = "rigid2d";  // "rigid2d" (default) or "orbit"; omitted from JSON for rigid2d
+  std::string domain = "rigid2d";  // "rigid2d" (default), "orbit" or "cartpole"; omitted from JSON for rigid2d
   uint64_t seed = 1;
   double dt = 1.0 / 120.0;
   int steps = 600;
@@ -42,6 +60,7 @@ struct Scenario {
   std::vector<BodyDef> bodies;
   std::vector<WallDef> walls;
   ControllerDef ctrl;
+  CartPoleDef cp;
 };
 
 // Public limits of the scenario space (given to testers and to the model as part of the spec).

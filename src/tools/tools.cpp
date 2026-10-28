@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "shrink/shrink.hpp"
+#include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "tools/render.hpp"
 
@@ -161,6 +162,7 @@ Json ToolSession::inspect_state(const Json& a) {
   const Scenario& sc = en->sc;
   const StepRecord& rec = en->tr.rec[static_cast<size_t>(k)];
   if (sc.domain == "orbit") return inspect_orbit(sc, rec, k);
+  if (sc.domain == "cartpole") return inspect_cartpole(sc, rec, k);
   Json r = Json::object();
   r["ok"] = true;
   r["step"] = k;
@@ -203,6 +205,36 @@ Json ToolSession::inspect_state(const Json& a) {
       }
     }
   r["touching_pairs"] = pairs;
+  return r;
+}
+
+Json ToolSession::inspect_cartpole(const Scenario& sc, const StepRecord& rec, int k) {
+  const BodyState& q = rec.body[0];
+  Json r = Json::object();
+  r["ok"] = true;
+  r["step"] = k;
+  r["time"] = k * sc.dt;
+  r["x"] = q.x;
+  r["v"] = q.vx;
+  r["theta"] = q.y;
+  r["omega"] = q.vy;
+  r["controller_force"] = rec.fmag;
+  r["force_limit"] = sc.cp.fmax;
+  r["energy"] = rec.energy;
+  r["external_work"] = rec.work;
+  r["cart_to_track_end"] = 2.4 - std::fabs(q.x);
+  r["pole_angle_margin"] = 0.8 - std::fabs(q.y);
+  Json active = Json::array();
+  for (size_t i = 0; i < sc.cp.pushes.size(); ++i) {
+    const PushDef& p = sc.cp.pushes[i];
+    double t = k * sc.dt;
+    if (t >= p.t && t < p.t + p.len) {
+      Json po = Json::object();
+      po["push"] = static_cast<int>(i); po["force"] = p.force;
+      active.push(po);
+    }
+  }
+  r["active_pushes"] = active;
   return r;
 }
 
@@ -341,8 +373,10 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
 
 Json tool_specs(const std::string& domain) {
   const bool orbit = domain == "orbit";
+  const bool cart = domain == "cartpole";
   Json scen = prop("object",
                    orbit ? "Scenario: {seed, dt, steps, G, bodies:[{x,y,vx,vy,m}]}. See the simulation description for limits."
+                         : cart ? "Scenario: {seed, dt, steps, plant:{cart_mass,pole_mass,pole_length,gravity}, initial:{x,v,theta,omega}, force_limit, sensor_noise, pushes:[{t,len,force}]}. See the simulation description for limits."
                          : "Scenario: {seed, dt, steps, gravity, bodies:[{x,y,vx,vy,r,m,e}], walls:[{x,y,w,h}], "
                            "controller:{enabled, body, kp, fmax, vcmd, noise, waypoints:[{x,y}]}}. See the simulation description for limits.");
   Json specs = Json::array();
@@ -363,7 +397,7 @@ Json tool_specs(const std::string& domain) {
     Json p = Json::object();
     p["scenario_id"] = prop("string", "Id returned by run_scenario or shrink.");
     p["step"] = prop("integer", "State index, 0 = initial state.");
-    specs.push(fn("inspect_state", orbit ? "Exact state of every body at one step, with energies, momentum, angular momentum and close pairs." : "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
+    specs.push(fn("inspect_state", orbit ? "Exact state of every body at one step, with energies, momentum, angular momentum and close pairs." : cart ? "Exact cart-pole state at one step: cart position and velocity, pole angle and rate, controller force, margins to the limits." : "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
   }
   {
     Json p = Json::object();
@@ -388,6 +422,23 @@ Json tool_specs(const std::string& domain) {
 }
 
 std::string simulation_description(const std::string& domain) {
+  if (domain == "cartpole") {
+    std::ostringstream o;
+    o << "SIMULATION UNDER TEST\n"
+         "A cart-pole balancing simulation: a cart moves along a frictionless track and a pole (point mass at its tip) is hinged on it.\n"
+         "- A fixed state-feedback controller measures cart position and velocity, pole angle (with optional seeded sensor noise) and\n"
+         "  angular rate, and applies a horizontal force u to the cart, clipped to the scenario's force_limit. Its gains adapt to the plant.\n"
+         "- The plant is integrated with RK4; the controller acts once per outer step (dt). Pushes are extra external forces on the cart.\n"
+         "- theta is the pole angle from upright in radians (0 = upright). A run is a pure function of the scenario (including `seed`).\n\n"
+         "SCENARIO LIMITS\n"
+         "dt in [0.002, 0.02]; steps in [1, 4000]; cart_mass in [0.5, 2]; pole_mass in [0.05, 0.5]; pole_length in [0.3, 1];\n"
+         "gravity in [5, 15]; initial x in [-0.5, 0.5], v in [-0.5, 0.5], theta in [-0.2, 0.2], omega in [-0.5, 0.5];\n"
+         "force_limit in [20, 50]; sensor_noise in [0, 0.02]; up to 3 pushes with t inside the run, len in [dt, 0.2], force in [-10, 10].\n\n"
+         "DECLARED RULES (checked at every step)\n";
+    for (const auto& r : rule_catalog("cartpole")) o << "- " << r.id << ": " << r.text << "\n";
+    o << "\nThe rule checker, not you, decides what is a violation.\n";
+    return o.str();
+  }
   if (domain == "orbit") {
     std::ostringstream o;
     o << "SIMULATION UNDER TEST\n"

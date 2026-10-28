@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "sim/bugs.hpp"
+#include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "util/json.hpp"
 #include "util/rng.hpp"
@@ -50,7 +51,9 @@ inline EvalLock load_lock(const std::string& path) {
 
 // Bug id -> mask bit index within a domain; -1 when unknown.
 inline int domain_bug_index(const std::string& domain, const std::string& id) {
-  return domain == "orbit" ? orbit_bug_index(id) : bug_index(id);
+  if (domain == "orbit") return orbit_bug_index(id);
+  if (domain == "cartpole") return cart_bug_index(id);
+  return bug_index(id);
 }
 
 // True when the text contains at least one keyword from every keyword group of the bug's ground truth

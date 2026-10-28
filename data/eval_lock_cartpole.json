@@ -1,0 +1,35 @@
+{
+ "_note": "LOCKED for the cart-pole evaluation. Domain 'cartpole' (balancing controller). Trigger conditions of c01..c03 were calibrated with the random baseline only (rc_orbit_cal --domain cartpole) before this lock; the clean simulator was checked on 40000 random scenarios. No agent had run on this domain when this file was written; all three bugs are fresh held-out. The agent evaluated is the unchanged v1 agent (domain text and tool schemas swapped, nothing else).",
+ "version": "cartpole-1",
+ "domain": "cartpole",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  3101,
+  3202,
+  3303,
+  3404,
+  3505
+ ],
+ "control_seeds": [
+  3901,
+  3902,
+  3903
+ ],
+ "bugs": [
+  {
+   "id": "c01",
+   "split": "heldout"
+  },
+  {
+   "id": "c02",
+   "split": "heldout"
+  },
+  {
+   "id": "c03",
+   "split": "heldout"
+  }
+ ]
+}

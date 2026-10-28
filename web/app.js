@@ -14,7 +14,7 @@ const bus = new EventTarget();
 const emit = (name, detail) => bus.dispatchEvent(new CustomEvent(name, { detail }));
 
 const PALETTE = ["#4cc9f0", "#b79cff", "#5ee0a0", "#ffb454", "#ff9ec4", "#8fa8ff", "#c8e06a", "#ff9b6c"];
-const STRIDE = { circle: 4 };  // numbers per entity in a frame
+const STRIDE = { circle: 4, cartpole: 4 };  // numbers per entity in a frame
 
 // ---- per-kind renderers ----
 function glowCircle(ctx, cx, cy, r, col, ctrl) {
@@ -24,6 +24,13 @@ function glowCircle(ctx, cx, cy, r, col, ctrl) {
   ctx.lineWidth = ctrl ? 2.6 : 1.6; ctx.strokeStyle = ctrl ? "#f4f8fc" : col; ctx.stroke();
 }
 const RENDERERS = {
+  cartpole(ctx, tf, ent, f) {  // frame: x, theta, v, omega
+    const d = tf.d, gy = 0.6, cx = tf.x(f[0]), cy = tf.y(gy), cw = 0.5 * tf.s, ch = 0.28 * tf.s;
+    const tipx = cx + ent.r * tf.s * Math.sin(f[1]), tipy = cy - ch - ent.r * tf.s * Math.cos(f[1]);
+    ctx.fillStyle = "rgba(76,201,240,.22)"; ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 1.6 * d; ctx.beginPath(); ctx.rect(cx - cw / 2, cy - ch, cw, ch); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#e9f0f7"; ctx.lineWidth = 3 * d; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(cx, cy - ch); ctx.lineTo(tipx, tipy); ctx.stroke();
+    const bad = Math.abs(f[1]) > 0.8; glowCircle(ctx, tipx, tipy, Math.max(5 * d, (0.05 + 0.16 * Math.sqrt(ent.m)) * tf.s * 0.6), bad ? "#ff5c6c" : "#ffb454", false);
+  },
   circle(ctx, tf, ent, f, i, trail) {
     const col = PALETTE[i % PALETTE.length];
     if (trail && trail.length > 1) {
@@ -42,6 +49,10 @@ const RENDERERS = {
   },
 };
 const STATIC = {
+  track_end(ctx, tf, o) {
+    const x = tf.x(o.x), y0 = tf.y(0.6), y1 = tf.y(1.4); ctx.strokeStyle = "#ff5c6c"; ctx.lineWidth = 2 * tf.d; ctx.beginPath(); ctx.moveTo(x, y0 + 4 * tf.d); ctx.lineTo(x, y1); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = tf.d; ctx.beginPath(); ctx.moveTo(tf.x(-2.4), y0 + 4 * tf.d); ctx.lineTo(tf.x(2.4), y0 + 4 * tf.d); ctx.stroke();
+  },
   rect(ctx, tf, o) {
     const x = tf.x(o.x), y = tf.y(o.y + o.h), w = o.w * tf.s, h = o.h * tf.s;
     ctx.fillStyle = "#1a2330"; ctx.fillRect(x, y, w, h);
@@ -75,11 +86,11 @@ class Stage {
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
     if (!v) return;
     const pad = 12 * d, s = Math.min((c.width - 2 * pad) / v.world.w, (c.height - 2 * pad) / v.world.h);
-    const tf = { s, d, x: (x) => pad + x * s, y: (y) => c.height - pad - y * s };
+    const ox = v.world.x0 || 0, tf = { s, d, x: (x) => pad + (x - ox) * s, y: (y) => c.height - pad - y * s };
     ctx.fillStyle = "#06080c"; ctx.fillRect(0, 0, c.width, c.height);
     ctx.fillStyle = "rgba(255,255,255,.06)";
-    for (let gx = 0; gx <= v.world.w; gx += 1) for (let gy = 0; gy <= v.world.h; gy += 1) ctx.fillRect(tf.x(gx) - 0.7 * d, tf.y(gy) - 0.7 * d, 1.4 * d, 1.4 * d);
-    ctx.strokeStyle = "rgba(255,255,255,.16)"; ctx.lineWidth = d; ctx.strokeRect(tf.x(0), tf.y(v.world.h), v.world.w * s, v.world.h * s);
+    for (let gx = 0; gx <= v.world.w; gx += 1) for (let gy = 0; gy <= v.world.h; gy += 1) ctx.fillRect(tf.x(ox + gx) - 0.7 * d, tf.y(gy) - 0.7 * d, 1.4 * d, 1.4 * d);
+    ctx.strokeStyle = "rgba(255,255,255,.16)"; ctx.lineWidth = d; ctx.strokeRect(tf.x(ox), tf.y(v.world.h), v.world.w * s, v.world.h * s);
     for (const o of v.static) (STATIC[o.k] || (() => {}))(ctx, tf, o);
     const si = Math.round(this.step); let off = 0, hitAny = false;
     v.ents.forEach((ent, i) => {
@@ -323,7 +334,8 @@ $("#plot").addEventListener("click", (e) => { const v = plotStage && plotStage.v
 // ---- evidence ----
 function frameValue(view, step, body, field) {
   if (!view || step < 0 || step >= view.frames.length) return null;
-  if (view.signals && view.signals[field] && (field === "energy" || body < 0)) return view.signals[field][step];
+  if (view.signals && view.signals[field] && (field === "energy" || body < 0 || view.domain === "cartpole")) return view.signals[field][step];
+  if (view.domain === "cartpole") { const f = view.frames[step]; return { x: f[0], theta: f[1], v: f[2], omega: f[3] }[field] ?? null; }
   if (body < 0) return null;
   let off = 0; for (let i = 0; i < body; i++) off += STRIDE[view.ents[i].k] || 0;
   const f = view.frames[step].slice(off, off + 4); if (f.length < 4) return null;
@@ -397,7 +409,7 @@ addEventListener("keydown", (e) => {
 });
 
 // seeded bug choices for live demos (the agent never sees them)
-for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09", "o01", "o02", "o03"]) { const o = el("option"); o.value = b; o.textContent = (b[0] === "o" ? "orbit domain: hidden bug " : "rigid-body domain: hidden bug ") + b; $("#bugSel").appendChild(o); }
+for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09", "o01", "o02", "o03", "c01", "c02", "c03"]) { const o = el("option"); o.value = b; o.textContent = ({ o: "orbit domain: hidden bug ", c: "cart-pole domain: hidden bug " }[b[0]] || "rigid-body domain: hidden bug ") + b; $("#bugSel").appendChild(o); }
 setMode("recorded"); refreshStatus();
 loadIndex().then(() => {
   const p = new URLSearchParams(location.search), m = p.get("mode");

@@ -72,8 +72,59 @@ Json view_orbit(const Scenario& sc, BugMask mask, const std::string& label) {
 }
 }  // namespace
 
+Json view_cartpole(const Scenario& sc, BugMask mask, const std::string& label) {
+  Trace tr = simulate(sc, mask);
+  std::vector<Violation> viol = check_rules(sc, tr);
+  Json v = Json::object();
+  v["label"] = label;
+  v["domain"] = "cartpole";
+  Json world = Json::object();
+  world["w"] = 6; world["h"] = 2.6; world["x0"] = -3;
+  v["world"] = world;
+  v["dt"] = sc.dt;
+  v["steps"] = tr.steps();
+  Json stat = Json::array();
+  for (double e : {-2.4, 2.4}) {
+    Json o = Json::object();
+    o["k"] = "track_end"; o["x"] = e;
+    stat.push(o);
+  }
+  v["static"] = stat;
+  Json ents = Json::array();
+  Json o = Json::object();
+  o["id"] = "cart-pole";
+  o["k"] = "cartpole";  // frame layout: x, theta, v, omega
+  o["r"] = sc.cp.l;
+  o["m"] = sc.cp.mp;
+  ents.push(o);
+  v["ents"] = ents;
+  Json frames = Json::array(), energy = Json::array(), force = Json::array();
+  for (const StepRecord& rec : tr.rec) {
+    const BodyState& q = rec.body[0];
+    Json f = Json::array();
+    f.push(r3(q.x)); f.push(r3(q.y)); f.push(r3(q.vx)); f.push(r3(q.vy));
+    frames.push(f);
+    energy.push(r3(rec.energy)); force.push(r3(rec.fmag));
+  }
+  v["frames"] = frames;
+  Json sig = Json::object();
+  sig["energy"] = energy;
+  sig["controller_force"] = force;
+  v["signals"] = sig;
+  Json lim = Json::object();
+  lim["controller_force"] = sc.cp.fmax;
+  v["signal_limits"] = lim;
+  Json vj = Json::array();
+  for (const Violation& x : viol) vj.push(to_json(x));
+  v["violations"] = vj;
+  v["scenario"] = to_json(sc);
+  v["size"] = scenario_size(sc);
+  return v;
+}
+
 Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label) {
   if (sc.domain == "orbit") return view_orbit(sc, mask, label);
+  if (sc.domain == "cartpole") return view_cartpole(sc, mask, label);
   Trace tr = simulate(sc, mask);
   std::vector<Violation> viol = check_rules(sc, tr);
   Json v = Json::object();
