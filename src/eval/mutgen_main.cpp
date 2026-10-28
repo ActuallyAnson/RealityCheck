@@ -26,13 +26,13 @@ static std::vector<std::pair<int, int>> parse_ranges(const std::string& s) {
 
 int main(int argc, char** argv) {
   std::string file, ranges, out = "mut";
-  int count = 40;
+  int count = 40, order = 1;  // order: simultaneous mutations per mutant (on distinct lines); 1 reproduces the locked benchmark
   uint64_t seed = 1;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--file") file = val(); else if (a == "--ranges") ranges = val(); else if (a == "--count") count = std::atoi(val().c_str());
-    else if (a == "--seed") seed = static_cast<uint64_t>(std::atoll(val().c_str())); else if (a == "--out") out = val();
+    else if (a == "--seed") seed = static_cast<uint64_t>(std::atoll(val().c_str())); else if (a == "--out") out = val(); else if (a == "--order") order = std::atoi(val().c_str());
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   std::ifstream f(file);
@@ -73,17 +73,33 @@ int main(int argc, char** argv) {
   for (size_t i = sites.size(); i > 1; --i) std::swap(sites[i - 1], sites[static_cast<size_t>(rng.next() % i)]);
   if (std::system(("mkdir -p '" + out + "'").c_str()) != 0) return 1;
   Json index = Json::array();
-  int n = std::min<int>(count, static_cast<int>(sites.size()));
+  int n = std::min<int>(count, static_cast<int>(sites.size() / static_cast<size_t>(std::max(order, 1))));
+  size_t next = 0;
   for (int k = 0; k < n; ++k) {
-    const Site& s = sites[static_cast<size_t>(k)];
+    std::vector<const Site*> pick;
+    if (order <= 1) pick.push_back(&sites[static_cast<size_t>(k)]);
+    else {  // the next `order` sites in the shuffled list that sit on distinct lines
+      for (; next < sites.size() && static_cast<int>(pick.size()) < order; ++next) {
+        bool dup = false;
+        for (const Site* q : pick) dup |= q->line == sites[next].line;
+        if (!dup) pick.push_back(&sites[next]);
+      }
+      if (static_cast<int>(pick.size()) < order) { n = k; break; }
+    }
     std::vector<std::string> m = lines;
-    std::string& l = m[static_cast<size_t>(s.line - 1)];
-    l.replace(s.pos, s.len, s.repl);
+    std::string desc;
+    for (const Site* sp : pick) {
+      std::string& l = m[static_cast<size_t>(sp->line - 1)];
+      l.replace(sp->pos, sp->len, sp->repl);
+      desc += (desc.empty() ? "" : " + ") + sp->desc;
+    }
+    const Site& s = *pick[0];
     char name[16];
     std::snprintf(name, sizeof name, "m%03d.cpp", k);
     std::ofstream(out + "/" + name) << [&] { std::string t; for (auto& x : m) t += x + "\n"; return t; }();
     Json o = Json::object();
-    o["id"] = std::string(name).substr(0, 4); o["line"] = s.line; o["change"] = s.desc; o["source_line"] = lines[static_cast<size_t>(s.line - 1)];
+    o["id"] = std::string(name).substr(0, 4); o["line"] = s.line; o["change"] = desc; o["source_line"] = lines[static_cast<size_t>(s.line - 1)];
+    if (order > 1) { Json ls = Json::array(); for (const Site* sp : pick) ls.push(sp->line); o["lines"] = ls; }
     index.push(o);
   }
   std::ofstream(out + "/index.json") << index.dump() << "\n";
