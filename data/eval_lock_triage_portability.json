@@ -1,0 +1,47 @@
+{
+ "_note": "Portability check: the same triage procedure on the failures found with fuzzer seed 1 (the same failures as in eval_lock_triage.json), with other models of the same API (muse-spark-1.2 and muse-spark-1.1, same price) in place of muse-spark-1.3. Agent, prompts, tools and caps unchanged. The Muse Spark 1.3 comparison uses the seed-1 rows of results/triage (and its repetitions in results/triage_rep1 and rep2).",
+ "version": "triage-portability-1",
+ "seeds": [
+  1
+ ],
+ "fuzzer_budget_steps": 300000,
+ "domains": {
+  "rigid2d": [
+   "b01",
+   "b02",
+   "b03",
+   "b04",
+   "b05",
+   "b06",
+   "b07",
+   "b08",
+   "b09",
+   "b10",
+   "b11",
+   "b12",
+   "b13"
+  ],
+  "orbit": [
+   "o01",
+   "o02",
+   "o03"
+  ],
+  "cartpole": [
+   "c01",
+   "c02",
+   "c03"
+  ],
+  "traffic": [
+   "t01",
+   "t02",
+   "t03"
+  ]
+ },
+ "agent": {
+  "version": 2,
+  "vision": true,
+  "max_turns": 25,
+  "reasoning_effort": "low",
+  "run_budget_usd": 0.25
+ }
+}
