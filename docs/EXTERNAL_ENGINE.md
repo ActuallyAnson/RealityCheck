@@ -30,3 +30,8 @@ deterministic checker after shrinking) and every cited state matches the recorde
   The cause given (solver overlap in a sandwich) is again unverified. It is a rule-tolerance flag, not a
   confirmed engine defect.
 Two runs are an anecdote, not an evaluation.
+
+Environment: Box2D 3.2.0 from Homebrew on macOS (arm64); counts depend on the version.
+
+Not used: Chipmunk2D 7.0.3 (Homebrew bottle). On this machine `cpSpaceStep` never returns once a static shape exists,
+even in a 10-line program (stuck in `FloodFillComponent`), so no results were taken from it. Not investigated further.
