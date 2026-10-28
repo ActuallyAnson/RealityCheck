@@ -58,7 +58,7 @@ The spec-to-rules result needs care. The engine validates proposed invariants on
 agent plus a person) can tell which. The model also proposed seven true but vacuous bounds (valve in [0, 1], capacity in [5, 60], and so on).
 
 So on this target random testing is at least as good as the agent at finding the flaw, as in the other domains (`docs/MUTATION.md`). The agent's contribution is the grounded report: it names the signal values at the
-first violating step and runs a one-change counterfactual (in the accepted run: lowering the inflow removes the failure, which is a true but not the root-cause change, since the trigger is gain and capacity).
+first violating step and runs a one-change counterfactual (in the kept successful run, `results/generic/agent_run_2`: lowering the inflow from 8 to 2 removes the failure, a true but not the root-cause change, since the trigger is gain and capacity; its explanation correctly says the over-capacity clamp and spill accounting did not run, with citations that name `level`, `capacity`, `spilled` and `valve`).
 The first run needed a fallback field name for its citations because the citation checker did not yet know generic signal names; that was fixed (a citation now names a signal of the card) and the first run's files were not kept.
 
 ## Limits
