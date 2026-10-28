@@ -1,5 +1,6 @@
 // Scenario description: everything needed to reproduce a run together with the seed.
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 
