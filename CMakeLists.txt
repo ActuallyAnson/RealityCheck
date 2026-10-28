@@ -18,6 +18,7 @@ add_library(rc_core
   src/sim/cartpole.cpp
   src/sim/traffic.cpp
   src/rules/checker.cpp
+  src/rules/metamorphic.cpp
   src/tools/render.cpp
   src/tools/tools.cpp
   src/shrink/shrink.cpp

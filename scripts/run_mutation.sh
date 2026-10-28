@@ -6,6 +6,6 @@ cd "$(dirname "$0")/.."
 DOM="$1"; FILE="$2"; RANGES="$3"; COUNT="$4"; SEED="$5"; INV="$6"; N="${7:-1000}"; W="${8:-/tmp/mut/$1}"
 rm -rf "$W"; mkdir -p "$W"
 ./build/rc_mutgen --file "$FILE" --ranges "$RANGES" --count "$COUNT" --seed "$SEED" --out "$W"
-./build/mut_eval --domain "$DOM" --scenarios "$N" --base-seed 700000 --invariants "$INV" > "$W/clean.tsv"
+./build/mut_eval --domain "$DOM" --scenarios "$N" --base-seed 700000 --invariants "$INV" --mr-scenarios 300 > "$W/clean.tsv"
 ls "$W"/m*.cpp | sed 's#.*/##; s#\.cpp$##' | xargs -P 6 -I{} sh scripts/mutation_worker.sh "$W" {} "$DOM" "$INV" "$N" 700000
 echo "done: $W"

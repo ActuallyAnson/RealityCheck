@@ -6,6 +6,7 @@
 
 #include "eval/ground_truth.hpp"
 #include "rules/checker.hpp"
+#include "rules/metamorphic.hpp"
 #include "sim/domains.hpp"
 #include "spec/spec.hpp"
 
@@ -13,13 +14,15 @@ using namespace rc;
 
 int main(int argc, char** argv) {
   std::string domain = "orbit", inv_path;
-  int n = 1000;
+  int n = 1000, mr_n = 0;
+  bool calibrate = false;
   uint64_t base = 700000;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--domain") domain = val(); else if (a == "--scenarios") n = std::atoi(val().c_str());
     else if (a == "--base-seed") base = static_cast<uint64_t>(std::atoll(val().c_str())); else if (a == "--invariants") inv_path = val();
+    else if (a == "--mr-scenarios") mr_n = std::atoi(val().c_str()); else if (a == "--calibrate-mr") calibrate = true;
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   std::vector<Invariant> invs;
@@ -31,6 +34,17 @@ int main(int argc, char** argv) {
       if (v.size() == 1) invs.push_back(v[0]);
     }
   }
+  if (calibrate) {  // largest deviation of each relation on the (unmodified) simulator, to set tolerances
+    MetamorphicDeviation mx; int pf = 0, rf = 0;
+    SimFn sim = [](const Scenario& s) { return simulate(s, 0); };
+    for (int i = 0; i < n; ++i) {
+      MetamorphicDeviation d;
+      metamorphic_failures(random_scenario_for(domain, base + static_cast<uint64_t>(i)), sim, &d);
+      mx.perm = std::max(mx.perm, d.perm); mx.mirror = std::max(mx.mirror, d.mirror); mx.refine = std::max(mx.refine, d.refine); pf += !d.prefix_ok; rf += !d.repeat_ok;
+    }
+    std::printf("%s: prefix failures %d, repeat failures %d, max deviation perm %g mirror %g refine %g (-1 = never applied)\n", domain.c_str(), pf, rf, mx.perm, mx.mirror, mx.refine);
+    return 0;
+  }
   for (int i = 0; i < n; ++i) {
     Scenario sc = random_scenario_for(domain, base + static_cast<uint64_t>(i));
     Trace tr = simulate(sc, 0);
@@ -40,7 +54,9 @@ int main(int argc, char** argv) {
       Signals s = extract_signals(sc, tr);
       for (const Invariant& inv : invs) if (check_invariant(inv, s).failed) ids += (ids.empty() ? "" : ",") + inv.id;
     }
-    std::printf("%d\t%d\t%016llx\t%s\t%s\n", i, sc.steps, static_cast<unsigned long long>(tr.hash()), rules.empty() ? "-" : rules.c_str(), ids.empty() ? "-" : ids.c_str());
+    std::string mr;
+    if (i < mr_n) { SimFn sim = [](const Scenario& s2) { return simulate(s2, 0); }; for (const std::string& f : metamorphic_failures(sc, sim)) mr += (mr.empty() ? "" : ",") + f; }
+    std::printf("%d\t%d\t%016llx\t%s\t%s\t%s\n", i, sc.steps, static_cast<unsigned long long>(tr.hash()), rules.empty() ? "-" : rules.c_str(), ids.empty() ? "-" : ids.c_str(), mr.empty() ? "-" : mr.c_str());
   }
   return 0;
 }

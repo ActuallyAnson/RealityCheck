@@ -11,7 +11,7 @@
 
 using namespace rc;
 
-struct Row { int steps = 0; std::string hash, rules, inv; };
+struct Row { int steps = 0; std::string hash, rules, inv, mr = "-"; };
 
 static std::vector<Row> load(const std::string& p) {
   std::vector<Row> out;
@@ -21,7 +21,7 @@ static std::vector<Row> load(const std::string& p) {
     std::stringstream ss(l);
     for (std::string t; std::getline(ss, t, '\t');) c.push_back(t);
     if (c.size() < 5) continue;
-    Row r; r.steps = std::atoi(c[1].c_str()); r.hash = c[2]; r.rules = c[3]; r.inv = c[4];
+    Row r; r.steps = std::atoi(c[1].c_str()); r.hash = c[2]; r.rules = c[3]; r.inv = c[4]; if (c.size() > 5) r.mr = c[5];
     out.push_back(r);
   }
   return out;
@@ -30,19 +30,20 @@ static std::string first_line(const std::string& p) { std::ifstream f(p); std::s
 
 // rc_mutscore total DIR...   : sums the per-domain mutation.json files into one table (every aggregate in docs/MUTATION.md comes from here)
 static int total(int argc, char** argv) {
-  std::cout << "| domain | mutants | unchanged on the pool | crashed or timed out | changed, no declared rule fires | killed by hand-written rules | of the changed: killed by hand-written rules | of the changed: killed by model-written invariants | killed mutants that random testing finds in every step-budget window |\n|---|---|---|---|---|---|---|---|---|\n";
-  int T[8] = {0};
+  std::cout << "| domain | mutants | unchanged on the pool | crashed or timed out | changed, no declared rule fires | killed by hand-written rules | of the changed: killed by hand-written rules | of the changed: killed by model-written invariants | killed mutants that random testing finds in every step-budget window | of the changed: killed by metamorphic relations | of the changed: hand-written rules or metamorphic | of the changed: any of the three oracles |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n";
+  int T[11] = {0};
   for (int i = 2; i < argc; ++i) {
     Json r = Json::parse(read_file(std::string(argv[i]) + "/mutation.json"));
     const Json& c = r.at("classes");
     int n = static_cast<int>(r.at("mutants").arr().size()), un = static_cast<int>(c.num_or("unchanged", 0)), cr = static_cast<int>(c.num_or("crashed_or_timed_out", 0)), si = static_cast<int>(c.num_or("changed_no_rule_fires", 0)),
         ki = static_cast<int>(c.num_or("killed_by_rules", 0)), ch = static_cast<int>(r.num_or("changed", 0)), kh = static_cast<int>(r.num_or("killed_by_hand_rules", 0)), kv = static_cast<int>(r.num_or("killed_by_invariants", 0)), all_w = 0;
     for (const Json& m : r.at("mutants").arr()) if (m.str_or("class", "") == "killed_by_rules" && m.num_or("windows_found", 0) == m.num_or("windows", -1)) ++all_w;
-    std::cout << "| " << r.str_or("domain", "") << " | " << n << " | " << un << " | " << cr << " | " << si << " | " << ki << " | " << kh << "/" << ch << " | " << kv << "/" << ch << " | " << all_w << "/" << ki << " |\n";
-    int v[8] = {n, un, cr, si, ki, ch, kv, all_w};
-    for (int k = 0; k < 8; ++k) T[k] += v[k];
+    int km = static_cast<int>(r.num_or("killed_by_metamorphic", 0)), khm = static_cast<int>(r.num_or("killed_by_hand_or_metamorphic", 0)), ka = static_cast<int>(r.num_or("killed_by_any", 0));
+    std::cout << "| " << r.str_or("domain", "") << " | " << n << " | " << un << " | " << cr << " | " << si << " | " << ki << " | " << kh << "/" << ch << " | " << kv << "/" << ch << " | " << all_w << "/" << ki << " | " << km << "/" << ch << " | " << khm << "/" << ch << " | " << ka << "/" << ch << " |\n";
+    int v[11] = {n, un, cr, si, ki, ch, kv, all_w, km, khm, ka};
+    for (int k = 0; k < 11; ++k) T[k] += v[k];
   }
-  std::cout << "| **all** | " << T[0] << " | " << T[1] << " | " << T[2] << " | " << T[3] << " | " << T[4] << " | " << T[4] << "/" << T[5] << " | " << T[6] << "/" << T[5] << " | " << T[7] << "/" << T[4] << " |\n";
+  std::cout << "| **all** | " << T[0] << " | " << T[1] << " | " << T[2] << " | " << T[3] << " | " << T[4] << " | " << T[4] << "/" << T[5] << " | " << T[6] << "/" << T[5] << " | " << T[7] << "/" << T[4] << " | " << T[8] << "/" << T[5] << " | " << T[9] << "/" << T[5] << " | " << T[10] << "/" << T[5] << " |\n";
   return 0;
 }
 
@@ -67,13 +68,14 @@ int main(int argc, char** argv) {
   Json rows = Json::array();
   std::string md = "| mutant | change | class | scenarios violating a hand-written rule | windows (step budget) where random testing finds it | model-written invariants fire |\n|---|---|---|---|---|---|\n";
   std::map<int, int> win_hist;
+  int killed_mr = 0, killed_hand_or_mr = 0, killed_all = 0, mr_only = 0;
   int changed = 0, killed_hand = 0, killed_inv = 0, killed_either = 0;
   for (const Json& m : index.arr()) {
     std::string id = m.str_or("id", ""), cls;
     Json r = Json::object();
     r["id"] = id; r["line"] = m.num_or("line", 0); r["change"] = m.str_or("change", "");
     std::string status = first_line(dir + "/" + id + ".status");
-    int hand = 0, inv = 0, found_windows = 0, diff = 0;
+    int hand = 0, inv = 0, mrk = 0, found_windows = 0, diff = 0;
     if (status != "compiled") cls = "compile_failed";
     else if (first_line(dir + "/" + id + ".exit") != "0") cls = "crashed_or_timed_out";
     else {
@@ -81,16 +83,17 @@ int main(int argc, char** argv) {
       if (rs.size() != clean.size()) cls = "crashed_or_timed_out";
       else {
         for (size_t i = 0; i < rs.size(); ++i) {  // a violation only counts on a scenario where the clean simulator passes
-          diff += rs[i].hash != clean[i].hash; hand += rs[i].rules != "-" && clean[i].rules == "-"; inv += rs[i].inv != "-" && clean[i].inv == "-";
+          diff += rs[i].hash != clean[i].hash; hand += rs[i].rules != "-" && clean[i].rules == "-"; inv += rs[i].inv != "-" && clean[i].inv == "-"; mrk += rs[i].mr != "-" && clean[i].mr == "-";
         }
         for (auto& w : windows) { bool f = false; for (int i = w.first; i <= w.second; ++i) f |= rs[static_cast<size_t>(i)].rules != "-" && clean[static_cast<size_t>(i)].rules == "-"; found_windows += f; }
         cls = diff == 0 ? "unchanged" : hand > 0 ? "killed_by_rules" : "changed_no_rule_fires";
         if (hand > 0) ++win_hist[found_windows];
+        if (diff > 0) { killed_mr += mrk > 0; killed_hand_or_mr += hand > 0 || mrk > 0; killed_all += hand > 0 || mrk > 0 || inv > 0; if (hand == 0 && mrk > 0) ++mr_only; }
         if (diff > 0) { ++changed; killed_hand += hand > 0; killed_inv += inv > 0; killed_either += hand > 0 || inv > 0; }
       }
     }
     ++count[cls];
-    r["class"] = cls; r["scenarios_violating"] = hand; r["windows_found"] = found_windows; r["windows"] = static_cast<int>(windows.size()); r["invariants_fire_in_scenarios"] = inv; r["scenarios_changed"] = diff;
+    r["class"] = cls; r["scenarios_violating"] = hand; r["windows_found"] = found_windows; r["windows"] = static_cast<int>(windows.size()); r["invariants_fire_in_scenarios"] = inv; r["scenarios_changed"] = diff; r["metamorphic_fire_in_scenarios"] = mrk;
     rows.push(r);
     char b[400];
     std::snprintf(b, sizeof b, "| %s | line %d: %s | %s | %d | %d/%d | %d |\n", id.c_str(), static_cast<int>(m.num_or("line", 0)), m.str_or("change", "").c_str(), cls.c_str(), hand, found_windows, static_cast<int>(windows.size()), inv);
@@ -101,12 +104,13 @@ int main(int argc, char** argv) {
   for (auto& kv : count) sum << "- " << kv.first << ": " << kv.second << "\n";
   sum << "Among mutants whose traces differ from the clean simulator on the pool (" << changed << "): killed by the hand-written rules " << killed_hand << ", by the model-written invariants " << killed_inv
       << ", by either " << killed_either << ".\n";
+  sum << "Metamorphic oracles (first 300 scenarios of the pool): killed " << killed_mr << " of the changed mutants; hand-written rules or metamorphic: " << killed_hand_or_mr << "; metamorphic only (no declared rule fires): " << mr_only << "; all three oracles: " << killed_all << ".\n";
   sum << "Killed mutants by number of step-budget windows in which random testing finds them (of " << windows.size() << "): ";
   for (auto& kv : win_hist) sum << kv.first << " windows: " << kv.second << "; ";
   sum << "\n";
   Json o = Json::object();
   o["domain"] = domain; o["mutants"] = rows; o["clean_pool"] = static_cast<int>(clean.size()); o["clean_hand_violations"] = clean_hand; o["clean_invariant_violations"] = clean_inv;
-  o["changed"] = changed; o["killed_by_hand_rules"] = killed_hand; o["killed_by_invariants"] = killed_inv; o["killed_by_either"] = killed_either; o["windows"] = static_cast<int>(windows.size());
+  o["changed"] = changed; o["killed_by_metamorphic"] = killed_mr; o["killed_by_hand_or_metamorphic"] = killed_hand_or_mr; o["killed_by_any"] = killed_all; o["metamorphic_only"] = mr_only; o["killed_by_hand_rules"] = killed_hand; o["killed_by_invariants"] = killed_inv; o["killed_by_either"] = killed_either; o["windows"] = static_cast<int>(windows.size());
   Json cj = Json::object();
   for (auto& kv : count) cj[kv.first] = kv.second;
   o["classes"] = cj;
