@@ -108,7 +108,7 @@ double spent_on_disk(const std::string& out, const std::vector<PlannedRun>& plan
 Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, const AgentEvalOpts& o, const ApiConfig& api) {
   std::string dir = o.out + "/runs/" + run_key(pr.bug, pr.seed);
   if (std::system(("mkdir -p '" + dir + "'").c_str()) != 0) throw std::runtime_error("cannot create " + dir);
-  BugMask mask = pr.bug == "none" ? 0 : bug_bit(bug_index(pr.bug));
+  BugMask mask = pr.bug == "none" ? 0 : bug_bit(domain_bug_index(lock.domain, pr.bug));
 
   MetaApiBackend live(api);
   RecordingBackend rec(live, dir + "/cache.jsonl");
@@ -117,7 +117,9 @@ Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, 
   ToolBudget tb;
   tb.max_steps = lock.max_steps;  // same simulation-step budget as the random baseline
   ToolSession tools(mask, tb, dir);
+  tools.set_domain(lock.domain);
   AgentConfig ac;
+  ac.domain = lock.domain;
   ac.model = api.model;
   ac.native_tools = api.native_tools;
   ac.max_turns = o.max_turns;
@@ -311,7 +313,7 @@ int main(int argc, char** argv) {
     for (const auto& pr : plan) {
       std::string key = run_key(pr.bug, pr.seed), rd = dir + "/runs/" + key;
       if (!file_exists(rd + "/events.jsonl")) continue;
-      BugMask m = pr.bug == "none" ? 0 : bug_bit(bug_index(pr.bug));
+      BugMask m = pr.bug == "none" ? 0 : bug_bit(domain_bug_index(lock.domain, pr.bug));
       Json doc = build_run_view(rd, m);
       doc["id"] = key;
       std::ofstream(vdir + "/" + key + ".json") << doc.dump() << "\n";
@@ -374,6 +376,7 @@ int main(int argc, char** argv) {
   Budget budget;
   budget.max_steps = lock.max_steps;
   budget.max_wall_ms = lock.max_wall_ms;
+  budget.domain = lock.domain;
 
   Json out = Json::object();
   out["tester"] = "random_baseline";
@@ -382,7 +385,7 @@ int main(int argc, char** argv) {
   Json bugs = Json::array();
   std::string md = "| bug | split | found | found and attributable to the seeded bug | median scenarios to first violation | rules |\n|---|---|---|---|---|---|\n";
   for (const auto& lb : lock.bugs) {
-    int idx = bug_index(lb.id);
+    int idx = domain_bug_index(lock.domain, lb.id);
     if (idx < 0) { std::cerr << "unknown bug in lock: " << lb.id << "\n"; return 2; }
     Json row = Json::object();
     row["bug"] = lb.id;

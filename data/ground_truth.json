@@ -309,6 +309,97 @@
           "30%"
         ]
       ]
+    },
+    "o01": {
+      "summary": "With five or more bodies and dt above 1/40, adaptive substepping is cut short (at most 6 substeps per outer step), so close encounters are integrated with a step that is too coarse and total energy drifts.",
+      "expected_rules": [
+        "energy_conserved"
+      ],
+      "cause_keywords": [
+        [
+          "substep",
+          "sub-step",
+          "adaptive",
+          "step size",
+          "time step",
+          "timestep",
+          "dt",
+          "integrat"
+        ],
+        [
+          "large",
+          "big",
+          "coarse",
+          "high",
+          "above",
+          "exceed",
+          "cap",
+          "limit",
+          "too few",
+          "too large"
+        ]
+      ]
+    },
+    "o02": {
+      "summary": "With a mass ratio above 17, the pull of a lighter body on a heavier body within 1.5 is scaled by 0.9, so action and reaction differ and total momentum is not conserved.",
+      "expected_rules": [
+        "momentum_conserved",
+        "angular_momentum_conserved",
+        "energy_conserved"
+      ],
+      "cause_keywords": [
+        [
+          "momentum",
+          "newton",
+          "third law",
+          "action",
+          "reaction",
+          "asymmetr",
+          "unequal",
+          "not equal",
+          "force"
+        ],
+        [
+          "mass ratio",
+          "heavy",
+          "light",
+          "mass",
+          "massive"
+        ]
+      ]
+    },
+    "o03": {
+      "summary": "With G above 4.5 and a pair closer than 0.8, the force direction's y component is scaled by 0.85, so the force is not central and angular momentum (and energy) are not conserved.",
+      "expected_rules": [
+        "angular_momentum_conserved",
+        "energy_conserved"
+      ],
+      "cause_keywords": [
+        [
+          "angular",
+          "torque",
+          "central",
+          "direction",
+          "skew",
+          "anisotrop",
+          "asymmetr",
+          "soften",
+          "y-component",
+          "vertical"
+        ],
+        [
+          "close",
+          "near",
+          "small distance",
+          "separation",
+          "approach",
+          "pair",
+          "encounter",
+          "strong",
+          "high g",
+          "large g"
+        ]
+      ]
     }
   }
 }

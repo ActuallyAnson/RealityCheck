@@ -15,6 +15,7 @@ Scenario random_scenario(uint64_t seed);
 struct Budget {
   long long max_steps = 300000;  // total simulated outer steps
   double max_wall_ms = 60000;    // wall-clock cap, whichever hits first stops the run
+  std::string domain = "rigid2d";  // which scenario space to sample
 };
 
 struct HuntResult {

@@ -1,0 +1,35 @@
+{
+ "_note": "LOCKED for the orbit-domain evaluation. Domain 'orbit' (softened N-body gravity). Trigger conditions of o01..o03 were calibrated with the random baseline only (rc_orbit_cal) before this lock, and the clean simulator was checked on 20000 random scenarios (0 flagged). No agent had run on this domain when this file was written; all three bugs are fresh held-out. The agent evaluated is the unchanged v1 agent (domain text and tool schemas swapped, nothing else).",
+ "version": "orbit-1",
+ "domain": "orbit",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  2101,
+  2202,
+  2303,
+  2404,
+  2505
+ ],
+ "control_seeds": [
+  2901,
+  2902,
+  2903
+ ],
+ "bugs": [
+  {
+   "id": "o01",
+   "split": "heldout"
+  },
+  {
+   "id": "o02",
+   "split": "heldout"
+  },
+  {
+   "id": "o03",
+   "split": "heldout"
+  }
+ ]
+}

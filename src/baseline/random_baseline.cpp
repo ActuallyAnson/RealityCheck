@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "sim/orbit.hpp"
 #include "util/rng.hpp"
 
 namespace rc {
@@ -61,7 +62,7 @@ HuntResult random_baseline(const SimFn& sim, uint64_t seed, const Budget& budget
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   };
   while (res.steps_used < budget.max_steps && elapsed() < budget.max_wall_ms) {
-    Scenario s = random_scenario(rng.next());
+    Scenario s = budget.domain == "orbit" ? random_orbit_scenario(rng.next()) : random_scenario(rng.next());
     long long left = budget.max_steps - res.steps_used;
     if (s.steps > left) s.steps = static_cast<int>(left);  // honour the step budget exactly
     Trace tr = sim(s);
