@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "shrink/shrink.hpp"
+#include "sim/orbit.hpp"
 #include "tools/render.hpp"
 
 namespace rc {
@@ -93,7 +94,7 @@ Json ToolSession::call(const std::string& name, const Json& args) {
 
 Json ToolSession::run_scenario(const Json& a) {
   if (!a.has("scenario")) return err("scenario is required");
-  Scenario sc = scenario_from_json(a.at("scenario"));
+  Scenario sc = scenario_from_json(a.at("scenario"), domain_);
   std::string why = validate(sc);
   if (!why.empty()) return err("invalid scenario: " + why);
   long long left = budget_.max_steps - usage_.steps_used;
@@ -141,7 +142,7 @@ Json ToolSession::check_rules_tool(const Json& a) {
   for (const auto& x : en->viol) v.push(to_json(x));
   r["violations"] = v;
   Json rules = Json::array();
-  for (const auto& ri : rule_catalog()) {
+  for (const auto& ri : rule_catalog(domain_)) {
     Json o = Json::object();
     o["id"] = ri.id;
     o["text"] = ri.text;
@@ -159,6 +160,7 @@ Json ToolSession::inspect_state(const Json& a) {
   if (k < 0 || k > en->tr.steps()) return err("step out of range 0.." + std::to_string(en->tr.steps()));
   const Scenario& sc = en->sc;
   const StepRecord& rec = en->tr.rec[static_cast<size_t>(k)];
+  if (sc.domain == "orbit") return inspect_orbit(sc, rec, k);
   Json r = Json::object();
   r["ok"] = true;
   r["step"] = k;
@@ -201,6 +203,45 @@ Json ToolSession::inspect_state(const Json& a) {
       }
     }
   r["touching_pairs"] = pairs;
+  return r;
+}
+
+Json ToolSession::inspect_orbit(const Scenario& sc, const StepRecord& rec, int k) {
+  Json r = Json::object();
+  r["ok"] = true;
+  r["step"] = k;
+  r["time"] = k * sc.dt;
+  double ke, pe;
+  orbit_energies(sc, rec, &ke, &pe);
+  r["energy"] = rec.energy;
+  r["kinetic"] = ke;
+  r["potential"] = pe;
+  r["momentum_x"] = rec.px;
+  r["momentum_y"] = rec.py;
+  r["angular_momentum"] = rec.ang;
+  r["substeps_in_step"] = rec.substeps;
+  Json bodies = Json::array();
+  for (size_t i = 0; i < rec.body.size(); ++i) {
+    const BodyState& q = rec.body[i];
+    Json o = body_json(q);
+    o["index"] = static_cast<int>(i);
+    o["m"] = sc.bodies[i].m;
+    o["speed"] = std::sqrt(q.vx * q.vx + q.vy * q.vy);
+    o["radius_from_origin"] = std::hypot(q.x, q.y);
+    bodies.push(o);
+  }
+  r["bodies"] = bodies;
+  Json pairs = Json::array();
+  for (size_t i = 0; i < rec.body.size(); ++i)
+    for (size_t j = i + 1; j < rec.body.size(); ++j) {
+      double d = std::hypot(rec.body[j].x - rec.body[i].x, rec.body[j].y - rec.body[i].y);
+      if (d < 1.5) {
+        Json po = Json::object();
+        po["a"] = static_cast<int>(i); po["b"] = static_cast<int>(j); po["distance"] = d;
+        pairs.push(po);
+      }
+    }
+  r["close_pairs"] = pairs;
   return r;
 }
 
@@ -298,10 +339,12 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
 }
 }  // namespace
 
-Json tool_specs() {
+Json tool_specs(const std::string& domain) {
+  const bool orbit = domain == "orbit";
   Json scen = prop("object",
-                   "Scenario: {seed, dt, steps, gravity, bodies:[{x,y,vx,vy,r,m,e}], walls:[{x,y,w,h}], "
-                   "controller:{enabled, body, kp, fmax, vcmd, noise, waypoints:[{x,y}]}}. See the simulation description for limits.");
+                   orbit ? "Scenario: {seed, dt, steps, G, bodies:[{x,y,vx,vy,m}]}. See the simulation description for limits."
+                         : "Scenario: {seed, dt, steps, gravity, bodies:[{x,y,vx,vy,r,m,e}], walls:[{x,y,w,h}], "
+                           "controller:{enabled, body, kp, fmax, vcmd, noise, waypoints:[{x,y}]}}. See the simulation description for limits.");
   Json specs = Json::array();
   {
     Json p = Json::object();
@@ -320,7 +363,7 @@ Json tool_specs() {
     Json p = Json::object();
     p["scenario_id"] = prop("string", "Id returned by run_scenario or shrink.");
     p["step"] = prop("integer", "State index, 0 = initial state.");
-    specs.push(fn("inspect_state", "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
+    specs.push(fn("inspect_state", orbit ? "Exact state of every body at one step, with energies, momentum, angular momentum and close pairs." : "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
   }
   {
     Json p = Json::object();
@@ -344,7 +387,23 @@ Json tool_specs() {
   return specs;
 }
 
-std::string simulation_description() {
+std::string simulation_description(const std::string& domain) {
+  if (domain == "orbit") {
+    std::ostringstream o;
+    o << "SIMULATION UNDER TEST\n"
+         "A deterministic 2D gravitational N-body simulation (x right, y up, no walls, no boundaries).\n"
+         "- Every pair of bodies attracts with softened Newtonian gravity: acceleration of i from j is G m_j (r_j - r_i) / (|r_j - r_i|^2 + 0.3^2)^1.5.\n"
+         "- Integration is a leapfrog scheme with fixed dt per outer step, split into substeps when bodies move fast or\n"
+         "  accelerate strongly.\n"
+         "- A run is a pure function of the scenario (including `seed`). Time starts at 0 and the unit of time is the step times dt.\n\n"
+         "SCENARIO LIMITS\n"
+         "dt in [1e-3, 1/30]; steps in [1, 4000]; G in [0.5, 5]; 2 to 6 bodies; m in [0.2, 20]; initial positions inside\n"
+         "[0,20] x [0,12]; initial speed <= 10; any two bodies start at least 1.0 apart.\n\n"
+         "DECLARED RULES (checked at every step)\n";
+    for (const auto& r : rule_catalog("orbit")) o << "- " << r.id << ": " << r.text << "\n";
+    o << "\nThe rule checker, not you, decides what is a violation.\n";
+    return o.str();
+  }
   std::ostringstream o;
   o << "SIMULATION UNDER TEST\n"
        "A deterministic 2D rigid-body world of circles in a 20 x 12 arena (x right, y up, floor at y=0).\n"

@@ -1,4 +1,5 @@
 #include "sim/world.hpp"
+#include "sim/orbit.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -254,6 +255,7 @@ struct Sim {
 }  // namespace
 
 Trace simulate(const Scenario& sc, BugMask bugs) {
+  if (sc.domain == "orbit") return simulate_orbit(sc, bugs);
   Sim s(sc, bugs);
   return s.run();
 }
@@ -267,6 +269,10 @@ uint64_t Trace::hash() const {
     }
     double e[3] = {r.energy, r.work, r.fmag};
     h = fnv1a(e, sizeof e, h);
+    if (orbit) {
+      double m[3] = {r.px, r.py, r.ang};
+      h = fnv1a(m, sizeof m, h);
+    }
   }
   return h;
 }

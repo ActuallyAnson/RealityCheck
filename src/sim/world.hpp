@@ -15,6 +15,7 @@ struct BodyState {
 
 // State after outer step k (k = 0 is the initial state).
 struct StepRecord {
+  double px = 0, py = 0, ang = 0;  // orbit domain only: total momentum and angular momentum about the origin
   std::vector<BodyState> body;
   double energy = 0;   // kinetic + potential energy of all bodies
   double work = 0;     // cumulative work done by the controller force
@@ -24,6 +25,7 @@ struct StepRecord {
 };
 
 struct Trace {
+  bool orbit = false;  // orbit traces add momentum fields to the hash; rigid2d hashes are unchanged
   std::vector<StepRecord> rec;
   int steps() const { return static_cast<int>(rec.size()) - 1; }
   uint64_t hash() const;  // hash over the exact bit patterns of every recorded value

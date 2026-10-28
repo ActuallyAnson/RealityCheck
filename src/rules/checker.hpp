@@ -29,10 +29,12 @@ struct RuleInfo {
   const char* id;
   const char* text;
 };
-const std::vector<RuleInfo>& rule_catalog();
+const std::vector<RuleInfo>& rule_catalog(const std::string& domain = "rigid2d");
 
 // Returns at most one violation per (rule, body): the earliest one. Sorted by step, then rule id.
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec = RuleSpec());
+
+std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr);
 
 Json to_json(const Violation& v);
 

@@ -3,11 +3,13 @@
 #include <cmath>
 #include <cstdio>
 
+#include "sim/orbit.hpp"
 #include "util/rng.hpp"
 
 namespace rc {
 
 Json to_json(const Scenario& s) {
+  if (s.domain == "orbit") return orbit_to_json(s);
   Json j = Json::object();
   j["seed"] = static_cast<double>(s.seed);
   j["dt"] = s.dt;
@@ -50,7 +52,8 @@ Json to_json(const Scenario& s) {
   return j;
 }
 
-Scenario scenario_from_json(const Json& j) {
+Scenario scenario_from_json(const Json& j, const std::string& default_domain) {
+  if (j.str_or("domain", default_domain) == "orbit") return orbit_from_json(j);
   Scenario s;
   s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
   s.dt = j.num_or("dt", s.dt);
@@ -97,6 +100,7 @@ Scenario scenario_from_json(const Json& j) {
 }
 
 bool operator==(const Scenario& a, const Scenario& b) {
+  if (a.domain != b.domain) return false;
   if (a.seed != b.seed || a.dt != b.dt || a.steps != b.steps || a.gravity != b.gravity) return false;
   if (!(a.bodies == b.bodies) || !(a.walls == b.walls)) return false;
   const ControllerDef &x = a.ctrl, &y = b.ctrl;
@@ -117,6 +121,7 @@ std::string fail(const char* fmt, double a = 0, double b = 0) {
 }  // namespace
 
 std::string validate(const Scenario& s) {
+  if (s.domain == "orbit") return orbit_validate(s);
   using L = ScenarioLimits;
   if (!std::isfinite(s.dt) || s.dt < L::dt_min || s.dt > L::dt_max)
     return fail("dt %g outside [1e-4, 1/30]", s.dt);

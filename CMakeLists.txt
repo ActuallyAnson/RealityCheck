@@ -14,6 +14,7 @@ add_compile_options(-Wall -Wextra -fno-fast-math -ffp-contract=off)
 add_library(rc_core
   src/sim/scenario.cpp
   src/sim/world.cpp
+  src/sim/orbit.cpp
   src/rules/checker.cpp
   src/tools/render.cpp
   src/tools/tools.cpp
@@ -30,6 +31,9 @@ target_link_libraries(rc_tool rc_core)
 
 add_executable(rc_agent src/agent/agent_main.cpp)
 target_link_libraries(rc_agent rc_core)
+
+add_executable(rc_orbit_cal src/eval/orbit_cal_main.cpp)
+target_link_libraries(rc_orbit_cal rc_core)
 
 add_executable(rc_eval src/eval/eval_main.cpp)
 target_link_libraries(rc_eval rc_core)

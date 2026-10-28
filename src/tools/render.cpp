@@ -112,8 +112,42 @@ std::vector<uint8_t> encode_png(const Img& im) {
 
 }  // namespace
 
+std::vector<uint8_t> render_orbit_strip(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int highlight,
+                                        int cols, int ppu) {
+  const double W = 20, H = 12;
+  const int tw = static_cast<int>(W * ppu), th = static_cast<int>(H * ppu), gap = 4;
+  int n = std::max<int>(1, static_cast<int>(steps.size()));
+  cols = std::max(1, std::min(cols, n));
+  int rows = (n + cols - 1) / cols;
+  Img im(cols * tw + (cols + 1) * gap, rows * th + (rows + 1) * gap);
+  fill_rect(im, 0, 0, im.w, im.h, {40, 40, 48});
+  for (size_t t = 0; t < steps.size(); ++t) {
+    int k = std::max(0, std::min(steps[t], tr.steps()));
+    int ox = gap + static_cast<int>(t % cols) * (tw + gap), oy = gap + static_cast<int>(t / cols) * (th + gap);
+    fill_rect(im, ox, oy, ox + tw, oy + th, {250, 250, 245});
+    auto in_tile = [&](double x, double y) { return x >= 0 && x <= W && y >= 0 && y <= H; };
+    for (int j = 0; j <= k; j += std::max(1, k / 60))  // short trail of earlier positions
+      for (size_t i = 0; i < tr.rec[static_cast<size_t>(j)].body.size(); ++i) {
+        const BodyState& q = tr.rec[static_cast<size_t>(j)].body[i];
+        if (std::isfinite(q.x) && std::isfinite(q.y) && in_tile(q.x, q.y))
+          fill_circle(im, ox + q.x * ppu, oy + th - q.y * ppu, 1.2, {200, 205, 220});
+      }
+    const StepRecord& rec = tr.rec[static_cast<size_t>(k)];
+    for (size_t i = 0; i < rec.body.size(); ++i) {
+      const BodyState& q = rec.body[i];
+      if (!std::isfinite(q.x) || !std::isfinite(q.y) || !in_tile(q.x, q.y)) continue;
+      Col c = static_cast<int>(i) == highlight ? Col{215, 40, 40} : Col{70, 120, 200};
+      fill_circle(im, ox + q.x * ppu, oy + th - q.y * ppu, (0.15 + 0.1 * std::cbrt(sc.bodies[i].m)) * ppu, c);
+    }
+    fill_rect(im, ox, oy, ox + 40, oy + 12, {255, 255, 255});
+    draw_number(im, ox + 3, oy + 3, k, 2, {0, 0, 0});
+  }
+  return encode_png(im);
+}
+
 std::vector<uint8_t> render_strip_png(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int highlight,
                                       int cols, int ppu) {
+  if (sc.domain == "orbit") return render_orbit_strip(sc, tr, steps, highlight, cols, ppu);
   const int tw = static_cast<int>(sc.arena_w * ppu), th = static_cast<int>(sc.arena_h * ppu), gap = 4;
   int n = std::max<int>(1, static_cast<int>(steps.size()));
   cols = std::max(1, std::min(cols, n));

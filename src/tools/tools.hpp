@@ -38,6 +38,9 @@ public:
   // Always returns an object with "ok"; on failure {"ok":false,"error":...}.
   Json call(const std::string& name, const Json& args);
 
+  // Domain of the scenarios this session accepts ("rigid2d" default or "orbit").
+  void set_domain(const std::string& d) { domain_ = d; }
+  const std::string& domain() const { return domain_; }
   const ToolUsage& usage() const { return usage_; }
   const ToolBudget& budget() const { return budget_; }
   bool budget_exhausted() const { return usage_.steps_used >= budget_.max_steps || usage_.tool_calls >= budget_.max_tool_calls; }
@@ -61,6 +64,7 @@ public:
 private:
   BugMask bugs_;
   SimFn sim_;
+  std::string domain_ = "rigid2d";
   ToolBudget budget_;
   std::string out_dir_;
   ToolUsage usage_;
@@ -72,6 +76,7 @@ private:
   Json run_scenario(const Json& a);
   Json check_rules_tool(const Json& a);
   Json inspect_state(const Json& a);
+  Json inspect_orbit(const Scenario& sc, const StepRecord& rec, int k);
   Json render_frames(const Json& a);
   Json shrink_tool(const Json& a);
   Json replay(const Json& a);
@@ -81,8 +86,8 @@ private:
 };
 
 // Tool schemas (OpenAI function-calling style: name, description, parameters) for the model client.
-Json tool_specs();
+Json tool_specs(const std::string& domain = "rigid2d");
 // Plain-language description of the simulation, rules and scenario limits. Contains no bug information.
-std::string simulation_description();
+std::string simulation_description(const std::string& domain = "rigid2d");
 
 }  // namespace rc

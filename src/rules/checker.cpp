@@ -6,9 +6,18 @@
 #include <set>
 #include <utility>
 
+#include "sim/orbit.hpp"
+
 namespace rc {
 
-const std::vector<RuleInfo>& rule_catalog() {
+const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
+  static const std::vector<RuleInfo> orbit_cat = {
+      {"no_nan", "Every position, velocity and energy value stays finite."},
+      {"energy_conserved", "Total energy (kinetic plus softened potential) stays within 2% of the largest kinetic-plus-|potential| seen, plus 0.05."},
+      {"momentum_conserved", "Total linear momentum stays within 0.1% of the largest sum of m|v| seen, plus 0.001."},
+      {"angular_momentum_conserved", "Total angular momentum about the origin stays within 0.1% of the largest sum of m|r||v| seen, plus 0.001."},
+  };
+  if (domain == "orbit") return orbit_cat;
   static const std::vector<RuleInfo> cat = {
       {"no_nan", "Every position, velocity and energy value stays finite."},
       {"in_arena", "Every body stays inside the 20 x 12 arena (centre +/- radius within the bounds, tolerance 0.15)."},
@@ -18,6 +27,58 @@ const std::vector<RuleInfo>& rule_catalog() {
       {"controller_force_limit", "The controller never commands a force above its declared fmax."},
   };
   return cat;
+}
+
+namespace {
+std::string fmt(const char* f, double a = 0, double b = 0, double c = 0);
+}
+
+std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr) {
+  std::vector<Violation> out;
+  std::set<std::string> seen;
+  auto add = [&](Violation v) {
+    if (seen.insert(v.rule).second) out.push_back(std::move(v));
+  };
+  if (tr.rec.empty()) return out;
+  double escale = 0, pscale = 0, lscale = 0;
+  bool finite_all = true;
+  for (const StepRecord& s : tr.rec) {
+    double ke, pe;
+    orbit_energies(sc, s, &ke, &pe);
+    escale = std::max(escale, ke + std::fabs(pe));
+    double ps = 0, ls = 0;
+    for (size_t i = 0; i < s.body.size(); ++i) {
+      const BodyState& q = s.body[i];
+      double m = sc.bodies[i].m;
+      ps += m * std::hypot(q.vx, q.vy);
+      ls += m * std::hypot(q.x, q.y) * std::hypot(q.vx, q.vy);
+    }
+    if (std::isfinite(ps)) pscale = std::max(pscale, ps);
+    if (std::isfinite(ls)) lscale = std::max(lscale, ls);
+  }
+  const StepRecord& r0 = tr.rec[0];
+  for (int k = 0; k <= tr.steps(); ++k) {
+    const StepRecord& s = tr.rec[static_cast<size_t>(k)];
+    bool fin = std::isfinite(s.energy) && std::isfinite(s.px) && std::isfinite(s.py) && std::isfinite(s.ang);
+    for (const auto& q : s.body) fin = fin && std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.vx) && std::isfinite(q.vy);
+    if (!fin) { add({"no_nan", k, -1, 0, 0, "non-finite state"}); finite_all = false; break; }
+    double elim = 0.02 * escale + 0.05;
+    if (std::fabs(s.energy - r0.energy) > elim)
+      add({"energy_conserved", k, -1, std::fabs(s.energy - r0.energy), elim,
+           fmt("energy changed by %.4f (allowed %.4f, E0 %.4f)", std::fabs(s.energy - r0.energy), elim, r0.energy)});
+    double dp = std::hypot(s.px - r0.px, s.py - r0.py), plim = 1e-3 * pscale + 1e-3;
+    if (dp > plim)
+      add({"momentum_conserved", k, -1, dp, plim, fmt("total momentum changed by %.5f (allowed %.5f)", dp, plim)});
+    double dl = std::fabs(s.ang - r0.ang), llim = 1e-3 * lscale + 1e-3;
+    if (dl > llim)
+      add({"angular_momentum_conserved", k, -1, dl, llim, fmt("angular momentum changed by %.5f (allowed %.5f)", dl, llim)});
+  }
+  (void)finite_all;
+  std::stable_sort(out.begin(), out.end(), [](const Violation& a, const Violation& b) {
+    if (a.step != b.step) return a.step < b.step;
+    return a.rule < b.rule;
+  });
+  return out;
 }
 
 namespace {
@@ -41,7 +102,7 @@ bool segment_hits_box(double x0, double y0, double x1, double y1, const WallDef&
   return true;
 }
 
-std::string fmt(const char* f, double a, double b = 0, double c = 0) {
+std::string fmt(const char* f, double a, double b, double c) {
   char buf[200];
   std::snprintf(buf, sizeof buf, f, a, b, c);
   return buf;
@@ -50,6 +111,7 @@ std::string fmt(const char* f, double a, double b = 0, double c = 0) {
 }  // namespace
 
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec) {
+  if (sc.domain == "orbit") return check_orbit_rules(sc, tr);
   std::vector<Violation> out;
   std::set<std::pair<std::string, int>> seen;
   auto add = [&](Violation v) {

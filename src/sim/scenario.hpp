@@ -33,6 +33,7 @@ struct ControllerDef {
 };
 
 struct Scenario {
+  std::string domain = "rigid2d";  // "rigid2d" (default) or "orbit"; omitted from JSON for rigid2d
   uint64_t seed = 1;
   double dt = 1.0 / 120.0;
   int steps = 600;
@@ -57,7 +58,7 @@ struct ScenarioLimits {
 
 bool operator==(const Scenario& a, const Scenario& b);
 Json to_json(const Scenario& s);
-Scenario scenario_from_json(const Json& j);  // throws on malformed input
+Scenario scenario_from_json(const Json& j, const std::string& default_domain = "rigid2d");  // throws on malformed input
 // Empty string when valid, otherwise a human-readable reason.
 std::string validate(const Scenario& s);
 uint64_t scenario_hash(const Scenario& s);

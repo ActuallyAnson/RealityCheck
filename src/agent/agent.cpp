@@ -53,8 +53,8 @@ Json report_tool_spec() {
   return f;
 }
 
-Json all_tools() {
-  Json t = tool_specs();
+Json all_tools(const std::string& domain = "rigid2d") {
+  Json t = tool_specs(domain);
   t.push(report_tool_spec());
   return t;
 }
@@ -171,11 +171,11 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
   return c;
 }
 
-std::string system_prompt(bool native_tools) {
+std::string system_prompt(bool native_tools, const std::string& domain) {
   std::string p =
       "You are RealityCheck, an adversarial tester for a physics simulation. Your job is to find scenarios where the "
       "simulation breaks its declared rules, confirm them, and explain the likely cause.\n\n" +
-      simulation_description() +
+      simulation_description(domain) +
       "\nHOW YOU WORK\n"
       "- You do not decide pass or fail. The deterministic engine does, through the tools. You decide where to look.\n"
       "- Form a specific hypothesis about how the simulation could break a rule, design the smallest scenario that tests it, "
@@ -194,7 +194,7 @@ std::string system_prompt(bool native_tools) {
   } else {
     p += "\nACTION PROTOCOL\nReply with exactly one JSON object and nothing else: {\"tool\": \"<name>\", \"args\": {...}}. "
          "The next message will contain the tool result. Available tools:\n" +
-         all_tools().dump() + "\n";
+         all_tools(domain).dump() + "\n";
   }
   return p;
 }
@@ -219,7 +219,7 @@ struct Loop {
     ModelRequest r;
     r.model = cfg.model;
     r.messages = msgs;
-    if (cfg.native_tools) r.tools = all_tools();
+    if (cfg.native_tools) r.tools = all_tools(cfg.domain);
     r.max_tokens = cfg.max_tokens;
     r.reasoning_effort = cfg.reasoning_effort;
     return r;
@@ -345,7 +345,7 @@ struct Loop {
   AgentResult run() {
     ChatMessage sys;
     sys.role = "system";
-    sys.content = system_prompt(cfg.native_tools);
+    sys.content = system_prompt(cfg.native_tools, cfg.domain);
     msgs.push_back(sys);
     ChatMessage task;
     task.role = "user";

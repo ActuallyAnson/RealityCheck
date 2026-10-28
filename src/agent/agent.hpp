@@ -33,6 +33,7 @@ struct AgentConfig {
   int max_turns = 40;
   int max_report_attempts = 3;
   int max_tokens = 4096;
+  std::string domain = "rigid2d";    // which simulation the tools expose
   std::string reasoning_effort;      // "" = omit
   std::string out_dir = ".";
   size_t tool_result_chars = 6000;
@@ -58,7 +59,7 @@ struct AgentResult {
 
 using EventSink = std::function<void(const Json&)>;
 
-std::string system_prompt(bool native_tools);
+std::string system_prompt(bool native_tools, const std::string& domain = "rigid2d");
 AgentResult run_agent(BudgetedModel& model, ToolSession& tools, const AgentConfig& cfg, const EventSink& sink = nullptr);
 Json agent_result_to_json(const AgentResult& r);
 // Writes report.json and trace.json (replayable state history for the web viewer) into dir.

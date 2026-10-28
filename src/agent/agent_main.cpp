@@ -1,7 +1,7 @@
 // rc_agent: runs the tester agent against a simulation with operator-chosen hidden bugs.
 //   rc_agent --replay CACHE.jsonl [options]          serve recorded responses, no network
 //   rc_agent --live --config configs/hosted.json     call the real API (needs the key env var)
-// Options: --bugs b01,b05 --budget-usd 5 --max-steps N --max-tool-calls N --max-turns N --out DIR
+// Options: --domain rigid2d|orbit --bugs b01,b05 (o01.. for orbit) --budget-usd 5 --max-steps N --max-tool-calls N --max-turns N --out DIR
 //          --record CACHE.jsonl (append live exchanges for later replay)
 // Without --live, nothing in this program can reach the network.
 #include <sys/stat.h>
@@ -13,6 +13,7 @@
 
 #include "agent/agent.hpp"
 #include "eval/ground_truth.hpp"
+#include "sim/orbit.hpp"
 #ifdef RC_HAVE_BOX2D
 #include "external/box2d_sim.hpp"
 #endif
@@ -21,7 +22,7 @@ using namespace rc;
 
 int main(int argc, char** argv) {
   SimFn sim;
-  std::string replay, config_path = "configs/hosted.json", out = "runs/latest", record, bugs_arg, engine;
+  std::string replay, config_path = "configs/hosted.json", out = "runs/latest", record, bugs_arg, engine, domain = "rigid2d";
   bool live = false, smoke = false;
   double budget_usd = 5.0;
   ToolBudget tb;
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
     else if (a == "--smoke") smoke = true;
     else if (a == "--config") config_path = val();
     else if (a == "--bugs") bugs_arg = val();
+    else if (a == "--domain") domain = val();  // rigid2d (default) | orbit
     else if (a == "--engine") engine = val();  // box2d | box2d-noccd: test an outside engine instead
     else if (a == "--budget-usd") budget_usd = std::atof(val().c_str());
     else if (a == "--max-steps") tb.max_steps = std::atoll(val().c_str());
@@ -86,7 +88,7 @@ int main(int argc, char** argv) {
   std::stringstream ss(bugs_arg);
   std::string tok;
   while (std::getline(ss, tok, ',')) {
-    int idx = bug_index(tok);
+    int idx = domain == "orbit" ? orbit_bug_index(tok) : bug_index(tok);
     if (idx < 0) { std::cerr << "unknown bug id: " << tok << "\n"; return 2; }
     mask |= bug_bit(idx);
   }
@@ -97,6 +99,7 @@ int main(int argc, char** argv) {
   ac.model = api.model;
   ac.native_tools = api.native_tools;
   ac.out_dir = out;
+  ac.domain = domain;
 
   std::unique_ptr<ModelBackend> backend;
   std::unique_ptr<ModelBackend> inner;
@@ -122,6 +125,7 @@ int main(int argc, char** argv) {
   if (!engine.empty()) { std::cerr << "built without Box2D\n"; return 2; }
 #endif
   ToolSession tools = sim ? ToolSession(sim, tb, out) : ToolSession(mask, tb, out);
+  tools.set_domain(domain);
   std::ofstream events(out + "/events.jsonl", std::ios::trunc);
   AgentResult res = run_agent(model, tools, ac, [&](const Json& ev) {
     events << ev.dump() << "\n";
