@@ -79,3 +79,10 @@ The seed-1 subset above was too small to test anything. The same full locked eva
 
 The finding replicates on both older models of the same family: each localizes the cause in 48 to 49 of 83 failures against 35 for the no-model localizer, with p below 0.05 on each. The effect is slightly smaller on older models (48 to 49 against 52), as expected. Caveats: three tests were run on one failure set, so the p-values are not
 independent evidence and the 1.2 and 1.1 values are borderline (0.03 to 0.05) taken alone; the three models are one family, so this is not evidence about other model families. Summaries: `results/triage_spark12_full/summary.md`, `results/triage_spark11_full/summary.md`.
+
+## Open-weight model (Muse Spark Open, via Baseten)
+
+The same locked 83 failures, same prompts and procedure, on the hackathon's open-weight model (`meta-models/muse-spark-open-1026`, `configs/baseten_open.json`; `results/triage_open/summary.md`). Cost shown in the summary ($1.91) is computed with the hosted model's rates as a proxy; the real spend comes out of the Baseten credits.
+**Valid reports 79 of 83; cause localized 44 of 83 against 35 of 83 for the no-model localizer; paired sign test p = 0.18 (one-field restriction: 36 against 25, p = 0.052).**
+Same direction as the hosted models (49 to 52 of 83), but not significant on its own, and the localization count is lower than every hosted model. One run per failure; the model is not seeded. The pricing field is a proxy, so the per-run budget caps are approximate.
+
