@@ -38,3 +38,10 @@ MCP client configuration (for example a client that reads an `mcpServers` map):
 - Not hosted anywhere: a public instance would need rate limits and a sandbox. This is a local service.
 
 Tested in `rc_tests` (`api`) and by hand over HTTP (token, 401, exec refusal) and over MCP (initialize, tools/list, tools/call).
+
+## GitHub Action
+
+`action.yml` at the repo root is a composite action that re-runs regression bundles on every pull request and fails the job when a
+previously found failure reproduces (`uses: ActuallyAnson/RealityCheck@main` with `bundles:` and `engine:` inputs; `engine: exec:./my_sim`
+tests your own simulator). `.github/workflows/ci.yml` builds and tests this repo on Linux and macOS. The commands the action runs were
+checked locally (exit 0 on the clean engine, 1 on the buggy one); the workflow itself runs on GitHub, see the Actions tab.

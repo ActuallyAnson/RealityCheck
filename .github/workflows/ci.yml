@@ -1,0 +1,14 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure and build (plain C++17, no third-party dependencies)
+        run: cmake -S . -B build && cmake --build build -j 4
+      - name: Unit and end-to-end tests
+        run: ./build/rc_tests

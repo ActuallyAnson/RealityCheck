@@ -1,0 +1,31 @@
+name: RealityCheck regression check
+description: >
+  Re-runs RealityCheck regression bundles (scenario.json + expected.json, made by rc_repro export or the API) against your simulator
+  on every pull request. The job fails if a previously found failure reproduces. No model and no API key are involved.
+inputs:
+  bundles:
+    description: Directory containing one sub-directory per regression bundle.
+    required: true
+  engine:
+    description: "Engine spec: builtin, builtin:IDS, box2d, or exec:<command> for your own simulator (docs/PROTOCOL.md)."
+    required: true
+  domain:
+    description: Domain of the bundles if scenario.json does not say (rigid2d, orbit, cartpole, traffic).
+    required: false
+    default: rigid2d
+runs:
+  using: composite
+  steps:
+    - name: Build rc_repro
+      shell: bash
+      run: cmake -S "${{ github.action_path }}" -B "${{ github.action_path }}/build" >/dev/null && cmake --build "${{ github.action_path }}/build" -j 4 --target rc_repro
+    - name: Run the bundles
+      shell: bash
+      run: |
+        fail=0
+        mkdir -p realitycheck-junit
+        for d in "${{ inputs.bundles }}"/*/; do
+          name=$(basename "$d")
+          "${{ github.action_path }}/build/rc_repro" check --repro "$d" --engine "${{ inputs.engine }}" --domain "${{ inputs.domain }}" --junit "realitycheck-junit/$name.xml" || fail=1
+        done
+        exit $fail
