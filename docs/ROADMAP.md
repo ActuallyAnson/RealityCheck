@@ -112,6 +112,9 @@ open-weight tool calling is untested.
   cart-pole domain built and calibrated (clean sim 0 of 40000 random scenarios, baseline c01 5/5, c02 3/5, c03 5/5).
   Next: cart-pole agent run, agent v2 + v2 evaluation on fresh held-out b11-b13, recordings, README, video.
 
+- Oct 28 (later): everything in `CHANGELOG.md` through the generic domain; mutation benchmark done (oracle coverage, not search, is the limit); the determinism difference between macOS and Linux is documented, not fixed:
+  replacing libm calls in the samplers would change every scenario sequence and invalidate the locked evaluations. Still open: model portability (a second model), the repair loop, final audit and demo (demo on hold).
+
 ## Multi-domain plan (added Oct 27 at the user's request: "more spread than one physics")
 The viewer already draws from a domain-agnostic document (static layer, entity kinds, flat frames, named signals,
 violations). A new domain needs: a simulator with a hidden-bug mask, declared rules, a scenario generator for the random
