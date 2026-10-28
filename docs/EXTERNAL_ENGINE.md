@@ -50,3 +50,29 @@ even in a 10-line program (stuck in `FloodFillComponent`), so no results were ta
   - limit: contact-dynamics systems are chaotic, so two different rigid-body engines disagree in most scenarios
     (built-in vs Box2D: 359 of 400 at tolerance 0.5), which is noise, not bugs. Differential testing needs engines that
     are numerically close, a short horizon, or a quantity that is not chaotic.
+
+## REBOUND (N-body library), orbit domain
+
+Target: REBOUND 5.2.2 (commit 262a9cc, a widely used open-source N-body code, GPLv3), unmodified, built with
+`scripts/build_rebound_example.sh` and driven through `examples/external/rebound_orbit.cpp` over the JSON-lines protocol. The adapter uses REBOUND's own
+direct-summation gravity with Plummer softening 0.3, the force law the orbit domain declares. Nothing of REBOUND is copied into this repository.
+Raw output: `results/rebound/hunt.txt`. 1000 random scenarios per row, the orbit domain's declared rules (energy, momentum, angular momentum conserved).
+
+| REBOUND integrator (substeps per scenario dt) | scenarios with a rule violation | rule |
+|---|---|---|
+| IAS15 (adaptive, 15th order) | 0 / 1000 | |
+| BS (Bulirsch-Stoer, adaptive) | 0 / 1000 | |
+| leapfrog, 1 substep | 172 / 1000 | energy_conserved |
+| leapfrog, 4 substeps | 1 / 1000 | energy_conserved |
+| leapfrog, 16 substeps | 0 / 1000 | |
+| SABA, 1 substep | 188 / 1000 | energy_conserved |
+| built-in simulator (reference) | 0 / 1000 | |
+
+Differential check with `rc_diff` against the built-in simulator (100 scenarios, tolerance 0.1, horizon 1 s): IAS15 0, BS 0, leapfrog with 8 substeps 0,
+leapfrog with 1 substep 9.
+
+**Reading it correctly:** these are not bugs in REBOUND. A fixed-step second-order integrator run at the scenario's outer step (up to 1/30 s)
+violates a 2% energy bound in close encounters, and SABA (built for a dominant central mass) also prints convergence warnings on these equal-mass,
+softened systems. What the run shows is that the tool, with no knowledge of REBOUND, (1) agrees with the library's high-accuracy integrators, (2) isolates
+the step-size dependence of its fixed-step ones with shrunk two-body reproductions, and (3) works against a real C library written by someone else, through the
+same pipe protocol as the sample simulator. Momentum and angular momentum were conserved in every integrator and scenario. No defect in REBOUND is claimed.

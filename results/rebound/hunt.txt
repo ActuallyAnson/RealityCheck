@@ -1,0 +1,19 @@
+### rebound ias15
+no rule violations in 1000 scenarios
+### rebound bs
+no rule violations in 1000 scenarios
+### rebound leapfrog 1
+energy_conserved: 172/1000 scenarios, first at #4, shrunk 10 -> 2
+### rebound leapfrog 4
+energy_conserved: 1/1000 scenarios, first at #566, shrunk 41 -> 8
+### rebound leapfrog 16
+no rule violations in 1000 scenarios
+### rebound saba
+Warning! Possible convergence issue. Timestep in Kepler solver is larger than one orbital period.
+
+Warning! Possible convergence issue. Timestep in Kepler solver is larger than one orbital period.
+
+Warning! Possible convergence issue. Timestep in Kepler solver is larger than one orbital period.
+energy_conserved: 188/1000 scenarios, first at #17, shrunk 36 -> 2
+### builtin (clean reference)
+no rule violations in 1000 scenarios
