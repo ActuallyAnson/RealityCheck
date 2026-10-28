@@ -1,0 +1,4 @@
+{"cached_tokens":0,"call":1,"completion_tokens":1654,"cost_usd":0.0079395000000000004,"label":"spec_propose","latency_ms":7548.9693340063095,"ok":true,"prompt_tokens":728,"reasoning_tokens":1331,"total_cost_usd":0.0079395000000000004}
+{"cached_tokens":611,"call":2,"completion_tokens":1387,"cost_usd":0.0067151499999999996,"label":"spec_revise","latency_ms":8784.4530000090599,"ok":true,"prompt_tokens":1194,"reasoning_tokens":1327,"total_cost_usd":0.01465465}
+{"cached_tokens":0,"call":1,"completion_tokens":1654,"cost_usd":0.0079395000000000004,"label":"spec_propose","latency_ms":7548.9693340063095,"ok":true,"prompt_tokens":728,"reasoning_tokens":1331,"total_cost_usd":0.0079395000000000004}
+{"cached_tokens":611,"call":2,"completion_tokens":1387,"cost_usd":0.0067151499999999996,"label":"spec_revise","latency_ms":8784.4530000090599,"ok":true,"prompt_tokens":1194,"reasoning_tokens":1327,"total_cost_usd":0.01465465}

@@ -1,6 +1,8 @@
 #include "sim/world.hpp"
 #include "sim/orbit.hpp"
 #include "sim/cartpole.hpp"
+#include <stdexcept>
+
 #include "sim/traffic.hpp"
 
 #include <algorithm>
@@ -260,6 +262,7 @@ Trace simulate(const Scenario& sc, BugMask bugs) {
   if (sc.domain == "orbit") return simulate_orbit(sc, bugs);
   if (sc.domain == "cartpole") return simulate_cartpole(sc, bugs);
   if (sc.domain == "traffic") return simulate_traffic(sc, bugs);
+  if (sc.domain == "generic") throw std::runtime_error("the generic domain has no built-in simulator: use an exec engine (--engine card or exec:CMD)");
   Sim s(sc, bugs);
   return s.run();
 }

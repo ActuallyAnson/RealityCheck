@@ -1,5 +1,7 @@
 #include "tools/tools.hpp"
 
+#include "sim/generic.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -164,6 +166,16 @@ Json ToolSession::inspect_state(const Json& a) {
   if (sc.domain == "orbit") return inspect_orbit(sc, rec, k);
   if (sc.domain == "cartpole") return inspect_cartpole(sc, rec, k);
   if (sc.domain == "traffic") return inspect_traffic(sc, rec, k);
+  if (sc.domain == "generic") {
+    Json g = Json::object();
+    g["ok"] = true;
+    g["step"] = k;
+    Json sg = Json::object();
+    const GenericModel& gm = generic_model();
+    for (size_t i = 0; i < gm.signals.size() && i < rec.body.size(); ++i) sg[gm.signals[i].name] = rec.body[i].x;
+    g["signals"] = sg;
+    return g;
+  }
   Json r = Json::object();
   r["ok"] = true;
   r["step"] = k;
@@ -318,6 +330,7 @@ Json ToolSession::render_frames(const Json& a) {
   std::string e, id;
   const Entry* en = find(a, &e, &id);
   if (!en) return err(e);
+  if (en->sc.domain == "generic") return err("render_frames is not available for the generic domain; use inspect_state to read the signals");
   int from = static_cast<int>(a.num_or("from", 0)), to = static_cast<int>(a.num_or("to", en->tr.steps()));
   from = std::max(0, from); to = std::min(en->tr.steps(), to);
   if (from > to) return err("from must be <= to");
@@ -412,7 +425,9 @@ Json tool_specs(const std::string& domain) {
   const bool orbit = domain == "orbit";
   const bool cart = domain == "cartpole";
   const bool traffic = domain == "traffic";
+  const bool generic = domain == "generic";
   Json scen = prop("object",
+                   generic ? generic_scenario_text().c_str() :
                    orbit ? "Scenario: {seed, dt, steps, G, bodies:[{x,y,vx,vy,m}]}. See the simulation description for limits."
                          : traffic ? "Scenario: {seed, steps, arrival_per_second:{N,E,S,W}, green_seconds:{ns,ew}, yellow_seconds, all_red_seconds, max_green_seconds, actuated, events:[{t,kind:emergency|ped|detector_fail,approach:N|E|S|W,duration}]}. See the simulation description for limits."
                          : cart ? "Scenario: {seed, dt, steps, plant:{cart_mass,pole_mass,pole_length,gravity}, initial:{x,v,theta,omega}, force_limit, sensor_noise, pushes:[{t,len,force}]}. See the simulation description for limits."
@@ -461,6 +476,7 @@ Json tool_specs(const std::string& domain) {
 }
 
 std::string simulation_description(const std::string& domain) {
+  if (domain == "generic") return generic_description();
   if (domain == "traffic") {
     std::ostringstream o;
     o << "SIMULATION UNDER TEST\n"

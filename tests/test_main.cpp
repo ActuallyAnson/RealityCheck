@@ -21,6 +21,7 @@
 #include "tools/render.hpp"
 #include "tools/tools.hpp"
 #include "api/api.hpp"
+#include "sim/generic.hpp"
 #include "spec/spec.hpp"
 #include "sim/domains.hpp"
 
@@ -1058,6 +1059,62 @@ void test_api() {
   CHECK(mcp_tool_list().arr().size() == 6);
 }
 
+void test_generic_domain() {
+  Json card = Json::parse(read_file("examples/generic/tank_card.json"));
+  GenericModel m = parse_generic_model(card);
+  set_generic_model(m);
+  CHECK(m.params.size() == 6 && m.rules.size() == 4 && m.signals.size() == 4);
+  // malformed cards are rejected with a message, not accepted silently
+  Json bad = card;
+  bad["rules"].arr()[0]["signal"] = "no_such_signal";
+  bool threw = false;
+  try { parse_generic_model(bad); } catch (const std::exception&) { threw = true; }
+  CHECK(threw);
+  Json bad2 = card;
+  bad2["parameters"].arr()[0]["max"] = -5;  // max below min
+  threw = false;
+  try { parse_generic_model(bad2); } catch (const std::exception&) { threw = true; }
+  CHECK(threw);
+  set_generic_model(m);  // the failed parses must not have replaced the installed model
+  CHECK(generic_model().params.size() == 6);
+  // scenarios: random draws are valid, JSON round trips, unknown or out-of-range parameters are rejected
+  Scenario sc = random_generic_scenario(5);
+  CHECK(validate(sc).empty() && scenario_from_json(to_json(sc), "generic") == sc);
+  Scenario badp = sc; badp.gen.params["capacity"] = 1000;
+  CHECK(!validate(badp).empty());
+  Scenario unk = sc; unk.gen.params["nope"] = 1;
+  CHECK(!validate(unk).empty());
+  // a stand-in simulator with the same flaw as the example: level may exceed capacity when gain > 4, capacity >= 40, proportional mode
+  SimFn sim = [](const Scenario& s) {
+    Trace tr;
+    const double cap = s.gen.params.at("capacity"), gain = s.gen.params.at("gain"), mode = s.gen.params.at("mode");
+    const bool flaw = mode == 0 && gain > 4 && cap >= 40;
+    for (int k = 0; k <= s.steps; ++k) {
+      StepRecord r;
+      double level = flaw && k >= 5 ? cap + 1 : cap / 2;
+      r.body = {{level, 0, 0, 0}, {0.5, 0, 0, 0}, {cap, 0, 0, 0}, {0, 0, 0, 0}};
+      tr.rec.push_back(r);
+    }
+    return tr;
+  };
+  Scenario ok = random_generic_scenario(1);
+  ok.gen.params["gain"] = 1;
+  CHECK(check_rules(ok, sim(ok)).empty());
+  Scenario fail = ok;
+  fail.gen.params["gain"] = 6; fail.gen.params["capacity"] = 50; fail.gen.params["mode"] = 0; fail.steps = 300;
+  auto v = check_rules(fail, sim(fail));
+  CHECK(v.size() == 1 && v[0].rule == "level_within_capacity" && v[0].step == 5);
+  ShrinkResult sr = shrink(fail, sim, "level_within_capacity");
+  CHECK(sr.ok && sr.scenario.steps <= 2 * m.steps_min && sr.scenario.gen.params.at("gain") > 4 && sr.scenario.gen.params.at("capacity") >= 40);
+  CHECK(sr.size_after < sr.size_before);
+  // there is no built-in simulator for the generic domain: the API says so instead of crashing
+  Json a = Json::object();
+  a["domain"] = "generic"; a["scenario"] = to_json(fail);
+  CHECK(!api_call("run", a).at("ok").boolean());
+  // citations may name a signal of the card
+  CHECK(!generic_description().empty() && generic_description().find("level") != std::string::npos);
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -1069,7 +1126,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds}, {"api", test_api},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds}, {"api", test_api}, {"generic domain", test_generic_domain},
   };
   for (auto& t : tests) {
     int before = g_fail;

@@ -17,6 +17,7 @@ add_library(rc_core
   src/sim/orbit.cpp
   src/sim/cartpole.cpp
   src/sim/traffic.cpp
+  src/sim/generic.cpp
   src/rules/checker.cpp
   src/rules/metamorphic.cpp
   src/tools/render.cpp
@@ -77,7 +78,7 @@ add_executable(rc_diff src/external/diff_main.cpp)
 target_link_libraries(rc_diff rc_engines)
 target_link_libraries(rc_tests rc_engines)
 add_executable(rc_spec src/spec/spec_main.cpp)
-target_link_libraries(rc_spec rc_core)
+target_link_libraries(rc_spec rc_engines)
 add_executable(rc_climb src/eval/climb_main.cpp)
 target_link_libraries(rc_climb rc_core)
 add_executable(rc_triage src/eval/triage_main.cpp)
@@ -97,3 +98,5 @@ add_executable(rc_mutscore src/eval/mutscore_main.cpp)
 target_link_libraries(rc_mutscore rc_core)
 add_executable(rc_fuzz src/eval/fuzz_main.cpp)
 target_link_libraries(rc_fuzz rc_api)
+add_executable(generic_tank examples/generic/tank.cpp)
+target_include_directories(generic_tank PRIVATE src)

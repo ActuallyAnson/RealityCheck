@@ -55,6 +55,7 @@ inline int domain_bug_index(const std::string& domain, const std::string& id) {
   if (domain == "orbit") return orbit_bug_index(id);
   if (domain == "cartpole") return cart_bug_index(id);
   if (domain == "traffic") return traffic_bug_index(id);
+  if (domain == "generic") return -1;
   return bug_index(id);
 }
 

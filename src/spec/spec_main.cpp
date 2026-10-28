@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "eval/ground_truth.hpp"
+#include "external/engine.hpp"
 #include "model/model.hpp"
 #include "rules/checker.hpp"
 #include "sim/domains.hpp"
@@ -17,21 +18,21 @@
 using namespace rc;
 
 namespace {
-struct Verdict { bool ok = true; std::string evidence; };
+struct Verdict { bool ok = true; std::string evidence, scenario; };
 
 // Runs every invariant on `n` clean scenarios (seeds base..base+n-1); returns per-invariant first counterexample.
-std::vector<Verdict> validate_clean(const std::vector<Invariant>& invs, const std::string& domain, uint64_t base, int n) {
+std::vector<Verdict> validate_clean(const std::vector<Invariant>& invs, const std::string& domain, uint64_t base, int n, const SimFn& sim) {
   std::vector<Verdict> out(invs.size());
   for (int i = 0; i < n; ++i) {
     Scenario sc = random_scenario_for(domain, base + static_cast<uint64_t>(i));
-    Signals s = extract_signals(sc, simulate(sc, 0));
+    Signals s = extract_signals(sc, sim(sc));
     for (size_t k = 0; k < invs.size(); ++k) {
       if (!out[k].ok) continue;
       InvFail f = check_invariant(invs[k], s);
       if (f.failed) {
         std::ostringstream e;
         e << "clean scenario seed " << (base + static_cast<uint64_t>(i)) << ", step " << f.step << ": observed " << f.observed << " vs " << f.limit;
-        out[k].ok = false; out[k].evidence = e.str();
+        out[k].ok = false; out[k].evidence = e.str(); out[k].scenario = to_json(sc).dump();
       }
     }
   }
@@ -73,7 +74,7 @@ static int summarize(int argc, char** argv) {
 
 int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "summarize") return summarize(argc, argv);
-  std::string domain = "orbit", replay, record, out = "runs/spec", config = "configs/hosted.json";
+  std::string engine = "builtin", domain = "orbit", replay, record, out = "runs/spec", config = "configs/hosted.json";
   bool live = false;
   int language = 1, clean_n = 1500, heldout_n = 3000, hunt_n = 300;
   double budget = 0.5;
@@ -81,7 +82,7 @@ int main(int argc, char** argv) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--domain") domain = val(); else if (a == "--live") live = true; else if (a == "--replay") replay = val();
-    else if (a == "--language") language = std::atoi(val().c_str()); else if (a == "--record") record = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val();
+    else if (a == "--engine") engine = val(); else if (a == "--language") language = std::atoi(val().c_str()); else if (a == "--record") record = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val();
     else if (a == "--clean-n") clean_n = std::atoi(val().c_str()); else if (a == "--heldout-n") heldout_n = std::atoi(val().c_str());
     else if (a == "--hunt-n") hunt_n = std::atoi(val().c_str()); else if (a == "--budget-usd") budget = std::atof(val().c_str());
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
@@ -89,6 +90,8 @@ int main(int argc, char** argv) {
   if (!live && replay.empty()) { std::cerr << "choose --live or --replay CACHE\n"; return 2; }
   if (std::system(("mkdir -p '" + out + "'").c_str()) != 0) return 1;
 
+  SimFn clean_sim;  // the system whose "clean" runs validate the invariants (our simulator, or any engine: for an unknown simulator these are its own runs)
+  try { clean_sim = make_engine(engine, domain); } catch (const std::exception& e) { std::cerr << e.what() << "\n"; return 2; }
   ApiConfig api = ApiConfig::from_json(Json::parse(read_file(config)));
   std::unique_ptr<ModelBackend> inner, backend;
   if (live) {
@@ -101,18 +104,18 @@ int main(int argc, char** argv) {
   std::vector<ChatMessage> msgs;
   msgs.push_back({"user", spec_prompt(domain, language), {}, "", {}});
   std::vector<Invariant> accepted, rejected_all;
-  std::vector<std::string> problems, rejected_evidence;
+  std::vector<std::string> problems, rejected_evidence, rejected_scenarios;
   try {
     std::string ans = ask(model, api, msgs, "spec_propose");
     std::vector<Invariant> cand = parse_invariants(ans, domain, &problems, language);
     int proposed = static_cast<int>(cand.size());
     if (cand.empty()) { std::cerr << "no invariants parsed from the answer\n"; return 1; }
     for (int round = 1; round <= 2; ++round) {
-      std::vector<Verdict> v = validate_clean(cand, domain, 1, clean_n);
+      std::vector<Verdict> v = validate_clean(cand, domain, 1, clean_n, clean_sim);
       std::vector<Invariant> rej;
       std::vector<std::string> ev;
       for (size_t k = 0; k < cand.size(); ++k) {
-        if (v[k].ok) accepted.push_back(cand[k]); else { rej.push_back(cand[k]); ev.push_back(v[k].evidence); rejected_all.push_back(cand[k]); rejected_evidence.push_back(v[k].evidence); }
+        if (v[k].ok) accepted.push_back(cand[k]); else { rej.push_back(cand[k]); ev.push_back(v[k].evidence); rejected_all.push_back(cand[k]); rejected_evidence.push_back(v[k].evidence); rejected_scenarios.push_back(v[k].scenario); }
       }
       std::cout << "round " << round << ": " << cand.size() << " candidates, " << (cand.size() - rej.size()) << " held on " << clean_n << " clean runs\n";
       if (round == 2 || rej.empty()) break;
@@ -125,12 +128,12 @@ int main(int argc, char** argv) {
   } catch (const std::exception& e) { std::cerr << e.what() << "\n"; return 1; }
 
   // fresh clean runs: anything that still fails is dropped and reported
-  std::vector<Verdict> hv = validate_clean(accepted, domain, 1000000, heldout_n);
+  std::vector<Verdict> hv = validate_clean(accepted, domain, 1000000, heldout_n, clean_sim);
   std::vector<Invariant> final_set;
   Json dropped = Json::array();
   for (size_t k = 0; k < accepted.size(); ++k) {
     if (hv[k].ok) final_set.push_back(accepted[k]);
-    else { Json d = to_json(accepted[k]); d["evidence"] = hv[k].evidence; dropped.push(d); }
+    else { Json d = to_json(accepted[k]); d["evidence"] = hv[k].evidence; d["counterexample_scenario"] = Json::parse(hv[k].scenario); dropped.push(d); }
   }
 
   Json report = Json::object();
@@ -138,7 +141,7 @@ int main(int argc, char** argv) {
   report["clean_validation_runs"] = clean_n; report["heldout_clean_runs"] = heldout_n; report["hunt_scenarios_per_bug"] = hunt_n;
   Json acc = Json::array(), rej = Json::array(), prob = Json::array();
   for (const Invariant& i : final_set) acc.push(to_json(i));
-  for (size_t k = 0; k < rejected_all.size(); ++k) { Json d = to_json(rejected_all[k]); d["evidence"] = rejected_evidence[k]; rej.push(d); }
+  for (size_t k = 0; k < rejected_all.size(); ++k) { Json d = to_json(rejected_all[k]); d["evidence"] = rejected_evidence[k]; d["counterexample_scenario"] = Json::parse(rejected_scenarios[k]); rej.push(d); }
   for (const std::string& p : problems) prob.push(p);
   report["accepted"] = acc; report["rejected_on_clean"] = rej; report["dropped_on_heldout_clean"] = dropped; report["parse_problems"] = prob;
 

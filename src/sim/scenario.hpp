@@ -1,6 +1,7 @@
 // Scenario description: everything needed to reproduce a run together with the seed.
 #pragma once
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,11 @@ struct TrafficEvent {
   int duration = 10;  // seconds (ignored for pedestrian requests)
   bool operator==(const TrafficEvent& o) const { return t == o.t && kind == o.kind && approach == o.approach && duration == o.duration; }
 };
+// Generic domain: any simulator described by a model card (src/sim/generic.hpp); the scenario is a bag of named parameters.
+struct GenericDef {
+  std::map<std::string, double> params;  // choice parameters are stored as the index of the chosen option
+  bool operator==(const GenericDef& o) const { return params == o.params; }
+};
 struct TrafficDef {
   double arrival[4] = {0.1, 0.1, 0.1, 0.1};  // vehicles per second arriving at N, E, S, W
   int green_ns = 20, green_ew = 20;          // nominal green seconds
@@ -99,6 +105,7 @@ struct Scenario {
   ControllerDef ctrl;
   CartPoleDef cp;
   TrafficDef tr;
+  GenericDef gen;
 };
 
 // Public limits of the scenario space (given to testers and to the model as part of the spec).

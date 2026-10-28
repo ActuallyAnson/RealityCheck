@@ -14,6 +14,7 @@
 #include <stdexcept>
 
 #include "sim/cartpole.hpp"
+#include "sim/generic.hpp"
 #include "sim/orbit.hpp"
 
 namespace rc {
@@ -99,6 +100,25 @@ double num(const Json& v) {
 Trace to_trace(const Scenario& sc, const Json& reply) {
   if (!reply.bool_or("ok", false))
     throw std::runtime_error("external simulator error: " + reply.str_or("error", "unspecified"));
+  if (sc.domain == "generic") {  // {"ok":true,"signals":{name:[step 0 .. step N], ...}}
+    const GenericModel& gm = generic_model();
+    const Json& sigs = need(reply, "signals");
+    Trace gt;
+    std::vector<const Json::Arr*> cols;
+    for (const SignalInfo& si : gm.signals) {
+      if (!sigs.has(si.name)) throw std::runtime_error("external simulator reply lacks signal \"" + si.name + "\"");
+      const Json::Arr& a = sigs.at(si.name).arr();
+      if (static_cast<int>(a.size()) != sc.steps + 1)
+        throw std::runtime_error("signal " + si.name + " has " + std::to_string(a.size()) + " values, expected " + std::to_string(sc.steps + 1));
+      cols.push_back(&a);
+    }
+    for (int k = 0; k <= sc.steps; ++k) {
+      StepRecord r;
+      for (const Json::Arr* c : cols) r.body.push_back({num((*c)[static_cast<size_t>(k)]), 0, 0, 0});
+      gt.rec.push_back(std::move(r));
+    }
+    return gt;
+  }
   const Json::Arr& frames = need(reply, "frames").arr();
   if (static_cast<int>(frames.size()) != sc.steps + 1)
     throw std::runtime_error("external simulator returned " + std::to_string(frames.size()) + " frames, expected " +

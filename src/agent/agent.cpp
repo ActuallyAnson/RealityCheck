@@ -1,5 +1,7 @@
 #include "agent/agent.hpp"
 
+#include "sim/generic.hpp"
+
 #include <cmath>
 #include <fstream>
 #include <regex>
@@ -107,6 +109,12 @@ bool extract_json_object(const std::string& text, Json* out) {
 
 double field_value(const Scenario& sc, const StepRecord& rec, int body, const std::string& f, bool* ok) {
   *ok = true;
+  if (sc.domain == "generic") {  // a citation names one of the model card's signals
+    const GenericModel& gm = generic_model();
+    for (size_t i = 0; i < gm.signals.size() && i < rec.body.size(); ++i) if (gm.signals[i].name == f) return rec.body[i].x;
+    *ok = false;
+    return 0;
+  }
   if (f == "energy") return rec.energy;
   if (sc.domain == "traffic") {  // per-approach values: body = approach index
     if (body < 0 || body >= static_cast<int>(rec.body.size())) { *ok = false; return 0; }

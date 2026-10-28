@@ -25,7 +25,7 @@ Json err(const std::string& m) {
   return j;
 }
 
-bool known_domain(const std::string& d) { return d == "rigid2d" || d == "orbit" || d == "cartpole" || d == "traffic"; }
+bool known_domain(const std::string& d) { return d == "rigid2d" || d == "orbit" || d == "cartpole" || d == "traffic" || d == "generic"; }
 
 struct Ctx {
   std::string domain;

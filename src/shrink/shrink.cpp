@@ -1,5 +1,7 @@
 #include "shrink/shrink.hpp"
 
+#include "sim/generic.hpp"
+
 #include <cmath>
 #include <functional>
 
@@ -121,6 +123,21 @@ ShrinkResult shrink(const Scenario& sc, const FailFn& fails, int max_attempts) {
       progress |= s.try_field([](Scenario& c) { c.tr.green_ns = std::max(8, c.tr.green_ns / 2); });
       progress |= s.try_field([](Scenario& c) { c.tr.green_ew = std::max(8, c.tr.green_ew / 2); });
       progress |= s.try_field([](Scenario& c) { c.tr.actuated = true; });
+    }
+    if (s.cur.domain == "generic") {
+      // each parameter toward its declared default, then halfway, then rounded; the seed to 1
+      const GenericModel& gm = generic_model();
+      for (const GenericParam& gp : gm.params) {
+        const std::string name = gp.name;
+        const double def = gp.def;
+        progress |= s.try_field([name, def](Scenario& c) { c.gen.params[name] = def; });
+        progress |= s.try_field([name, def, &gp](Scenario& c) {
+          double v = c.gen.params[name], h = def + (v - def) / 2;
+          c.gen.params[name] = gp.type == "float" ? h : std::round(h);
+        });
+        if (gp.type == "float") progress |= s.try_field([name](Scenario& c) { c.gen.params[name] = std::round(c.gen.params[name] * 10) / 10; });
+      }
+      progress |= s.try_field([](Scenario& c) { c.seed = 1; });
     }
     if (s.cur.domain == "cartpole") {
       for (size_t i = s.cur.cp.pushes.size(); i-- > 0;)

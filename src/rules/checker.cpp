@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "sim/orbit.hpp"
+#include "sim/generic.hpp"
 #include "sim/traffic.hpp"
 
 namespace rc {
@@ -32,6 +33,7 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
       {"yellow_duration", "A green always ends in yellow, and every yellow lasts at least yellow_seconds before red."},
       {"max_wait", "No approach waits at red with vehicles queued for more than 200 seconds."},
   };
+  if (domain == "generic") return generic_rule_catalog();
   if (domain == "orbit") return orbit_cat;
   if (domain == "traffic") return traffic_cat;
   if (domain == "cartpole") return cart_cat;
@@ -209,6 +211,7 @@ std::string fmt(const char* f, double a, double b, double c) {
 }  // namespace
 
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec) {
+  if (sc.domain == "generic") return check_generic_rules(sc, tr);
   if (sc.domain == "orbit") return check_orbit_rules(sc, tr);
   if (sc.domain == "cartpole") return check_cartpole_rules(sc, tr);
   if (sc.domain == "traffic") return check_traffic_rules(sc, tr);
@@ -279,7 +282,7 @@ std::map<std::string, double> rule_margins(const Scenario& sc, const Trace& tr) 
     auto it = m.find(rule);
     if (it == m.end() || v > it->second) m[rule] = v;
   };
-  if (tr.rec.empty()) return m;
+  if (tr.rec.empty() || sc.domain == "generic") return m;
   const StepRecord& r0 = tr.rec[0];
   if (sc.domain == "traffic") {
     for (const StepRecord& r : tr.rec)

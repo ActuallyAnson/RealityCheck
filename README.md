@@ -42,6 +42,7 @@ Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capp
 
 | Piece | What it does |
 |---|---|
+| Any simulator | a JSON model card + a program that prints named signals per step: the hunt, shrinker, agent and spec-to-rules run on it with no C++ domain (`docs/GENERIC_DOMAIN.md`) |
 | Four domains | rigid-body physics (13 seeded bugs), orbits (3), cart-pole control (3), a traffic-signal state machine (3); same tools, rules, shrinker and agent |
 | Tester agent | v1 (frozen) and v2 (counterfactual-checked reports, frames in the loop); a triage mode that explains a failure found by a fuzzer |
 | Deterministic tools | `run_scenario`, `check_rules`, `inspect_state`, `render_frames`, `shrink`, `replay`; also as a local HTTP API and an MCP server, no model needed (`docs/API.md`) |

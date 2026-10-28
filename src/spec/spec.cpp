@@ -5,11 +5,13 @@
 #include <set>
 #include <sstream>
 
+#include "sim/generic.hpp"
 #include "tools/tools.hpp"
 
 namespace rc {
 
 const std::vector<SignalInfo>& signal_catalog(const std::string& domain, int language) {
+  if (domain == "generic") return generic_model().signals;
   if (language >= 2 && domain == "traffic") {
     static const std::vector<SignalInfo> t2 = [] {
       std::vector<SignalInfo> v = signal_catalog("traffic");
@@ -56,6 +58,7 @@ const std::vector<SignalInfo>& signal_catalog(const std::string& domain) {
 }
 
 Signals extract_signals(const Scenario& sc, const Trace& tr) {
+  if (sc.domain == "generic") return generic_signals(sc, tr);
   Signals s;
   const std::string& d = sc.domain;
   for (const StepRecord& r : tr.rec) {
