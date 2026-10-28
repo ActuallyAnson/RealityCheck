@@ -123,3 +123,6 @@ target_link_libraries(rc_repair rc_core)
 
 add_executable(rc_strictcheck src/eval/strictcheck_main.cpp)
 target_link_libraries(rc_strictcheck rc_core)
+
+add_executable(rc_plant src/eval/plant_main.cpp)
+target_link_libraries(rc_plant rc_core)
