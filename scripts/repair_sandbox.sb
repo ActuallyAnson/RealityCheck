@@ -1,0 +1,6 @@
+(version 1)
+; Profile for running a model-written build of a simulator (docs/REPAIR.md): everything allowed except network, file writes (the shell has already opened stdout) and forking.
+(allow default)
+(deny network*)
+(deny file-write*)
+(deny process-fork)
