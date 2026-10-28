@@ -53,3 +53,11 @@ a member call or traffic's own `int signal(` accessor (the original traffic regi
 
 All 18 restored (52 of 53 in the two runs together, the single exception being cart-pole `m001`). Region size is therefore **not** what makes repair hard here: a one-token change is easy to find even in 232 lines when the failing scenario and the violated rule are given. What would be harder
 and is not yet tested: several simultaneous changes, no region hint, and mutants that break no declared rule (there the loop has nothing to trigger on, which is the oracle gap in `docs/MUTATION.md`). Raw rows: `results/repair/{traffic,rigid2d}/repair.json`.
+
+## Third run: two simultaneous changes and no region hint (design fixed before the run)
+
+Everything so far repaired one-token mutants in a region the model was pointed at. Two harder variants, on cart-pole and traffic (cheap simulators), with **fresh** mutants: 30 per domain, **two** simultaneous mutations on distinct lines, sampling seed 2 (`scripts/run_mutation2.sh`, `rc_mutgen --order 2`),
+generated and scored by the same benchmark code; only those a declared rule catches are repaired.
+- Arm A: the same regions as the first run (cart-pole 94-139,147-197; traffic 112-253), same prompt, 2 attempts.
+- Arm B (no hint): the region is the entire body of the source file after its `#include` lines (cart-pole and traffic: from the first line after the includes to the end), so the model is not told where to look.
+Same model, effort, pool (300), budget ($2 per arm per domain). Outcomes as before; the result is whatever comes out, appended below.
