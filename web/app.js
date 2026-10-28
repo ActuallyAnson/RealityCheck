@@ -140,7 +140,12 @@ async function loadIndex() {
   const idx = await (await fetch("data/index.json")).json();
   S.index = idx;
   const sel = $("#runSel"); sel.innerHTML = "";
-  for (const r of idx) { const o = el("option"); o.value = r.id; o.textContent = `${r.id}${r.status === "failure_reported" ? "" : " (" + r.status.replace(/_/g, " ") + ")"}`; sel.appendChild(o); }
+  const DOMAINS = { rigid2d: "Rigid bodies", orbit: "Orbits", cartpole: "Cart-pole" }, groups = {};
+  for (const r of idx) {
+    const dom = r.domain || ({ o: "orbit", c: "cartpole" }[(r.bug || r.id)[0]] || "rigid2d");
+    if (!groups[dom]) { groups[dom] = el("optgroup"); groups[dom].label = DOMAINS[dom] || dom; sel.appendChild(groups[dom]); }
+    const o = el("option"); o.value = r.id; o.textContent = `${r.id}${r.status === "failure_reported" ? "" : " (" + r.status.replace(/_/g, " ") + ")"}`; groups[dom].appendChild(o);
+  }
   const want = new URLSearchParams(location.search).get("run");
   const first = idx.find((r) => r.id === want) || idx.find((r) => r.status === "failure_reported") || idx[0];
   sel.value = first.id;
