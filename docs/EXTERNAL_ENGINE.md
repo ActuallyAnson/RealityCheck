@@ -35,3 +35,18 @@ Environment: Box2D 3.2.0 from Homebrew on macOS (arm64); counts depend on the ve
 
 Not used: Chipmunk2D 7.0.3 (Homebrew bottle). On this machine `cpSpaceStep` never returns once a static shape exists,
 even in a 10-line program (stuck in `FloodFillComponent`), so no results were taken from it. Not investigated further.
+
+## Tooling since the first version
+- `rc_box2d` became `rc_hunt --engine box2d|box2d-noccd` (same numbers: 889/199 flagged with continuous collision on,
+  checked after the refactor). `rc_hunt` works for any engine spec and writes a regression bundle per rule (`--bundles`).
+- `rc_repro export|check` turns a found failure (agent report or hunt) into `scenario.json` + `expected.json` +
+  `test.sh`; exit code 1 means the failure reproduces, 0 that the rule holds, with `--junit` for CI.
+- `rc_diff` compares two engines on the same scenarios (no rules needed). Findings, all with the built-in orbit
+  simulator as one side, tolerance 0.1, first 1 s of each run, 300 random scenarios:
+  - independent fixed-step integrator, 0.004 s substep: 0 disagreements (the two implementations agree);
+  - same integrator, 0.03 s substep: 28 disagreements;
+  - the seeded `o02` bug versus clean: 5 disagreements (the rule-based check finds it in about 26 of 400; the oracle
+    needs no rules but is less sensitive);
+  - limit: contact-dynamics systems are chaotic, so two different rigid-body engines disagree in most scenarios
+    (built-in vs Box2D: 359 of 400 at tolerance 0.5), which is noise, not bugs. Differential testing needs engines that
+    are numerically close, a short horizon, or a quantity that is not chaotic.
