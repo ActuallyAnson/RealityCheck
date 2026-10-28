@@ -151,6 +151,8 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line-2); border-bottom-wid
 
 /* simple view (default): canvases, verdict, explanation, play. Details toggle reveals the rest. */
 body.simple .pipe span, body.simple #keys, body.simple .plotwrap, body.simple .meter,
-body.simple .transport .field, body.simple #stepRead, body.simple .feedlist, body.simple .liveinfo { display: none; }
+body.simple .transport .field, body.simple #stepRead { display: none; }
 body.simple .evlist .sec:nth-child(n+3) { display: none; }
 body.simple #runView { grid-template-columns: minmax(230px, 20%) minmax(0, 1fr) minmax(300px, 28%); }
+body.simple .feedlist .card:not(:nth-last-child(-n+3)) { display: none; }
+body.simple .feedlist { max-height: 260px; flex: none; }
