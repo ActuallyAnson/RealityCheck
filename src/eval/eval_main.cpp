@@ -66,6 +66,8 @@ struct AgentEvalOpts {
   double total_budget = 6.0, run_budget = 0.25;
   int max_turns = 25;
   bool live = false;
+  int agent_version = 1;  // 1 = frozen original agent, 2 = counterfactual-checked reports
+  bool vision = true;     // v2 only: show rendered frames in the loop
   std::string only_bug;  // optional: restrict to one bug id (smoke / debugging)
 };
 
@@ -124,6 +126,8 @@ Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, 
   ac.native_tools = api.native_tools;
   ac.max_turns = o.max_turns;
   ac.reasoning_effort = o.reasoning_effort;
+  ac.version = o.agent_version;
+  ac.vision_in_loop = o.vision;
   ac.out_dir = dir;
   std::ofstream events(dir + "/events.jsonl", std::ios::trunc);
 
@@ -151,12 +155,20 @@ Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, 
   row["api_calls"] = model.calls();
   row["api_latency_ms"] = model.total_latency_ms();
   row["wall_ms"] = wall_ms;
+  row["agent_version"] = o.agent_version;
+  row["vision_in_loop"] = o.agent_version >= 2 && o.vision;
   row["vision_done"] = res.vision_done;
   row["vision_agrees"] = res.vision_agrees;
   if (res.report_valid) {
     row["rule"] = res.rule;
     row["explanation"] = res.explanation;
     row["shrunk_size"] = scenario_size(scenario_from_json(res.minimal_scenario));
+    if (o.agent_version >= 2 && res.counterfactual.is_object()) {
+      row["counterfactual_paths"] = res.counterfactual.at("changed_paths");
+      std::vector<std::string> ch;
+      for (const auto& p : res.counterfactual.at("changed_paths").arr()) ch.push_back(p.str());
+      if (pr.bug != "none") row["cause_localized"] = counterfactual_localizes(truth, pr.bug, ch);
+    }
     if (pr.bug != "none") {
       const Json& gt = truth.at("bugs").at(pr.bug);
       bool rule_expected = false;
@@ -302,6 +314,8 @@ int main(int argc, char** argv) {
     else if (a == "--max-turns") ao.max_turns = std::atoi(v.c_str());
     else if (a == "--reasoning-effort") ao.reasoning_effort = v;
     else if (a == "--only-bug") ao.only_bug = v;
+    else if (a == "--agent-version") ao.agent_version = std::atoi(v.c_str());
+    else if (a == "--vision") ao.vision = v != "0";
     else if (a == "--append") append = v == "1";  // export: keep index rows from earlier exports
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }

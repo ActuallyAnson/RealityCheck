@@ -17,7 +17,7 @@ Json prop(const char* type, const char* desc) {
   return p;
 }
 
-Json report_tool_spec() {
+Json report_tool_spec(int version = 1) {
   Json cp = Json::object();
   cp["step"] = prop("integer", "A step that exists in the shrunk scenario.");
   cp["body"] = prop("integer", "Body index, or -1 for whole-system values such as energy.");
@@ -39,11 +39,25 @@ Json report_tool_spec() {
   props["rule"] = prop("string", "The violated rule id.");
   props["explanation"] = prop("string", "Likely cause of the failure, grounded in the cited steps.");
   props["citations"] = citations;
+  if (version >= 2) {
+    Json cf = Json::object();
+    cf["scenario_id"] = prop("string", "Id of a scenario you ran that differs from the shrunk scenario by ONE change (at most two fields) and does NOT violate the rule.");
+    cf["change"] = prop("string", "What you changed, and why you think it removes the failure.");
+    Json cfp = Json::object();
+    cfp["type"] = "object";
+    cfp["properties"] = cf;
+    Json cfr = Json::array();
+    cfr.push("scenario_id");
+    cfp["required"] = cfr;
+    cfp["description"] = "Your causal test: the single change that makes the failure disappear.";
+    props["counterfactual"] = cfp;
+  }
   Json params = Json::object();
   params["type"] = "object";
   params["properties"] = props;
   Json req = Json::array();
   for (const char* r : {"scenario_id", "rule", "explanation", "citations"}) req.push(r);
+  if (version >= 2) req.push("counterfactual");
   params["required"] = req;
   Json f = Json::object();
   f["name"] = "submit_report";
@@ -54,9 +68,9 @@ Json report_tool_spec() {
   return f;
 }
 
-Json all_tools(const std::string& domain = "rigid2d") {
+Json all_tools(const std::string& domain = "rigid2d", int version = 1) {
   Json t = tool_specs(domain);
-  t.push(report_tool_spec());
+  t.push(report_tool_spec(version));
   return t;
 }
 
@@ -188,7 +202,7 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
   return c;
 }
 
-std::string system_prompt(bool native_tools, const std::string& domain) {
+std::string system_prompt(bool native_tools, const std::string& domain, int version) {
   std::string p =
       "You are RealityCheck, an adversarial tester for a physics simulation. Your job is to find scenarios where the "
       "simulation breaks its declared rules, confirm them, and explain the likely cause.\n\n" +
@@ -211,7 +225,18 @@ std::string system_prompt(bool native_tools, const std::string& domain) {
   } else {
     p += "\nACTION PROTOCOL\nReply with exactly one JSON object and nothing else: {\"tool\": \"<name>\", \"args\": {...}}. "
          "The next message will contain the tool result. Available tools:\n" +
-         all_tools(domain).dump() + "\n";
+         all_tools(domain, version).dump() + "\n";
+  }
+  if (version >= 2) {
+    p +=
+        "\nVERSION 2 PROCEDURE (in addition to the above)\n"
+        "- Keep a short running ledger in your text before each action: the hypotheses still open, the ones ruled out and why.\n"
+        "- After shrink, do not stop at 'it fails'. Test your explanation by intervention: run_scenario on the shrunk scenario with ONE "
+        "change (at most two fields) that you predict removes the failure. That scenario must run the same number of steps. If it still "
+        "fails, your hypothesis is wrong: revise it.\n"
+        "- submit_report must include `counterfactual` with the id of that passing scenario. It is rejected if the scenario does not "
+        "exist, still violates the rule, differs from the shrunk scenario in more than two fields, or is too short to show the failure.\n"
+        "- render_frames output may be shown to you as an image: use it to check that your picture of what happens matches the numbers.\n";
   }
   return p;
 }
@@ -236,7 +261,7 @@ struct Loop {
     ModelRequest r;
     r.model = cfg.model;
     r.messages = msgs;
-    if (cfg.native_tools) r.tools = all_tools(cfg.domain);
+    if (cfg.native_tools) r.tools = all_tools(cfg.domain, cfg.version);
     r.max_tokens = cfg.max_tokens;
     r.reasoning_effort = cfg.reasoning_effort;
     return r;
@@ -256,6 +281,37 @@ struct Loop {
     msgs.push_back(m);
   }
 
+  // v2: the counterfactual must be a passing, one-change variant of the shrunk scenario, run for long enough.
+  bool check_counterfactual(const ToolSession::Entry& run, const std::string& id, const Json& args, Json* out_cf,
+                            std::vector<std::string>* problems) {
+    if (!args.has("counterfactual") || !args.at("counterfactual").is_object() || !args.at("counterfactual").has("scenario_id")) {
+      problems->push_back("counterfactual.scenario_id is required");
+      return false;
+    }
+    const Json& cf = args.at("counterfactual");
+    std::string cid = cf.str_or("scenario_id", "");
+    const ToolSession::Entry* c = tools.record(cid);
+    if (!c) { problems->push_back("counterfactual: unknown scenario_id " + cid); return false; }
+    if (cid == id) { problems->push_back("counterfactual must differ from the shrunk scenario"); return false; }
+    std::string rule = args.str_or("rule", "");
+    for (const auto& v : c->viol)
+      if (v.rule == rule) { problems->push_back("counterfactual still violates " + rule + " (at step " + std::to_string(v.step) + "): your hypothesis does not remove the failure"); return false; }
+    int vstep = 0;
+    for (const auto& v : run.viol) if (v.rule == rule) { vstep = v.step; break; }
+    if (c->sc.steps < vstep) { problems->push_back("counterfactual runs only " + std::to_string(c->sc.steps) + " steps, before the failure step " + std::to_string(vstep)); return false; }
+    std::vector<std::string> paths = scenario_diff(to_json(run.sc), to_json(c->sc));
+    if (paths.empty()) { problems->push_back("counterfactual is identical to the shrunk scenario"); return false; }
+    if (paths.size() > 2) { problems->push_back("counterfactual changes " + std::to_string(paths.size()) + " fields; change at most two"); return false; }
+    Json o = Json::object();
+    o["scenario_id"] = cid;
+    o["change"] = cf.str_or("change", "");
+    Json pj = Json::array();
+    for (const auto& p : paths) pj.push(p);
+    o["changed_paths"] = pj;
+    *out_cf = o;
+    return true;
+  }
+
   // Handles submit_report. Returns true when the report was accepted.
   bool handle_report(const ToolCall& call, const Json& args) {
     ++res.report_attempts;
@@ -272,6 +328,14 @@ struct Loop {
       return false;
     }
     CitationCheck chk = validate_report(*run, tools.is_shrunk(id), args);
+    Json cf_ok;
+    if (cfg.version >= 2) {
+      std::vector<std::string> cfp;
+      if (!check_counterfactual(*run, id, args, &cf_ok, &cfp)) {
+        chk.ok = false;
+        for (auto& p : cfp) chk.problems.push_back(p);
+      }
+    }
     if (!chk.ok) {
       Json probs = Json::array();
       for (const auto& s : chk.problems) probs.push(s);
@@ -288,6 +352,7 @@ struct Loop {
     res.rule = args.str_or("rule", "");
     res.explanation = args.str_or("explanation", "");
     res.minimal_scenario = to_json(run->sc);
+    if (cfg.version >= 2) res.counterfactual = cf_ok;
     for (const auto& v : run->viol) if (v.rule == res.rule) { res.violation = to_json(v); break; }
     for (const Json& cj : args.at("citations").arr()) {
       Citation c;
@@ -362,7 +427,7 @@ struct Loop {
   AgentResult run() {
     ChatMessage sys;
     sys.role = "system";
-    sys.content = system_prompt(cfg.native_tools, cfg.domain);
+    sys.content = system_prompt(cfg.native_tools, cfg.domain, cfg.version);
     msgs.push_back(sys);
     ChatMessage task;
     task.role = "user";
@@ -447,6 +512,20 @@ struct Loop {
       rev["result"] = result;
       emit("tool_result", rev);
       add_tool_result(call, result);
+      if (cfg.version >= 2 && cfg.vision_in_loop && call.name == "render_frames" && result.bool_or("ok", false) && result.has("path")) {
+        std::ifstream f(result.at("path").str(), std::ios::binary);
+        std::vector<uint8_t> png((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        if (!png.empty()) {
+          ChatMessage im;
+          im.role = "user";
+          im.images_b64.push_back(base64_encode(png));
+          im.content = "The frames you just rendered (blue = bodies; read them against the numbers).";
+          msgs.push_back(im);
+          Json iev = Json::object();
+          iev["note"] = "frames attached to the conversation";
+          emit("frames_shown", iev);
+        }
+      }
       if (tools.budget_exhausted() && !tools.has_failure()) { res.stop_reason = "tool_budget"; break; }
     }
     if (res.stop_reason.empty()) res.stop_reason = "turns";
@@ -457,6 +536,31 @@ struct Loop {
 };
 
 }  // namespace
+
+namespace {
+void diff_rec(const Json& a, const Json& b, const std::string& path, std::vector<std::string>* out) {
+  if (a.is_object() && b.is_object()) {
+    for (const auto& kv : a.obj()) {
+      std::string p = path.empty() ? kv.first : path + "." + kv.first;
+      if (!b.has(kv.first)) out->push_back(p);
+      else diff_rec(kv.second, b.at(kv.first), p, out);
+    }
+    for (const auto& kv : b.obj()) if (!a.has(kv.first)) out->push_back(path.empty() ? kv.first : path + "." + kv.first);
+  } else if (a.is_array() && b.is_array()) {
+    size_t n = std::min(a.arr().size(), b.arr().size());
+    if (a.arr().size() != b.arr().size()) out->push_back(path + ".length");
+    for (size_t i = 0; i < n; ++i) diff_rec(a.arr()[i], b.arr()[i], path + "[" + std::to_string(i) + "]", out);
+  } else if (a.dump() != b.dump()) {
+    out->push_back(path);
+  }
+}
+}  // namespace
+
+std::vector<std::string> scenario_diff(const Json& a, const Json& b) {
+  std::vector<std::string> out;
+  diff_rec(a, b, "", &out);
+  return out;
+}
 
 AgentResult run_agent(BudgetedModel& model, ToolSession& tools, const AgentConfig& cfg, const EventSink& sink) {
   Loop l{model, tools, cfg, sink, AgentResult(), {}};
@@ -492,6 +596,7 @@ Json agent_result_to_json(const AgentResult& r) {
   j["vision_note"] = r.vision_note;
   j["vision_agrees"] = r.vision_agrees;
   j["vision_done"] = r.vision_done;
+  if (r.counterfactual.is_object()) j["counterfactual"] = r.counterfactual;
   return j;
 }
 

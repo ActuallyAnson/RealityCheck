@@ -34,6 +34,8 @@ struct AgentConfig {
   int max_report_attempts = 3;
   int max_tokens = 4096;
   std::string domain = "rigid2d";    // which simulation the tools expose
+  int version = 1;                   // 1 = original agent (frozen); 2 = counterfactual-checked reports + frames shown in the loop
+  bool vision_in_loop = true;        // v2 only: attach rendered frames to the conversation (false = the ablation arm)
   std::string reasoning_effort;      // "" = omit
   std::string out_dir = ".";
   size_t tool_result_chars = 6000;
@@ -55,11 +57,14 @@ struct AgentResult {
   std::string vision_note;           // what the model saw in the rendered frames
   bool vision_agrees = false;
   bool vision_done = false;
+  Json counterfactual;               // v2: {scenario_id, change, changed_paths}
 };
 
 using EventSink = std::function<void(const Json&)>;
 
-std::string system_prompt(bool native_tools, const std::string& domain = "rigid2d");
+std::string system_prompt(bool native_tools, const std::string& domain = "rigid2d", int version = 1);
+// Paths (e.g. "plant.pole_length", "bodies[1].m") at which two scenario JSON documents differ; numbers compare exactly.
+std::vector<std::string> scenario_diff(const Json& a, const Json& b);
 AgentResult run_agent(BudgetedModel& model, ToolSession& tools, const AgentConfig& cfg, const EventSink& sink = nullptr);
 Json agent_result_to_json(const AgentResult& r);
 // Writes report.json and trace.json (replayable state history for the web viewer) into dir.

@@ -56,6 +56,26 @@ inline int domain_bug_index(const std::string& domain, const std::string& id) {
   return bug_index(id);
 }
 
+// True when one of the changed scenario paths matches a trigger field of the bug (see data/ground_truth.json).
+inline bool counterfactual_localizes(const Json& ground_truth, const std::string& bug_id, const std::vector<std::string>& changed) {
+  const Json& g = ground_truth.at("bugs").at(bug_id);
+  if (!g.has("trigger_fields")) return false;
+  for (std::string p : changed) {
+    std::string norm;  // "bodies[1].m" -> "bodies[*].m"
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i] == '[' && i + 1 < p.size() && std::isdigit(static_cast<unsigned char>(p[i + 1]))) {
+        norm += "[*]";
+        while (i < p.size() && p[i] != ']') ++i;
+      } else norm += p[i];
+    }
+    for (const auto& t : g.at("trigger_fields").arr()) {
+      const std::string& pat = t.str();
+      if (norm == pat || (norm.size() > pat.size() && norm.compare(0, pat.size(), pat) == 0 && (norm[pat.size()] == '.' || norm[pat.size()] == '['))) return true;
+    }
+  }
+  return false;
+}
+
 // True when the text contains at least one keyword from every keyword group of the bug's ground truth
 // (case-insensitive substring match). Deliberately simple and transparent; scoring is reported with the text.
 inline bool explanation_names_cause(const Json& ground_truth, const std::string& bug_id, std::string text) {

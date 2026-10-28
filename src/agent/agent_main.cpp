@@ -43,6 +43,8 @@ int main(int argc, char** argv) {
     else if (a == "--max-tool-calls") tb.max_tool_calls = std::atoi(val().c_str());
     else if (a == "--max-turns") ac.max_turns = std::atoi(val().c_str());
     else if (a == "--reasoning-effort") ac.reasoning_effort = val();
+    else if (a == "--agent-version") ac.version = std::atoi(val().c_str());
+    else if (a == "--no-vision") ac.vision_in_loop = false;
     else if (a == "--out") out = val();
     else if (a == "--record") record = val();
     else { std::cerr << "unknown option " << a << "\n"; return 2; }

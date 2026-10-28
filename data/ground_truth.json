@@ -24,6 +24,13 @@
           "miss",
           "threshold"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].vx",
+        "bodies[*].vy",
+        "walls[*].w",
+        "walls[*].h",
+        "walls.length"
       ]
     },
     "b02": {
@@ -44,6 +51,9 @@
           "time step",
           "timestep"
         ]
+      ],
+      "trigger_fields": [
+        "dt"
       ]
     },
     "b03": {
@@ -73,6 +83,9 @@
           "kick",
           "blow"
         ]
+      ],
+      "trigger_fields": [
+        "dt"
       ]
     },
     "b04": {
@@ -93,6 +106,14 @@
           "shallow",
           "penetrat"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].x",
+        "bodies[*].y",
+        "bodies[*].vx",
+        "bodies[*].vy",
+        "bodies[*].r",
+        "walls"
       ]
     },
     "b05": {
@@ -115,6 +136,9 @@
           "greater than 1",
           "high"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].e"
       ]
     },
     "b06": {
@@ -139,6 +163,12 @@
           "kick",
           "stabiliz"
         ]
+      ],
+      "trigger_fields": [
+        "gravity",
+        "bodies[*].x",
+        "bodies[*].y",
+        "bodies.length"
       ]
     },
     "b07": {
@@ -160,6 +190,9 @@
           "energy",
           "momentum"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].m"
       ]
     },
     "b08": {
@@ -181,6 +214,9 @@
           "target",
           "approach"
         ]
+      ],
+      "trigger_fields": [
+        "controller"
       ]
     },
     "b09": {
@@ -202,6 +238,11 @@
           "distance",
           "controller"
         ]
+      ],
+      "trigger_fields": [
+        "controller",
+        "bodies[*].x",
+        "bodies[*].y"
       ]
     },
     "b10": {
@@ -225,6 +266,10 @@
           "offset",
           "edge"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].r",
+        "bodies[*].x"
       ]
     },
     "b11": {
@@ -256,6 +301,13 @@
           "speed",
           "velocity"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].vx",
+        "bodies[*].vy",
+        "bodies[*].y",
+        "dt",
+        "gravity"
       ]
     },
     "b12": {
@@ -285,6 +337,11 @@
           "penetrat",
           "sink"
         ]
+      ],
+      "trigger_fields": [
+        "walls",
+        "bodies[*].x",
+        "bodies[*].vx"
       ]
     },
     "b13": {
@@ -308,6 +365,10 @@
           "1.3",
           "30%"
         ]
+      ],
+      "trigger_fields": [
+        "controller.noise",
+        "controller.kp"
       ]
     },
     "o01": {
@@ -338,6 +399,10 @@
           "too few",
           "too large"
         ]
+      ],
+      "trigger_fields": [
+        "dt",
+        "bodies.length"
       ]
     },
     "o02": {
@@ -366,6 +431,10 @@
           "mass",
           "massive"
         ]
+      ],
+      "trigger_fields": [
+        "bodies[*].m",
+        "bodies.length"
       ]
     },
     "o03": {
@@ -399,6 +468,13 @@
           "high g",
           "large g"
         ]
+      ],
+      "trigger_fields": [
+        "G",
+        "bodies[*].x",
+        "bodies[*].y",
+        "bodies[*].vx",
+        "bodies[*].vy"
       ]
     },
     "c01": {
@@ -431,6 +507,10 @@
           "omit",
           "zero"
         ]
+      ],
+      "trigger_fields": [
+        "sensor_noise",
+        "dt"
       ]
     },
     "c02": {
@@ -458,6 +538,10 @@
           "loose",
           "exceed"
         ]
+      ],
+      "trigger_fields": [
+        "pushes",
+        "force_limit"
       ]
     },
     "c03": {
@@ -488,7 +572,13 @@
           "length",
           "ratio"
         ]
+      ],
+      "trigger_fields": [
+        "plant.pole_mass",
+        "plant.pole_length",
+        "plant.cart_mass"
       ]
     }
-  }
+  },
+  "_trigger_fields_note": "Scenario paths whose change can switch a bug's trigger condition off. A v2 counterfactual (a passing variant that differs from the shrunk scenario in at most two fields) 'localizes' the cause when one changed path matches an entry (indices written as [*]; an entry also matches deeper paths). Necessary, not sufficient: a different change can also remove a failure by luck."
 }
