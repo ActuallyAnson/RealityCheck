@@ -19,6 +19,7 @@ RealityCheck runs other people's simulators, parses untrusted JSON, calls a paid
 | Path traversal through the viewer | static files are served from one root; `..` and backslashes are refused | `src/demo/demo_main.cpp` |
 | Command injection in the model client | the only shell command built contains the curl binary, a numeric timeout and temp-file paths created by `mkstemp`; no scenario, model or user text is interpolated into it | `src/model/model.cpp` |
 | The model being steered (prompt injection through scenarios, tool results or a simulator's text) or simply wrong | the model never decides pass or fail: verdicts come from the deterministic checker; a report is accepted only if every cited step and value matches the recording and, in v2, a one-change counterfactual really passes; the tester never sees seeded-bug information (tests check the prompts) | `src/agent/agent.cpp`, `tests/test_main.cpp` |
+| Model-written code (repair loop `rc_repair`) | a denylist scan before compiling (preprocessor, process, file, network, dynamic-loading and assembly tokens), then the build runs under `sandbox-exec` with no network, no file writes and no forking, a CPU limit and a wall-clock timeout; offline self-tests show a patch that tries `std::system` is refused and creates no file | `docs/REPAIR.md`, `scripts/repair_sandbox.sb` |
 
 ## What is not defended
 
@@ -27,6 +28,9 @@ RealityCheck runs other people's simulators, parses untrusted JSON, calls a paid
 - The local API has no rate limiting and is not meant to be exposed beyond the machine.
 - `/tmp` is used for the short-lived curl config and request body (0600); on a shared multi-user machine that is a weaker place than a private directory.
 - Determinism differs between platforms (libm); a verdict on a borderline scenario could differ between macOS and Linux.
+
+- The repair loop's denylist is a token scan, not a proof, and its sandbox is macOS-only (`sandbox-exec` is deprecated); the compiler itself is not sandboxed. Do not run `rc_repair` on a machine holding secrets you cannot lose.
+- A `--build-cmd` or `--test-cmd` style repair of an arbitrary project is deliberately not offered: a project build runs arbitrary code, which needs a stronger sandbox than this one.
 
 ## Reporting
 
