@@ -48,5 +48,5 @@ or a second independent implementation (`rc_diff`). The miner remains useful whe
 | Boost.odeint rk4, substep 0.02 (energy drifts) | 1000 | 3 | 3 | 101 |
 | Boost.odeint rk4, substep 0.004 (clean) | 1000 | 1 | **0** | 0 |
 
-So on outside engines the miner is a precise but low-recall screen: nearly everything it flags is a real declared-rule violation (4 of 5 flagged on the two flawed engines, the other being the clean-engine case below), it finds roughly 1 in 10 (tank) to 1 in 35 (rk4) of the violations a declared rule finds, and it can raise a false alarm (1 of 1000 on the clean fine-step engine, where
+So on outside engines the miner is a precise but low-recall screen: all 4 scenarios it flagged on the two flawed engines (1000-scenario runs) were real declared-rule violations, it finds roughly 1 in 10 (tank) to 1 in 35 (rk4) of the violations a declared rule finds, and it can raise a false alarm (1 of 1000 on the clean fine-step engine, where
 no declared rule fires, so the 0% false-positive rate on the built-in domains is calibrated, not guaranteed). Use it as a cheap first screen where no one has written rules, not as a replacement for them.
