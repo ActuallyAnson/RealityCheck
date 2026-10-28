@@ -1,0 +1,48 @@
+{
+ "_note": "Variance study: the same failures (fuzzer seeds 1 and 2 for every bug, identical to those in eval_lock_triage.json) re-triaged by the agent twice more, to measure run-to-run variation of the unseeded model. Same agent, prompts and caps.",
+ "version": "triage-variance-1",
+ "seeds": [
+  1,
+  2
+ ],
+ "fuzzer_budget_steps": 300000,
+ "domains": {
+  "rigid2d": [
+   "b01",
+   "b02",
+   "b03",
+   "b04",
+   "b05",
+   "b06",
+   "b07",
+   "b08",
+   "b09",
+   "b10",
+   "b11",
+   "b12",
+   "b13"
+  ],
+  "orbit": [
+   "o01",
+   "o02",
+   "o03"
+  ],
+  "cartpole": [
+   "c01",
+   "c02",
+   "c03"
+  ],
+  "traffic": [
+   "t01",
+   "t02",
+   "t03"
+  ]
+ },
+ "agent": {
+  "version": 2,
+  "vision": true,
+  "max_turns": 25,
+  "reasoning_effort": "low",
+  "run_budget_usd": 0.25
+ }
+}

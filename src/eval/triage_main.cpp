@@ -12,6 +12,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include "agent/agent.hpp"
 #include "baseline/random_baseline.hpp"
@@ -92,7 +93,7 @@ bool exists(const std::string& p) { return std::ifstream(p).good(); }
 
 int main(int argc, char** argv) {
   if (argc < 2) { std::cerr << "usage: rc_triage run|summarize --lock FILE --out DIR [--live] [--no-model-only] [--total-budget-usd N]\n"; return 2; }
-  std::string mode = argv[1], lock_path = "data/eval_lock_triage.json", out = "results/triage", config = "configs/hosted.json";
+  std::string vdirs, mode = argv[1], lock_path = "data/eval_lock_triage.json", out = "results/triage", config = "configs/hosted.json";
   bool live = false, no_model_only = false;
   double total_budget = 6.0, run_budget = 0.25;
   for (int i = 2; i < argc; ++i) {
@@ -100,7 +101,7 @@ int main(int argc, char** argv) {
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--lock") lock_path = val(); else if (a == "--out") out = val(); else if (a == "--live") live = true;
     else if (a == "--no-model-only") no_model_only = true; else if (a == "--total-budget-usd") total_budget = std::atof(val().c_str());
-    else if (a == "--run-budget-usd") run_budget = std::atof(val().c_str()); else if (a == "--config") config = val();
+    else if (a == "--run-budget-usd") run_budget = std::atof(val().c_str()); else if (a == "--config") config = val(); else if (a == "--dirs") vdirs = val();
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   Json lock = Json::parse(read_file(lock_path));
@@ -181,6 +182,34 @@ int main(int argc, char** argv) {
                 << (row.has("baseline_localized") ? (row.bool_or("baseline_localized", false) ? " baseline:localized" : " baseline:missed") : "") << "\n";
       std::cout.flush();
     }
+    return 0;
+  }
+  if (mode == "variance") {  // rc_triage variance --dirs results/triage,results/triage_rep1,... : how much does the same failure's outcome vary between model runs?
+    std::vector<std::string> dirs;
+    { std::stringstream ss(vdirs); std::string d; while (std::getline(ss, d, ',')) if (!d.empty()) dirs.push_back(d); }
+    int failures = 0, flips = 0, always = 0, never = 0, valid_total = 0, runs_total = 0;
+    std::vector<int> loc(dirs.size(), 0), runs(dirs.size(), 0);
+    for (auto& pb : plan) for (uint64_t sd : seeds) {
+      std::vector<int> outcome;  // 1 localized, 0 not, per directory that has this run
+      for (size_t di = 0; di < dirs.size(); ++di) {
+        std::string f = dirs[di] + "/runs/" + pb.second + "_" + std::to_string(sd) + ".json";
+        if (!exists(f)) continue;
+        Json row = Json::parse(read_file(f));
+        if (row.str_or("status", "") != "triaged" || !row.has("agent_report_valid")) continue;
+        bool l = row.bool_or("agent_localized", false);
+        outcome.push_back(l);
+        ++runs[di]; loc[di] += l; ++runs_total; valid_total += row.bool_or("agent_report_valid", false);
+      }
+      if (outcome.size() != dirs.size()) continue;  // only failures observed in every repetition
+      ++failures;
+      int sum = 0; for (int o : outcome) sum += o;
+      if (sum == 0) ++never; else if (sum == static_cast<int>(dirs.size())) ++always; else ++flips;
+    }
+    std::string md = "| repetition | failures | agent localized |\n|---|---|---|\n";
+    for (size_t di = 0; di < dirs.size(); ++di) md += "| " + dirs[di] + " | " + std::to_string(runs[di]) + " | " + wilson(loc[di], runs[di]) + " |\n";
+    md += "\nSame failures in every repetition: " + std::to_string(failures) + ". Localized in every repetition: " + std::to_string(always) + "; in none: " + std::to_string(never) +
+          "; in some but not all (the outcome changes between model runs): " + std::to_string(flips) + ". Valid reports: " + std::to_string(valid_total) + " of " + std::to_string(runs_total) + " runs.\n";
+    std::cout << md;
     return 0;
   }
   if (mode == "summarize") {
