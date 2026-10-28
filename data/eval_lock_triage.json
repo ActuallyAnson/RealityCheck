@@ -1,0 +1,13 @@
+{
+  "_note": "LOCKED for the triage evaluation (fuzzer finds, model explains). Every bug here has been seen in earlier runs (none is fresh held-out); the evaluation tests localization of the cause on a failure found by plain random sampling, not search. Scoring is by hidden trigger fields (data/ground_truth.json), not keywords. The no-model localizer is run on the same failures. Agent: v2 in triage mode, frames in the loop, low reasoning effort, 25 turns, unchanged from the ablation. The fuzzer draws from 9000+seed; a failure that the clean simulator also shows is discarded as not attributable. Bugs the fuzzer cannot find within the step budget are reported as such.",
+  "version": "triage-1",
+  "seeds": [1, 2, 3, 4, 5],
+  "fuzzer_budget_steps": 300000,
+  "domains": {
+    "rigid2d": ["b01","b02","b03","b04","b05","b06","b07","b08","b09","b10","b11","b12","b13"],
+    "orbit": ["o01","o02","o03"],
+    "cartpole": ["c01","c02","c03"],
+    "traffic": ["t01","t02","t03"]
+  },
+  "agent": {"version": 2, "vision": true, "max_turns": 25, "reasoning_effort": "low", "run_budget_usd": 0.25}
+}

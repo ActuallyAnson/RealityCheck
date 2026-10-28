@@ -444,6 +444,20 @@ struct Loop {
         "Begin. Hunt for a rule violation in the simulation, shrink it, and submit a grounded report. Hunt budget: " +
         std::to_string(tools.budget().max_steps) + " simulated steps, " + std::to_string(tools.budget().max_tool_calls) +
         " tool calls.";
+    if (cfg.triage.is_object()) {
+      Json a = Json::object();
+      a["scenario"] = cfg.triage;
+      Json r = tools.call("run_scenario", a);
+      emit("triage_seed", r);
+      if (r.bool_or("ok", false) && r.has("first_violation")) {
+        const Json& v = r.at("first_violation");
+        task.content =
+            "A fuzzer has already found a failing scenario; do NOT hunt for new ones. It is stored as scenario_id " + r.str_or("scenario_id", "") +
+            " and violates rule " + v.str_or("rule", "") + " first at step " + std::to_string(static_cast<int>(v.num_or("step", 0))) + " (" +
+            v.str_or("detail", "") + "). Your job is triage: call shrink, then replay, inspect_state at the first violating step and a few steps before, "
+            "work out the cause, test it with one counterfactual change, and submit_report. Tool budget: " + std::to_string(tools.budget().max_tool_calls) + " calls.";
+      }
+    }
     msgs.push_back(task);
 
     int idle = 0, model_errors = 0;

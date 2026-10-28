@@ -36,6 +36,7 @@ struct AgentConfig {
   std::string domain = "rigid2d";    // which simulation the tools expose
   int version = 1;                   // 1 = original agent (frozen); 2 = counterfactual-checked reports + frames shown in the loop
   bool vision_in_loop = true;        // v2 only: attach rendered frames to the conversation (false = the ablation arm)
+  Json triage;                       // object scenario: a fuzzer already found this failing scenario; the agent only triages it (v2)
   std::string reasoning_effort;      // "" = omit
   std::string out_dir = ".";
   size_t tool_result_chars = 6000;
