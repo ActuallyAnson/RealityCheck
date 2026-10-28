@@ -12,3 +12,13 @@ jobs:
         run: cmake -S . -B build && cmake --build build -j 4
       - name: Unit and end-to-end tests
         run: ./build/rc_tests
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with AddressSanitizer and UBSan (UBSan aborts on any finding)
+        run: cmake -S . -B build_san -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -O1" && cmake --build build_san -j 4 --target rc_tests rc_fuzz
+      - name: Tests under sanitizers
+        run: ASAN_OPTIONS=detect_leaks=0 ./build_san/rc_tests
+      - name: Fuzz the parsers and the API
+        run: ASAN_OPTIONS=detect_leaks=0 ./build_san/rc_fuzz --iterations 100000 --api-iterations 500 --seed 1
