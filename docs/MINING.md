@@ -20,3 +20,19 @@ So the expectation is a modest number of mutants, concentrated in rare-condition
 - Scored on the 160 locked mutants with `rc_minescore`: a mutant is killed when its trace differs from the clean one and some scenario fires a mined invariant that the clean simulator's own mined invariants do not fire on.
 - False positives: clean evaluation-pool scenarios on which a mined invariant fires (must be 0 to be usable as an oracle).
 - No parameter or template is changed after seeing mutant results; if a result is poor it is reported as it is.
+
+## Results (run once, protocol unchanged)
+
+| domain | changed mutants | clean false positives (of 1000) | killed by mined invariants | killed by the existing oracles | mined only | silent to existing oracles | of those, caught by the miner |
+|---|---|---|---|---|---|---|---|
+| orbit | 25 | 0 | 6 | 20 | 0 | 5 | 0 |
+| cart-pole | 35 | 0 | 5 | 16 | 0 | 19 | 0 |
+| traffic | 38 | 0 | 1 | 7 | 0 | 31 | 0 |
+| rigid-body | 24 | 0 | 3 | 15 | 0 | 9 | 0 |
+| total | 122 | 0 | 15 | 58 | 0 | 64 | **0** |
+
+**Negative result.** The miner is clean (0 false positives on 4000 clean scenarios) and it catches 15 of the 122 changed mutants, but every one of those 15 was already caught by a hand-written rule, a model-written invariant or a metamorphic relation. It catches **none of the 64 that the other oracles miss**. This is exactly the limit stated before the run: the mutants that no
+rule catches are mostly always-on changes (a constant, a sign in a force term), so the mutant's own mining pool looks the same as its evaluation pool and nothing departs from "normal". Raw rows: `results/mutation/*/mined.json`; one rigid-body mutant crashed the evaluator and is counted with the others in `mutation.md`.
+
+What this says about the oracle gap: it is not closable by learning invariants from the system under test alone. Closing it needs information from outside the system: a trusted reference run (regression testing against a previous version, where a hash difference is trivially enough), physical laws written by someone who knows the domain,
+or a second independent implementation (`rc_diff`). The miner remains useful where a reference is not available and a bug shows up only in a rare regime, and as a false-positive-free first screen on a new simulator, but this benchmark does not show it finding anything the other oracles miss.
