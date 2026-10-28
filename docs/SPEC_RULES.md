@@ -69,6 +69,6 @@ Same hunt, same 22 seeded bugs, 300 scenarios each, but the invariants come from
 This is a different protocol from `docs/MINING.md`, where each mutant mined from itself: here the reference is the unmodified simulator, which is what a regression setting provides. Reproduce: `rc_spec --mined --domain D --mine-bound B --mine-drift F --mine-step S --out results/spec_mined_D` and `rc_spec compare ...` (output in `results/spec_mined_compare.md`).
 
 Bugs hit at least once: **model-written 9 of 22, mined from the clean simulator 10 of 22, either 11 of 22, hand-written rules 19 of 22.**
-The mined invariants find what the model missed where a numeric regularity exists (the orbit energy drift o01, the traffic o03-style t03 on 5 of 300 scenarios) and miss what it found by reading the description (b13, the force limit); the union adds only 1 or 2 bugs, so the gap to the hand-written rules (19) is not closed by either source or by both.
+The mined invariants find what the model missed where a numeric regularity exists (the orbit energy drift o01, the traffic bug t03 on 5 of 300 scenarios) and miss what it found by reading the description (b13, the force limit); the union adds only 1 or 2 bugs, so the gap to the hand-written rules (19) is not closed by either source or by both.
 The remaining 8 bugs that the hand-written rules catch and neither source does are the ones that need domain knowledge of what the rule is (a wall that must not be penetrated, a minimum phase duration), which is the knowledge the author supplied.
 
