@@ -15,34 +15,37 @@ Classes (a violation counts only on a scenario where the unmodified simulator pa
 - **changed, no declared rule fires**: the trace differs but every declared rule holds;
 - **killed by rules**: some declared rule is violated.
 
-## Result (160 mutants)
+## Result (160 mutants; final run, with the metamorphic arm described below)
 
-| domain | mutants | unchanged on the pool | crashed or timed out | changed, no declared rule fires | killed by hand-written rules | of the changed: killed by hand-written rules | of the changed: killed by model-written invariants | killed mutants that random testing finds in every step-budget window |
-|---|---|---|---|---|---|---|---|---|
-| orbit | 40 | 8 | 6 | 5 | 21 | 21/26 | 15/26 | 20/21 |
-| cartpole | 40 | 5 | 0 | 20 | 15 | 15/35 | 12/35 | 15/15 |
-| traffic | 40 | 2 | 0 | 31 | 7 | 7/38 | 2/38 | 7/7 |
-| rigid2d | 40 | 15 | 1 | 13 | 11 | 11/24 | 8/24 | 9/11 |
-| **all** | 160 | 30 | 7 | 69 | 54 | 54/123 | 37/123 | 51/54 |
+| domain | mutants | unchanged on the pool | crashed or timed out | changed, no declared rule fires | killed by hand-written rules | of the changed: killed by hand-written rules | of the changed: killed by model-written invariants | killed mutants that random testing finds in every step-budget window | of the changed: killed by metamorphic relations | of the changed: hand-written rules or metamorphic | of the changed: any of the three oracles |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| orbit | 40 | 8 | 7 | 5 | 20 | 20/25 | 14/25 | 19/20 | 8/25 | 20/25 | 20/25 |
+| cartpole | 40 | 5 | 0 | 20 | 15 | 15/35 | 12/35 | 15/15 | 8/35 | 16/35 | 16/35 |
+| traffic | 40 | 2 | 0 | 31 | 7 | 7/38 | 2/38 | 7/7 | 0/38 | 7/38 | 7/38 |
+| rigid2d | 40 | 15 | 1 | 13 | 11 | 11/24 | 8/24 | 9/11 | 8/24 | 14/24 | 15/24 |
+| **all** | 160 | 30 | 8 | 69 | 53 | 53/122 | 36/122 | 50/53 | 24/122 | 57/122 | 58/122 |
 
-(The "step-budget windows" are consecutive stretches of the scenario pool of at least 300000 simulated steps, the random baseline's budget; a mutant is "found in a window" if the
-first scenarios in it include a violation. 5 to 7 windows per domain.)
+(The "step-budget windows" are consecutive stretches of the scenario pool of at least 300000 simulated steps, the random baseline's budget; a mutant is "found in a window" if its scenarios
+include a violation. 5 to 7 windows per domain. Metamorphic relations are evaluated on the first 300 scenarios of the pool.)
+
+An earlier run of the same locked script, without the metamorphic arm, gave 54 rule-killed mutants and 6 orbit crashes or timeouts instead of 53 and 7: one slow orbit mutant that finished in that run hit the 10-minute
+per-mutant timeout in the final run, which does extra work per scenario. The final run is the one reported; the difference is one mutant.
 
 ## What this shows
 
-- **Sampled bugs are easy for random testing.** Of the 54 mutants a declared rule can catch, random testing finds 51 in every one of the budget windows. There is almost no headroom for a model-driven
+- **Sampled bugs are easy for random testing.** Of the 53 mutants a declared rule can catch, random testing finds 50 in every one of the budget windows. There is almost no headroom for a model-driven
   search on this kind of bug; I therefore did not spend API credits running the agent on mutants, and the earlier finding (the agent does not beat random on search) is consistent with it.
-- **The limit is the oracle, not the search.** Of the 123 mutants that change behavior, 69 (56%) violate no declared rule at all; in traffic it is 31 of 38. The hand-written rules catch 54 of the 123 (44%); the
-  model-written invariants from `docs/SPEC_RULES.md` catch 37 (30%), and the two together add about one mutant to the hand-written rules (rigid bodies: 12 with both against 11).
-  That makes "better rules" the most valuable thing a tool like this can add, and it matches why spec-to-rules and differential testing exist; the invariants as written do not yet deliver it.
-- 30 of 160 (19%) are unchanged on 1000 scenarios, and 7 crash or hang (any harness notices those; they are not rule findings).
+- **The limit is the oracle, not the search.** Of the 122 mutants that change behavior, 69 (57%) violate no declared rule. The hand-written rules catch 53 of the 122 (43%), the model-written invariants from
+  `docs/SPEC_RULES.md` catch 36 (30%), and the metamorphic relations catch 24 (20%). Together the three oracles catch 58 of 122 (48%); the metamorphic relations add only 4 mutants beyond the hand-written rules (cartpole 1, rigid bodies 3), and the model-written invariants add 1 more. **About half of the behavior-changing mutants (64 of 122) are still invisible to every oracle here, and in traffic 31 of 38 are.**
+- Metamorphic relations are not a substitute for declared rules: **perm**, **mirror** and **refine** mostly catch the same mutants the conservation rules already catch (orbit: 8 killed, 0 new), and for traffic only prefix and repeat apply, which found nothing.
+- 30 of 160 (19%) are unchanged on 1000 scenarios, and 8 crash or hang (any harness notices those; they are not rule findings).
 
 ## Caveats
 
 - One sample of 40 mutants per domain and one seed; the operator set is small (no statement deletion, no data-structure mutations). Counts of equivalent mutants are upper bounds on equivalence: a mutant
   unchanged on 1000 random scenarios may still be triggered by a rare input.
 - "Changed, no declared rule fires" is not the same as "a real bug": some of those mutants alter numerics inside the rules' tolerances and are harmless. I did not triage the 69 by hand.
-- The hand-written rules and the model-written invariants were both written before this benchmark and were not changed after seeing it.
+- The hand-written rules and the model-written invariants were both written before this benchmark and were not changed after seeing it. The metamorphic set and tolerances were fixed before the final run (see below).
 - Differential testing against an independent implementation would see every behavior change by construction when the reference is the unmodified simulator, so it is not scored here; against an independent
   implementation (as in `docs/EXTERNAL_ENGINE.md`) it is a separate and unmeasured question.
 

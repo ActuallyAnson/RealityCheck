@@ -28,9 +28,9 @@ Json orbit_to_json(const Scenario& s) {
 Scenario orbit_from_json(const Json& j) {
   Scenario s;
   s.domain = "orbit";
-  s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
+  s.seed = clamp_u64(j.num_or("seed", 1));
   s.dt = j.num_or("dt", 1.0 / 120.0);
-  s.steps = static_cast<int>(j.num_or("steps", 600));
+  s.steps = clamp_int(j.num_or("steps", 600));
   s.gravity = j.num_or("G", 1.0);
   if (j.has("bodies")) {
     for (const auto& o : j.at("bodies").arr()) {

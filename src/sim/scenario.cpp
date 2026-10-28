@@ -61,9 +61,9 @@ Scenario scenario_from_json(const Json& j, const std::string& default_domain) {
   if (j.str_or("domain", default_domain) == "cartpole") return cartpole_from_json(j);
   if (j.str_or("domain", default_domain) == "traffic") return traffic_from_json(j);
   Scenario s;
-  s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
+  s.seed = clamp_u64(j.num_or("seed", 1));
   s.dt = j.num_or("dt", s.dt);
-  s.steps = static_cast<int>(j.num_or("steps", s.steps));
+  s.steps = clamp_int(j.num_or("steps", s.steps));
   s.gravity = j.num_or("gravity", s.gravity);
   if (j.has("arena")) {
     s.arena_w = j.at("arena").num_or("w", s.arena_w);
@@ -89,7 +89,7 @@ Scenario scenario_from_json(const Json& j, const std::string& default_domain) {
   if (j.has("controller")) {
     const Json& c = j.at("controller");
     s.ctrl.enabled = c.bool_or("enabled", false);
-    s.ctrl.body = static_cast<int>(c.num_or("body", 0));
+    s.ctrl.body = clamp_int(c.num_or("body", 0));
     s.ctrl.kp = c.num_or("kp", s.ctrl.kp);
     s.ctrl.fmax = c.num_or("fmax", s.ctrl.fmax);
     s.ctrl.vcmd = c.num_or("vcmd", s.ctrl.vcmd);

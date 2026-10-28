@@ -25,7 +25,7 @@
 | m022 | line 95: operator '*' -> '/' | killed_by_rules | 615 | 6/6 | 0 |
 | m023 | line 97: operator '<' -> '<=' | crashed_or_timed_out | 0 | 0/6 | 0 |
 | m024 | line 101: operator '*' -> '/' | crashed_or_timed_out | 0 | 0/6 | 0 |
-| m025 | line 121: operator '*' -> '/' | killed_by_rules | 1000 | 6/6 | 1000 |
+| m025 | line 121: operator '*' -> '/' | crashed_or_timed_out | 0 | 0/6 | 0 |
 | m026 | line 121: operator '+=' -> '-=' | killed_by_rules | 1000 | 6/6 | 1000 |
 | m027 | line 98: operator '<' -> '<=' | unchanged | 0 | 0/6 | 0 |
 | m028 | line 98: constant 0 -> 1 | killed_by_rules | 999 | 6/6 | 999 |
@@ -43,8 +43,9 @@
 
 orbit: 40 mutants; clean pool of 1000 scenarios had 0 hand-rule and 0 invariant violations (both must be 0).
 - changed_no_rule_fires: 5
-- crashed_or_timed_out: 6
-- killed_by_rules: 21
+- crashed_or_timed_out: 7
+- killed_by_rules: 20
 - unchanged: 8
-Among mutants whose traces differ from the clean simulator on the pool (26): killed by the hand-written rules 21, by the model-written invariants 15, by either 21.
-Killed mutants by number of step-budget windows in which random testing finds them (of 6): 5 windows: 1; 6 windows: 20; 
+Among mutants whose traces differ from the clean simulator on the pool (25): killed by the hand-written rules 20, by the model-written invariants 14, by either 20.
+Metamorphic oracles (first 300 scenarios of the pool): killed 8 of the changed mutants; hand-written rules or metamorphic: 20; metamorphic only (no declared rule fires): 0; all three oracles: 20.
+Killed mutants by number of step-budget windows in which random testing finds them (of 6): 5 windows: 1; 6 windows: 19; 

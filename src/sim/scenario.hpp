@@ -73,6 +73,20 @@ struct TrafficDef {
   }
 };
 
+// Saturating conversions for numbers read from untrusted JSON: casting inf, NaN or an out-of-range double to an integer is undefined behaviour
+// (found by rc_fuzz under UBSan). Values in range convert exactly as before; the validators then reject what is left.
+inline int clamp_int(double v) {
+  if (!(v == v)) return 0;
+  if (v >= 2147483647.0) return 2147483647;
+  if (v <= -2147483648.0) return -2147483647 - 1;
+  return static_cast<int>(v);
+}
+inline uint64_t clamp_u64(double v) {
+  if (!(v >= 0)) return 0;
+  if (v >= 18446744073709551615.0) return 18446744073709551615ULL;
+  return static_cast<uint64_t>(v);
+}
+
 struct Scenario {
   std::string domain = "rigid2d";  // "rigid2d" (default), "orbit", "cartpole" or "traffic"; omitted from JSON for rigid2d
   uint64_t seed = 1;

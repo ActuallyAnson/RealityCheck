@@ -50,28 +50,28 @@ Json traffic_to_json(const Scenario& s) {
 Scenario traffic_from_json(const Json& j) {
   Scenario s;
   s.domain = "traffic";
-  s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
-  s.steps = static_cast<int>(j.num_or("steps", 600));
+  s.seed = clamp_u64(j.num_or("seed", 1));
+  s.steps = clamp_int(j.num_or("steps", 600));
   TrafficDef& t = s.tr;
   if (j.has("arrival_per_second")) {
     const Json& a = j.at("arrival_per_second");
     for (int i = 0; i < 4; ++i) t.arrival[i] = a.num_or(kApproach[i], t.arrival[i]);
   }
   if (j.has("green_seconds")) {
-    t.green_ns = static_cast<int>(j.at("green_seconds").num_or("ns", t.green_ns));
-    t.green_ew = static_cast<int>(j.at("green_seconds").num_or("ew", t.green_ew));
+    t.green_ns = clamp_int(j.at("green_seconds").num_or("ns", t.green_ns));
+    t.green_ew = clamp_int(j.at("green_seconds").num_or("ew", t.green_ew));
   }
-  t.yellow = static_cast<int>(j.num_or("yellow_seconds", t.yellow));
-  t.all_red = static_cast<int>(j.num_or("all_red_seconds", t.all_red));
-  t.max_green = static_cast<int>(j.num_or("max_green_seconds", t.max_green));
+  t.yellow = clamp_int(j.num_or("yellow_seconds", t.yellow));
+  t.all_red = clamp_int(j.num_or("all_red_seconds", t.all_red));
+  t.max_green = clamp_int(j.num_or("max_green_seconds", t.max_green));
   t.actuated = j.bool_or("actuated", true);
   if (j.has("events")) {
     for (const auto& o : j.at("events").arr()) {
       TrafficEvent e;
-      e.t = static_cast<int>(o.num_or("t", 0));
+      e.t = clamp_int(o.num_or("t", 0));
       e.kind = kind_index(o.str_or("kind", "emergency"));
       e.approach = approach_index(o.str_or("approach", "N"));
-      e.duration = static_cast<int>(o.num_or("duration", 10));
+      e.duration = clamp_int(o.num_or("duration", 10));
       t.events.push_back(e);  // an unknown kind/approach becomes -1 and is rejected by validate()
     }
   }

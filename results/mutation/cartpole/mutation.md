@@ -46,4 +46,5 @@ cartpole: 40 mutants; clean pool of 1000 scenarios had 0 hand-rule and 0 invaria
 - killed_by_rules: 15
 - unchanged: 5
 Among mutants whose traces differ from the clean simulator on the pool (35): killed by the hand-written rules 15, by the model-written invariants 12, by either 15.
+Metamorphic oracles (first 300 scenarios of the pool): killed 8 of the changed mutants; hand-written rules or metamorphic: 16; metamorphic only (no declared rule fires): 1; all three oracles: 16.
 Killed mutants by number of step-budget windows in which random testing finds them (of 7): 7 windows: 15; 

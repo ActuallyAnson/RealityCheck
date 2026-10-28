@@ -46,4 +46,5 @@ traffic: 40 mutants; clean pool of 1000 scenarios had 0 hand-rule and 0 invarian
 - killed_by_rules: 7
 - unchanged: 2
 Among mutants whose traces differ from the clean simulator on the pool (38): killed by the hand-written rules 7, by the model-written invariants 2, by either 7.
+Metamorphic oracles (first 300 scenarios of the pool): killed 0 of the changed mutants; hand-written rules or metamorphic: 7; metamorphic only (no declared rule fires): 0; all three oracles: 7.
 Killed mutants by number of step-budget windows in which random testing finds them (of 5): 5 windows: 7; 

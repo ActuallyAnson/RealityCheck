@@ -35,9 +35,9 @@ Json cartpole_to_json(const Scenario& s) {
 Scenario cartpole_from_json(const Json& j) {
   Scenario s;
   s.domain = "cartpole";
-  s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
+  s.seed = clamp_u64(j.num_or("seed", 1));
   s.dt = j.num_or("dt", 0.01);
-  s.steps = static_cast<int>(j.num_or("steps", 1000));
+  s.steps = clamp_int(j.num_or("steps", 1000));
   CartPoleDef& c = s.cp;
   if (j.has("plant")) {
     const Json& p = j.at("plant");

@@ -47,4 +47,5 @@ rigid2d: 40 mutants; clean pool of 1000 scenarios had 1 hand-rule and 0 invarian
 - killed_by_rules: 11
 - unchanged: 15
 Among mutants whose traces differ from the clean simulator on the pool (24): killed by the hand-written rules 11, by the model-written invariants 8, by either 12.
+Metamorphic oracles (first 300 scenarios of the pool): killed 8 of the changed mutants; hand-written rules or metamorphic: 14; metamorphic only (no declared rule fires): 3; all three oracles: 15.
 Killed mutants by number of step-budget windows in which random testing finds them (of 6): 4 windows: 1; 5 windows: 1; 6 windows: 9; 
