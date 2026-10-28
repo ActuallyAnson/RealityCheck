@@ -43,3 +43,13 @@ cannot localize from the shown region, nor bugs in code it has not been shown. B
 The first run showed the model a few dozen lines. This run adds the two larger domains, with no change to the method: traffic (`src/sim/traffic.cpp`, lines 112-253, 7 rule-caught mutants) and rigid-body (`src/sim/world.cpp`, lines 25-256, 11 rule-caught mutants; the model must find a one-token
 change inside 232 lines of broad-phase, contact solver and integrator; all 11 mutated lines fall in this range, so the dispatch function of the benchmark's second range is not shown). The rigid-body mutants were generated from `world.cpp` before the generic-domain dispatch added two lines to it, so the baseline for this run is the mutant source with its one mutation reverted (`/tmp/mut/rigid2d/world_base.cpp`, rebuilt by the same steps; the offline `original` self-test on it gives `restored`, `same` gives `still_violates`); the line numbers in the prompt are those of that file. Same model, effort, attempts, pool and budget ($1.5 per domain). One denylist fix before the run: `signal(` is refused unless it is
 a member call or traffic's own `int signal(` accessor (the original traffic region contains it, and the offline `original` self-test was `denied` until this was fixed); the other self-test outcomes were re-checked afterward. Results are appended below whatever they are.
+
+### Results of the second run ($0.42)
+
+| domain | region shown | mutants | restored | rules_pass_differs | other |
+|---|---|---|---|---|---|
+| traffic | 142 lines | 7 | 7 | 0 | 0 |
+| rigid-body | 232 lines | 11 | 11 | 0 | 0 |
+
+All 18 restored (52 of 53 in the two runs together, the single exception being cart-pole `m001`). Region size is therefore **not** what makes repair hard here: a one-token change is easy to find even in 232 lines when the failing scenario and the violated rule are given. What would be harder
+and is not yet tested: several simultaneous changes, no region hint, and mutants that break no declared rule (there the loop has nothing to trigger on, which is the oracle gap in `docs/MUTATION.md`). Raw rows: `results/repair/{traffic,rigid2d}/repair.json`.
