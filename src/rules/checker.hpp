@@ -1,5 +1,6 @@
 // Declared invariants, checked at every step. The checker is the ground truth for "violation".
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,10 @@ std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const Ru
 std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr);
 std::vector<Violation> check_cartpole_rules(const Scenario& sc, const Trace& tr);
 std::vector<Violation> check_traffic_rules(const Scenario& sc, const Trace& tr);
+
+// How close each continuous rule came to failing over the whole run: max over steps of (measured / allowed), so >= 1 means the rule
+// is violated. Rules with no continuous quantity (no_nan, no_tunneling, conflicts, signal durations) have no entry.
+std::map<std::string, double> rule_margins(const Scenario& sc, const Trace& tr);
 
 Json to_json(const Violation& v);
 

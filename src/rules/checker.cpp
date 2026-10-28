@@ -272,6 +272,67 @@ std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const Ru
   return out;
 }
 
+std::map<std::string, double> rule_margins(const Scenario& sc, const Trace& tr) {
+  std::map<std::string, double> m;
+  auto up = [&](const char* rule, double v) {
+    if (!std::isfinite(v)) v = 1e9;
+    auto it = m.find(rule);
+    if (it == m.end() || v > it->second) m[rule] = v;
+  };
+  if (tr.rec.empty()) return m;
+  const StepRecord& r0 = tr.rec[0];
+  if (sc.domain == "traffic") {
+    for (const StepRecord& r : tr.rec)
+      for (const BodyState& q : r.body) up("max_wait", q.vx / TrafficLimits::wait_limit);
+  } else if (sc.domain == "cartpole") {
+    for (size_t k = 0; k < tr.rec.size(); ++k) {
+      const StepRecord& s = tr.rec[k];
+      const BodyState& q = s.body[0];
+      up("pole_upright", std::fabs(q.y) / 0.8);
+      up("cart_in_track", std::fabs(q.x) / 2.4);
+      if (k > 0) up("controller_force_limit", s.fmag / (sc.cp.fmax * (1 + 1e-6)));
+      double base = r0.energy + s.work, slack = 0.05 * (std::fabs(r0.energy) + std::fabs(s.work)) + 0.05;
+      up("energy_bound", (s.energy - base) / slack);
+    }
+  } else if (sc.domain == "orbit") {
+    double escale = 0, pscale = 0, lscale = 0;
+    for (const StepRecord& s : tr.rec) {
+      double ke, pe, ps = 0, ls = 0;
+      orbit_energies(sc, s, &ke, &pe);
+      escale = std::max(escale, ke + std::fabs(pe));
+      for (size_t i = 0; i < s.body.size(); ++i) {
+        ps += sc.bodies[i].m * std::hypot(s.body[i].vx, s.body[i].vy);
+        ls += sc.bodies[i].m * std::hypot(s.body[i].x, s.body[i].y) * std::hypot(s.body[i].vx, s.body[i].vy);
+      }
+      if (std::isfinite(ps)) pscale = std::max(pscale, ps);
+      if (std::isfinite(ls)) lscale = std::max(lscale, ls);
+    }
+    for (const StepRecord& s : tr.rec) {
+      up("energy_conserved", std::fabs(s.energy - r0.energy) / (0.02 * escale + 0.05));
+      up("momentum_conserved", std::hypot(s.px - r0.px, s.py - r0.py) / (1e-3 * pscale + 1e-3));
+      up("angular_momentum_conserved", std::fabs(s.ang - r0.ang) / (1e-3 * lscale + 1e-3));
+    }
+  } else {
+    RuleSpec spec;
+    for (const StepRecord& s : tr.rec) {
+      for (size_t i = 0; i < s.body.size(); ++i) {
+        const BodyState& q = s.body[i];
+        const BodyDef& d = sc.bodies[i];
+        double over = std::fmax(std::fmax(d.r - q.x, q.x + d.r - sc.arena_w), std::fmax(d.r - q.y, q.y + d.r - sc.arena_h));
+        up("in_arena", over / spec.pen_tol);
+        for (const WallDef& w : sc.walls) {
+          double cx = std::fmax(w.x, std::fmin(q.x, w.x + w.w)), cy = std::fmax(w.y, std::fmin(q.y, w.y + w.h));
+          up("no_wall_penetration", (d.r - std::hypot(q.x - cx, q.y - cy)) / spec.pen_tol);
+        }
+      }
+      double base = r0.energy + s.work, slack = spec.energy_rel * (std::fabs(r0.energy) + std::fabs(s.work)) + spec.energy_abs;
+      up("energy_bound", (s.energy - base) / slack);
+      if (sc.ctrl.enabled) up("controller_force_limit", s.fmag / (sc.ctrl.fmax * (1 + spec.force_tol)));
+    }
+  }
+  return m;
+}
+
 Json to_json(const Violation& v) {
   Json j = Json::object();
   j["rule"] = v.rule;

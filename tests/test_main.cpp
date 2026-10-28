@@ -980,6 +980,31 @@ void test_spec_rules() {
   CHECK(check_invariant(tight, s2).failed && check_invariant(tight, s2).step <= static_cast<int>(s2["energy"].size()) - 1);
 }
 
+void test_rule_margins() {
+  for (std::string d : {"rigid2d", "orbit", "cartpole", "traffic"}) {
+    for (uint64_t k = 1; k <= 20; ++k) {
+      Scenario sc = random_scenario_for(d, k);
+      Trace tr = simulate(sc, 0);
+      bool viol = !check_rules(sc, tr).empty();
+      double mx = 0;
+      for (auto& kv : rule_margins(sc, tr)) mx = std::max(mx, kv.second);
+      CHECK(viol == false);   // clean simulator
+      CHECK(mx < 1.0 + 1e-9);  // and every margin stays below the violation threshold
+    }
+  }
+  for (int b = 0; b < kNumOrbitBugs; ++b) {  // a bug that violates a margin rule shows margin >= 1 for that rule
+    for (uint64_t k = 1; k <= 200; ++k) {
+      Scenario sc = random_orbit_scenario(k);
+      Trace tr = simulate(sc, bug_bit(b));
+      auto v = check_rules(sc, tr);
+      if (v.empty()) continue;
+      auto m = rule_margins(sc, tr);
+      CHECK(m.count(v.front().rule) == 0 || m[v.front().rule] > 1.0);
+      break;
+    }
+  }
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -991,7 +1016,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins},
   };
   for (auto& t : tests) {
     int before = g_fail;
