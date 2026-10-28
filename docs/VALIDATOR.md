@@ -31,4 +31,35 @@ must-reject forgeries accepted: 0
 - That last gap is why the cause is graded separately: in v2 the report must include a one-change counterfactual that the engine re-runs, and the triage evaluation counts a cause as localized only when the counterfactual changed a hidden trigger field (`docs/TRIAGE.md`). The prose itself is never graded.
 - Earlier adversarial results (`docs/ADVERSARIAL.md`): in 12 exposed runs the model never followed a planted instruction and no false report was accepted. This suite supplies the other half: forgeries that **would** be accepted are exactly U1 to U4, and they are properties of the checks, not of the model.
 
-Not done: a stricter mode that requires every number in the prose to match a recorded value (it would reject legitimate derived quantities, and the frozen v1 evaluations used the current validator); a live model told to produce a false report (U3 and U4 already show what it could get through).
+Not done: a live model told to produce a false report (U3 and U4 already show what it could get through).
+
+## Strict mode (opt-in; the default validator and every locked evaluation are unchanged)
+
+`validate_report_strict` (`src/agent/agent.cpp`) adds three checks on top of the default one: **S1** every citation names a field and carries a number, at a tighter tolerance (0.5%, 0.01 absolute; default 1%, 0.02); a value that is NaN or infinite
+cannot be written as JSON and is exempt. **S2** every decimal number in the prose (and in citation claims) must equal a value the engine recorded: cited steps, first and last step, the violation, the scenario fields, the counterfactual's fields,
+or any number a tool returned during the session. **S3** when a counterfactual is given, the explanation or the counterfactual note must name a field the counterfactual actually changed.
+`rc_strictcheck` replays the recorded sessions through the deterministic tools and re-validates every report with both validators, then applies forgeries that only strict mode can refuse. Reproduce: `scripts/strictcheck.sh` (no model, no network; output in `results/validator/strict.txt`).
+
+| recorded reports (3 models, 244 in total) | default validator accepts | strict accepts |
+|---|---|---|
+| muse-spark-1.3 (81) | 81 | 47 |
+| muse-spark-1.2 (81) | 81 | 42 |
+| muse-spark-1.1 (82) | 82 | 37 |
+
+Forgeries that the default validator accepts, then strict mode (counts of accepted forgeries; per model run: 1.3 / 1.2 / 1.1):
+
+| forgery | accepted by strict mode |
+|---|---|
+| U1 cited values off by 0.8% | 4 of 81 / 2 of 81 / 3 of 82 |
+| U2 citations with no value | 0 / 0 / 0 |
+| U4 an invented number (0.4 to 40, two decimals) added to the prose | 7 of 81 / 6 of 81 / 4 of 82 |
+| U3b a cause that names a field the counterfactual did not change (note emptied) | 0 / 0 / 0 |
+
+What this says, without softening it:
+
+- **Strict mode closes U2 and the wrong-field form of U3 completely, most of U4 (92 to 95%), and most of U1.** It does not close U3 in general: a false mechanism that names the field the counterfactual really changed still passes, because no program can verify a written cause.
+- **It costs about half of the honest reports** (37 to 47 of 81 or 82 pass). Where they fail: derived numbers (a displacement or a percentage that the model computed itself), traffic citations that name a step but no number, and prose that describes the changed field without naming it.
+  So strict mode is an audit tier, not a gate: a report that passes it has every number traceable to the engine; one that fails it is still checked by the default validator.
+- **Allowing derived numbers does not help.** If the prose number may also be a sum, difference, product or ratio of two recorded values (`--derived`), strict mode accepts 66 of 81 invented numbers on the 1.2 run, because the set of such combinations is dense enough to hit any two-decimal number. A check by matching cannot verify arithmetic.
+  A real fix would be for the model to declare a formula (`a - b` over named recorded values) that the engine evaluates; that changes the report schema and is not built.
+- The honest rejections were not hand-audited one by one; the counts are by check type.

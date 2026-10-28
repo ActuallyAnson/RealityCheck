@@ -467,6 +467,13 @@ static void test_citation_validation() {
   // missing citations
   Json none = spent_report(id, vstep, x, good); none["citations"] = Json::array();
   CHECK(!validate_report(*run, true, none).ok);
+  // strict mode: accepts the honest report, refuses a value 0.8% off, a citation with no value, an invented number, and a wrong-field story
+  CHECK(validate_report_strict(*run, nullptr, true, spent_report(id, vstep, x, good)).ok);
+  CHECK(!validate_report_strict(*run, nullptr, true, spent_report(id, vstep, x * 1.008 + 0.05, good)).ok);
+  { Json nv = spent_report(id, vstep, x, good); Json c = Json::object(); c["step"] = vstep; Json cs = Json::array(); cs.push(c); nv["citations"] = cs;
+    CHECK(validate_report(*run, true, nv).ok); CHECK(!validate_report_strict(*run, nullptr, true, nv).ok); }
+  CHECK(!validate_report_strict(*run, nullptr, true, spent_report(id, vstep, x, good + " The peak speed reached 37.42 units per second.")).ok);
+  CHECK(validate_report_strict(*run, nullptr, true, spent_report(id, vstep, x, good + " The recorded position there is " + std::to_string(x).substr(0, std::to_string(x).find('.') + 3) + ".")).ok);
 }
 
 struct ScriptState {

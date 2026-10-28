@@ -1,0 +1,30 @@
+## results/triage
+reports: 81 valid in the run files, 81 replayed
+honest reports accepted: default 81 of 81, strict 47 of 81
+strict rejections of honest reports by check (a report can fail several): citations 10, prose numbers 18, cause not named 14
+forgeries the default validator accepts, then the strict mode:
+  U1 values off by 0.8%:           4 of 81 accepted by strict
+  U2 citations with no value:      0 of 81
+  U4 invented number in prose (0.4 to 40, 2 decimals): 7 of 81
+  U3b cause names an unchanged field: 0 of 81
+
+## results/triage_spark12_full
+reports: 81 valid in the run files, 81 replayed
+honest reports accepted: default 81 of 81, strict 42 of 81
+strict rejections of honest reports by check (a report can fail several): citations 14, prose numbers 26, cause not named 4
+forgeries the default validator accepts, then the strict mode:
+  U1 values off by 0.8%:           2 of 81 accepted by strict
+  U2 citations with no value:      0 of 81
+  U4 invented number in prose (0.4 to 40, 2 decimals): 6 of 81
+  U3b cause names an unchanged field: 0 of 81
+
+## results/triage_spark11_full
+reports: 82 valid in the run files, 82 replayed
+honest reports accepted: default 82 of 82, strict 37 of 82
+strict rejections of honest reports by check (a report can fail several): citations 16, prose numbers 20, cause not named 17
+forgeries the default validator accepts, then the strict mode:
+  U1 values off by 0.8%:           3 of 82 accepted by strict
+  U2 citations with no value:      0 of 82
+  U4 invented number in prose (0.4 to 40, 2 decimals): 4 of 82
+  U3b cause names an unchanged field: 0 of 82
+

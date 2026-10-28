@@ -120,3 +120,6 @@ add_executable(rc_inject src/eval/inject_main.cpp)
 target_link_libraries(rc_inject rc_core)
 add_executable(rc_repair src/eval/repair_main.cpp)
 target_link_libraries(rc_repair rc_core)
+
+add_executable(rc_strictcheck src/eval/strictcheck_main.cpp)
+target_link_libraries(rc_strictcheck rc_core)

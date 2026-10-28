@@ -27,6 +27,21 @@ struct CitationCheck {
 // Checks a submitted report against the recorded run. Pure function of (session record, report JSON).
 CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const Json& report);
 
+// Opt-in stricter check (the default validator is unchanged and frozen). On top of validate_report:
+//   S1 every citation must carry a field and a numeric value, checked at a tighter tolerance;
+//   S2 every decimal number in the prose must equal a recorded value (cited steps, first/last step, violation, scenario fields, or any number a tool returned);
+//   S3 when a counterfactual is given, the prose or the counterfactual note must name a field the counterfactual changed.
+// `cf` is the counterfactual's recorded run (may be null). What it cannot do: prove the stated mechanism is the true cause.
+struct StrictOptions {
+  double rel_tol = 0.005, abs_tol = 0.01;  // citation value tolerance (default validator: 1% / 0.02)
+  double prose_rel = 0.01;                 // a prose number matches a recorded value within this relative error, or by rounding to its own digits
+  bool prose_numbers = true, tie_cause = true;
+  bool derived = false;                    // a prose number may also be a sum, difference, product or ratio of two recorded values (displacements, percentages)
+  const std::vector<double>* seen = nullptr;  // numbers the tools returned during the session (every one came from the engine)
+};
+CitationCheck validate_report_strict(const ToolSession::Entry& run, const ToolSession::Entry* cf, bool shrunk, const Json& report,
+                                     const StrictOptions& opt = StrictOptions());
+
 struct AgentConfig {
   std::string model;                 // overrides the backend default when non-empty
   bool native_tools = true;          // false: strict JSON action protocol

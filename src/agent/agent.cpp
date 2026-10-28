@@ -2,6 +2,7 @@
 
 #include "sim/generic.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <regex>
@@ -215,6 +216,128 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
   }
   if (viol && !cites_violation_step)
     bad("no citation refers to the first violating step (" + std::to_string(viol->step) + ")");
+  c.ok = c.problems.empty();
+  return c;
+}
+
+namespace {
+void collect_numbers(const Json& j, std::vector<double>* out) {
+  if (j.is_number()) out->push_back(j.num());
+  else if (j.is_array()) for (const Json& e : j.arr()) collect_numbers(e, out);
+  else if (j.is_object()) for (const auto& kv : j.obj()) collect_numbers(kv.second, out);
+}
+
+void collect_record(const StepRecord& r, std::vector<double>* out) {
+  for (const BodyState& b : r.body) {
+    out->push_back(b.x); out->push_back(b.y); out->push_back(b.vx); out->push_back(b.vy);
+    out->push_back(std::sqrt(b.vx * b.vx + b.vy * b.vy));
+  }
+  out->push_back(r.energy); out->push_back(r.work); out->push_back(r.fmag); out->push_back(r.px); out->push_back(r.py); out->push_back(r.ang);
+}
+
+// Does the token "text" (as written) match a number: by rounding to the digits written, or within a relative error.
+bool near_token(const std::string& text, double t, double v, double rel) {
+  size_t dot = text.find('.');
+  int decimals = dot == std::string::npos ? 0 : static_cast<int>(text.size() - dot - 1);
+  double half = 0.5 * std::pow(10.0, -decimals) * 1.0001;
+  double a = std::fabs(v), b = std::fabs(t);
+  return std::fabs(a - b) <= half || std::fabs(a - b) <= rel * std::max(a, b);
+}
+
+bool prose_matches(const std::string& text, double t, const std::vector<double>& pool, double rel, bool derived) {
+  for (double v : pool) if (near_token(text, t, v, rel)) return true;
+  if (!derived) return false;
+  // derived quantities: combine two distinct recorded values (pool deduplicated and capped so this stays cheap and cannot match everything)
+  std::vector<double> u;
+  for (double v : pool) if (std::isfinite(v) && std::fabs(v) < 1e6) u.push_back(v);
+  std::sort(u.begin(), u.end());
+  u.erase(std::unique(u.begin(), u.end(), [](double x, double y) { return std::fabs(x - y) < 1e-9; }), u.end());
+  if (u.size() > 600) return false;
+  for (double a : u) {
+    if (near_token(text, t, a / 2, rel) || near_token(text, t, a * 100, rel)) return true;
+    for (double b : u) {
+      if (near_token(text, t, a - b, rel) || near_token(text, t, a + b, rel) || near_token(text, t, a * b, rel) || (b != 0 && near_token(text, t, a / b, rel)) ||
+          (b != 0 && near_token(text, t, 100 * (a - b) / b, rel)))
+        return true;
+    }
+  }
+  return false;
+}
+
+// Names a scenario path can be called by: each dotted segment without its index ("bodies[0].vx" -> bodies, vx).
+std::vector<std::string> path_names(const std::string& path) {
+  std::vector<std::string> out;
+  std::string cur;
+  auto flush = [&]() { if (cur.size() >= 2) out.push_back(cur); cur.clear(); };
+  for (char ch : path) {
+    if (ch == '.') flush();
+    else if (ch == '[') { flush(); }
+    else if (ch == ']') cur.clear();
+    else cur += ch;
+  }
+  flush();
+  return out;
+}
+}  // namespace
+
+CitationCheck validate_report_strict(const ToolSession::Entry& run, const ToolSession::Entry* cf, bool shrunk, const Json& report,
+                                     const StrictOptions& opt) {
+  CitationCheck c = validate_report(run, shrunk, report);
+  auto bad = [&](const std::string& m) { c.problems.push_back(m); };
+  const int steps = run.tr.steps();
+  std::string rule = report.str_or("rule", "");
+  const Violation* viol = nullptr;
+  for (const auto& v : run.viol) if (v.rule == rule) { viol = &v; break; }
+  std::vector<double> pool;
+  collect_record(run.tr.rec.front(), &pool);
+  collect_record(run.tr.rec.back(), &pool);
+  collect_numbers(to_json(run.sc), &pool);
+  if (viol) { pool.push_back(viol->value); pool.push_back(viol->limit); collect_record(run.tr.rec[static_cast<size_t>(viol->step)], &pool); }
+  if (cf) collect_numbers(to_json(cf->sc), &pool);
+  if (opt.seen) pool.insert(pool.end(), opt.seen->begin(), opt.seen->end());
+  if (report.has("citations") && report.at("citations").is_array()) {
+    int idx = 0;
+    for (const Json& cj : report.at("citations").arr()) {
+      ++idx;
+      std::string tag = "strict citation " + std::to_string(idx) + ": ";
+      if (!cj.is_object() || !cj.has("step") || !cj.at("step").is_number()) continue;
+      int step = static_cast<int>(cj.at("step").num());
+      if (step < 0 || step > steps) continue;
+      collect_record(run.tr.rec[static_cast<size_t>(step)], &pool);
+      bool ok = false;
+      double actual = cj.str_or("field", "").empty() ? 0 : field_value(run.sc, run.tr.rec[static_cast<size_t>(step)], static_cast<int>(cj.num_or("body", -1)), cj.str_or("field", ""), &ok);
+      if (ok && !std::isfinite(actual)) continue;  // a NaN or infinity cannot be written as a JSON value
+      if (!cj.has("value") || !cj.at("value").is_number() || cj.str_or("field", "").empty()) { bad(tag + "needs a field and a numeric value"); continue; }
+      if (!ok) continue;  // already reported by the default check
+      double tol = std::max(opt.abs_tol, opt.rel_tol * std::fabs(actual));
+      if (!(std::fabs(cj.at("value").num() - actual) <= tol)) bad(tag + "value is outside the strict tolerance");
+    }
+  }
+  if (opt.prose_numbers) {
+    std::string text = report.str_or("explanation", "");
+    if (report.has("citations") && report.at("citations").is_array())
+      for (const Json& cj : report.at("citations").arr()) if (cj.is_object()) text += " " + cj.str_or("claim", "");
+    static const std::regex num_re("(?:^|[^A-Za-z0-9_.])([0-9]+\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[0-9]{4,})(?![0-9A-Za-z_])");
+    for (std::sregex_iterator it(text.begin(), text.end(), num_re), end; it != end; ++it) {
+      std::string tok = (*it)[1].str();
+      double t = std::strtod(tok.c_str(), nullptr);
+      if (tok.find('.') == std::string::npos && t <= steps + 1) continue;  // a step count or index
+      if (!prose_matches(tok, t, pool, opt.prose_rel, opt.derived)) bad("strict prose: number " + tok + " matches no recorded value");
+    }
+  }
+  if (opt.tie_cause && cf) {
+    std::vector<std::string> paths = scenario_diff(to_json(run.sc), to_json(cf->sc));
+    std::string hay = report.str_or("explanation", "");
+    if (report.has("counterfactual") && report.at("counterfactual").is_object()) hay += " " + report.at("counterfactual").str_or("change", "");
+    bool named = paths.empty();
+    for (const std::string& p : paths) {
+      for (const std::string& nm : path_names(p)) {
+        std::regex w("\\b" + nm + "\\b", std::regex::icase);
+        if (std::regex_search(hay, w)) named = true;
+      }
+    }
+    if (!named) bad("strict cause: neither the explanation nor the counterfactual note names a field the counterfactual changed");
+  }
   c.ok = c.problems.empty();
   return c;
 }
