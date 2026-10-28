@@ -34,6 +34,8 @@ Seeded bugs are planted by me; see the caveats before reading anything as "the m
 | Is the v2 agent (checked counterfactual, frames in the loop) better than v1? | **Not clearly.** 20/30 against 19/30 valid and attributable, overlapping intervals; cause localization is better with frames (20/30 against 15/30). | `docs/RESULTS.md` |
 | What about bugs I did not plant? | **Mutation benchmark, 160 mechanically sampled bugs:** random testing finds 50 of the 53 rule-catchable mutants in every step-budget window, so search is not the bottleneck; 69 of 122 behavior-changing mutants violate no declared rule, so the *oracle* is. Hand-written rules catch 43% of the changed mutants, model-written invariants 30%, metamorphic relations 20%; all three together 48%. | `docs/MUTATION.md` |
 | Does it work on code I did not write? | **Yes, as a harness.** Unmodified Box2D 3.x and REBOUND 5.2.2 run through the same rules and a 14-scenario literature corpus (all pass). That run also surfaced a reproducible hang in REBOUND's default IAS15 mode on the figure-eight initial condition (not reported upstream; not claimed as a confirmed bug). | `docs/EXTERNAL_ENGINE.md` |
+| Can a model repair a simulator once a failure is found, and is "the rules pass" enough to accept the repair? | **Yes for single-token bugs, and no, passing the rules is not enough.** 52 of 53 repairs reproduced the original bit for bit (orbit, cart-pole, traffic, rigid-body; regions up to 232 lines, model-written code compiled in a sandbox); the one exception passed every rule and was still wrong. Easy bugs: see the limits. | `docs/REPAIR.md` |
+| Does an accepted report prove the explanation is right? | **No.** A red team of 8 contradicting forgeries on 47 real failures: 0 accepted. But a true set of numbers with a false story about the cause is accepted (4 uncheckable kinds quantified). | `docs/VALIDATOR.md` |
 | Does it flag clean simulators? | Controls repeatedly caught weaknesses in my own simulators (rigid-body v1, the cart-pole scenario envelope); all are reported. | `docs/CARTPOLE_DOMAIN.md` |
 
 Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capped per run, per evaluation, and by a lifetime ledger.
@@ -46,6 +48,7 @@ Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capp
 | Four domains | rigid-body physics (13 seeded bugs), orbits (3), cart-pole control (3), a traffic-signal state machine (3); same tools, rules, shrinker and agent |
 | Tester agent | v1 (frozen) and v2 (counterfactual-checked reports, frames in the loop); a triage mode that explains a failure found by a fuzzer |
 | Deterministic tools | `run_scenario`, `check_rules`, `inspect_state`, `render_frames`, `shrink`, `replay`; also as a local HTTP API and an MCP server, no model needed (`docs/API.md`) |
+| Repair loop | the model proposes a fix for a failing simulator; the engine compiles it in a sandbox and accepts it only if every trace matches the unmodified simulator (`docs/REPAIR.md`) |
 | Spec to rules | the model proposes invariants from a description; the engine keeps those that hold on clean runs (`docs/SPEC_RULES.md`) |
 | Outside engines | unmodified Box2D and REBOUND, plus any program speaking the JSON-lines protocol, with a per-request deadline (`docs/PROTOCOL.md`) |
 | Differential testing, regression tests | `rc_diff` compares two engines; `rc_repro` turns a failure into `scenario.json` + `test.sh` with JUnit output; a GitHub Action re-runs bundles on pull requests |
@@ -65,6 +68,8 @@ Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capp
 - Attribution ("the failure is due to the seeded bug") is checked post hoc by replaying on the clean simulator.
 - Determinism is per platform: a run is bit-for-bit reproducible on the same machine type, but libm differences change simulated traces on Linux compared
   with macOS. CI found this; pinned trace hashes are checked on macOS only, and I have not re-run the evaluations on Linux.
+- A validated report establishes that its cited numbers and the violated rule are real; it does not establish that the written cause is true (`docs/VALIDATOR.md`).
+- No blind bug set exists yet: `docs/BLIND.md` is the mechanism, and it needs a second person.
 - Differential testing works when two engines are numerically close; for contact dynamics it mostly reports chaos.
 - The wall-clock budget of the random baseline is not applied to the agent; the step budgets are identical.
 
