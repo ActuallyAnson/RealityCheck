@@ -1,0 +1,31 @@
+{
+ "G": 1.0,
+ "dt": 0.01,
+ "steps": 4000,
+ "seed": 3,
+ "bodies": [
+  {
+   "x": 8.05999128,
+   "y": 6.48617506,
+   "vx": 0.3296557870776571,
+   "vy": 0.3057287396356719,
+   "m": 1.0
+  },
+  {
+   "x": 11.94000872,
+   "y": 5.51382494,
+   "vx": 0.3296557870776571,
+   "vy": 0.3057287396356719,
+   "m": 1.0
+  },
+  {
+   "x": 10.0,
+   "y": 6.0,
+   "vx": -0.6593115741553142,
+   "vy": -0.6114574792713438,
+   "m": 1.0
+  }
+ ],
+ "_source": "Figure-eight three-body choreography (Chenciner and Montgomery 2000; initial conditions from Simo 2002 / Suvakov and Dmitrasinovic 2013, G=1, m=1), lengths scaled by 2 and speeds by 1/sqrt(2) so bodies start at least 1.0 apart. The domain's softening 0.3 destroys the exact choreography; it is a stress input, not a reproduction of the published orbit.",
+ "domain": "orbit"
+}

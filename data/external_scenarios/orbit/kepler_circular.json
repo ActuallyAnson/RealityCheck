@@ -1,0 +1,24 @@
+{
+ "G": 1.0,
+ "dt": 0.01,
+ "steps": 3000,
+ "seed": 1,
+ "bodies": [
+  {
+   "x": 9.636363636363637,
+   "y": 6.0,
+   "vx": 0,
+   "vy": -0.15075567228888181,
+   "m": 10.0
+  },
+  {
+   "x": 13.636363636363637,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 1.507556722888818,
+   "m": 1.0
+  }
+ ],
+ "_source": "Textbook two-body circular orbit: relative speed sqrt(G(M+m)/r) in the centre-of-mass frame. The domain's softening (0.3) makes it only approximately circular.",
+ "domain": "orbit"
+}

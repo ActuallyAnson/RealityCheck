@@ -1,0 +1,21 @@
+{
+ "seed": 1,
+ "steps": 1800,
+ "actuated": false,
+ "green_seconds": {
+  "ns": 35,
+  "ew": 35
+ },
+ "yellow_seconds": 4,
+ "all_red_seconds": 2,
+ "max_green_seconds": 60,
+ "arrival_per_second": {
+  "N": 0.11,
+  "E": 0.11,
+  "S": 0.11,
+  "W": 0.11
+ },
+ "events": [],
+ "_source": "A conventional fixed-time two-phase plan (35 s greens, 4 s yellow, 2 s all-red, about 400 vehicles per hour per approach). Values are typical practice within the ranges of the domain, not copied from one document.",
+ "domain": "traffic"
+}

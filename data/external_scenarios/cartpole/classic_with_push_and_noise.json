@@ -1,0 +1,28 @@
+{
+ "dt": 0.02,
+ "steps": 1500,
+ "seed": 1,
+ "force_limit": 40.0,
+ "sensor_noise": 0.01,
+ "pushes": [
+  {
+   "t": 4.0,
+   "len": 0.1,
+   "force": 3.0
+  }
+ ],
+ "plant": {
+  "cart_mass": 1.0,
+  "pole_mass": 0.1,
+  "pole_length": 0.5,
+  "gravity": 9.8
+ },
+ "initial": {
+  "x": 0.0,
+  "v": 0.0,
+  "theta": -0.04,
+  "omega": 0.0
+ },
+ "_source": "Same plant as classic_control_parameters with sensor noise 0.01 and a 3 N, 0.1 s disturbance at t = 4: a robustness check of the kind used for classic controllers.",
+ "domain": "cartpole"
+}

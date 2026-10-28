@@ -1,0 +1,38 @@
+{
+ "G": 1.0,
+ "dt": 0.01,
+ "steps": 4000,
+ "seed": 6,
+ "bodies": [
+  {
+   "x": 10.0,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 0,
+   "m": 20.0
+  },
+  {
+   "x": 13.0,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 2.581988897471611,
+   "m": 0.5
+  },
+  {
+   "x": 15.0,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 2.0,
+   "m": 0.3
+  },
+  {
+   "x": 18.0,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 1.5811388300841898,
+   "m": 0.2
+  }
+ ],
+ "_source": "A heavy central mass 20 with three light bodies on circular-speed orbits at radii 3, 5, 8 (G=1): the dominant-central-mass regime that symplectic planetary integrators are designed for.",
+ "domain": "orbit"
+}

@@ -1,6 +1,6 @@
 // Adapter that lets RealityCheck test REBOUND (https://github.com/hannorein/rebound, GPLv3, built separately; nothing of it is copied
 // into this repository) through the JSON-lines protocol of docs/PROTOCOL.md, orbit domain.
-// Usage: ./rebound_orbit <integrator> [substeps_per_dt]      e.g. ias15 | leapfrog 4 | bs | saba
+// Usage: ./rebound_orbit <integrator> [substeps_per_dt] [ias15_adaptive_mode]      e.g. ias15 | leapfrog 4 | bs | saba | ias15 1 0
 // Fixed-step integrators advance dt/substeps per call; adaptive ones (ias15, bs) are asked for the exact output times.
 // Gravity is REBOUND's own direct summation with Plummer softening 0.3, the same softened force law the orbit domain declares.
 #include <cmath>
@@ -19,6 +19,7 @@ using rc::Json;
 int main(int argc, char** argv) {
   const std::string integ = argc > 1 ? argv[1] : "ias15";
   const int sub = argc > 2 ? std::max(1, std::atoi(argv[2])) : 1;
+  const int ias_mode = argc > 3 ? std::atoi(argv[3]) : -1;  // -1: leave REBOUND's default
   std::string line;
   while (std::getline(std::cin, line)) {
     Json out = Json::object();
@@ -28,7 +29,8 @@ int main(int argc, char** argv) {
       const double G = sc.num_or("G", 1), dt = sc.num_or("dt", 0.01);
       const int steps = static_cast<int>(sc.num_or("steps", 100));
       reb_simulation* r = reb_simulation_create();
-      reb_simulation_set_integrator(r, integ.c_str());
+      void* state = reb_simulation_set_integrator(r, integ.c_str());
+      if (integ == "ias15" && ias_mode >= 0 && state) ((reb_integrator_ias15_state*)state)->adaptive_mode = (decltype(((reb_integrator_ias15_state*)state)->adaptive_mode))ias_mode;
       r->G = G;
       r->softening = 0.3;
       r->dt = dt / sub;

@@ -1,0 +1,24 @@
+{
+ "G": 1.0,
+ "dt": 0.01,
+ "steps": 3500,
+ "seed": 2,
+ "bodies": [
+  {
+   "x": 9.418181818181818,
+   "y": 6.0,
+   "vx": 0,
+   "vy": -0.07537783614444091,
+   "m": 10.0
+  },
+  {
+   "x": 15.818181818181818,
+   "y": 6.0,
+   "vx": 0,
+   "vy": 0.753778361444409,
+   "m": 1.0
+  }
+ ],
+ "_source": "Textbook two-body orbit, eccentricity 0.6, started at apocentre (vis-viva). Softened force law, so the orbit precesses slightly.",
+ "domain": "orbit"
+}

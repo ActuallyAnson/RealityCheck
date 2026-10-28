@@ -1,0 +1,29 @@
+{
+ "dt": 0.008333333333333333,
+ "steps": 900,
+ "gravity": 9.81,
+ "seed": 2,
+ "walls": [],
+ "controller": {
+  "enabled": false,
+  "body": 0,
+  "kp": 1,
+  "fmax": 10,
+  "vcmd": 0,
+  "noise": 0,
+  "waypoints": []
+ },
+ "bodies": [
+  {
+   "x": 10.0,
+   "y": 10.0,
+   "vx": 0.3,
+   "vy": 0.0,
+   "r": 0.5,
+   "m": 1.0,
+   "e": 0.8
+  }
+ ],
+ "_source": "A ball dropped from height 10 with restitution 0.8: the standard first test of any physics engine; energy must only fall.",
+ "domain": "rigid2d"
+}

@@ -1,0 +1,31 @@
+{
+ "G": 1.0,
+ "dt": 0.01,
+ "steps": 3000,
+ "seed": 5,
+ "bodies": [
+  {
+   "x": 10.0,
+   "y": 8.309401076758503,
+   "vx": -0.5,
+   "vy": 3.061616997868383e-17,
+   "m": 1.0
+  },
+  {
+   "x": 8.0,
+   "y": 4.8452994616207485,
+   "vx": 0.2499999999999999,
+   "vy": -0.4330127018922194,
+   "m": 1.0
+  },
+  {
+   "x": 12.0,
+   "y": 4.845299461620748,
+   "vx": 0.2500000000000002,
+   "vy": 0.4330127018922192,
+   "m": 1.0
+  }
+ ],
+ "_source": "Lagrange's equilateral three-body solution, equal masses 1, side 4, each body on a circle about the centroid with speed sqrt(G m / side). Exact for the unsoftened problem; the softened force law perturbs it.",
+ "domain": "orbit"
+}

@@ -1,0 +1,54 @@
+{
+ "dt": 0.008333333333333333,
+ "steps": 900,
+ "gravity": 9.81,
+ "seed": 4,
+ "walls": [
+  {
+   "x": 6.0,
+   "y": 2.0,
+   "w": 8.0,
+   "h": 0.4
+  }
+ ],
+ "controller": {
+  "enabled": false,
+  "body": 0,
+  "kp": 1,
+  "fmax": 10,
+  "vcmd": 0,
+  "noise": 0,
+  "waypoints": []
+ },
+ "bodies": [
+  {
+   "x": 9.0,
+   "y": 2.9,
+   "vx": 0.0,
+   "vy": 0.0,
+   "r": 0.5,
+   "m": 1.0,
+   "e": 0.1
+  },
+  {
+   "x": 10.02,
+   "y": 2.9,
+   "vx": 0.0,
+   "vy": 0.0,
+   "r": 0.5,
+   "m": 1.0,
+   "e": 0.1
+  },
+  {
+   "x": 9.51,
+   "y": 3.77,
+   "vx": 0.0,
+   "vy": 0.0,
+   "r": 0.5,
+   "m": 1.0,
+   "e": 0.1
+  }
+ ],
+ "_source": "Three discs stacked in a pyramid on a static ledge, low restitution: a resting-contact and stacking stress test of the kind found in engine test suites.",
+ "domain": "rigid2d"
+}

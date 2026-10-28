@@ -76,3 +76,19 @@ violates a 2% energy bound in close encounters, and SABA (built for a dominant c
 softened systems. What the run shows is that the tool, with no knowledge of REBOUND, (1) agrees with the library's high-accuracy integrators, (2) isolates
 the step-size dependence of its fixed-step ones with shrunk reproductions (two bodies for the 1-substep leapfrog and SABA, 8 for the 4-substep leapfrog), and (3) works against a real C library written by someone else, through the
 same pipe protocol as the sample simulator. Momentum and angular momentum stayed within the declared tolerances in every integrator and scenario. No defect in REBOUND is claimed.
+
+### Externally sourced scenarios, and a hang in REBOUND's IAS15
+
+`data/external_scenarios/` holds 14 scenarios from the literature and standard practice (figure-eight, Pythagorean and Lagrange three-body problems, Kepler orbits,
+Newton's cradle, a billiard break, the classic cart-pole constants, ...; see its README). `./build/rc_corpus` runs them on the built-in simulator, on unmodified
+Box2D (both collision settings), and on REBOUND's IAS15 (adaptive_mode 0), BS and leapfrog (1 and 4 substeps): **every scenario passes every rule on every engine**
+(`results/rebound/corpus.md`). The tool's verdicts agree with what the literature predicts for well-behaved inputs; these are not failures.
+
+One scenario did expose a real problem. **REBOUND 5.2.2 (commit 262a9cc), IAS15 with its default settings, never returns from a single `reb_simulation_integrate(r, 0.01)` on the figure-eight
+initial condition.** The standalone C reproduction `examples/external/rebound_ias15_hang.c` has no RealityCheck code, only REBOUND's public API. What I checked:
+the hang does not depend on softening (0, 0.1, 0.3, 1.0), on the position offset or on the initial step (0.001 to 0.1); with `adaptive_mode` 0 (INDIVIDUAL) or 1 (GLOBAL) it finishes at
+once, and only the default mode 2 (PRS23, the default since January 2024) hangs; BS and leapfrog on the same input are fine. A web search found no report of it.
+What I did not check: other REBOUND versions, why PRS23 loops (I read none of its code), or whether the exact symmetry of the initial condition is the trigger (a 1e-9 shift of one body made
+the full adapter finish but not the standalone file, so I do not claim a trigger). It may be a configuration subtlety on my side, so I call it a reproducible hang found through the corpus,
+not a confirmed REBOUND bug, and I have not reported it upstream. The tool found it because the exec protocol made a non-returning simulator visible; a per-request timeout in `exec_sim` is the missing
+safeguard (a hung engine currently blocks the run).

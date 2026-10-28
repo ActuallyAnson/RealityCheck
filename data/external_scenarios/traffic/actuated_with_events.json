@@ -1,0 +1,40 @@
+{
+ "seed": 1,
+ "steps": 1800,
+ "actuated": true,
+ "green_seconds": {
+  "ns": 15,
+  "ew": 15
+ },
+ "yellow_seconds": 4,
+ "all_red_seconds": 2,
+ "max_green_seconds": 60,
+ "arrival_per_second": {
+  "N": 0.15,
+  "E": 0.08,
+  "S": 0.15,
+  "W": 0.08
+ },
+ "events": [
+  {
+   "t": 300,
+   "kind": "emergency",
+   "approach": "E",
+   "duration": 20
+  },
+  {
+   "t": 700,
+   "kind": "ped",
+   "approach": "N",
+   "duration": 1
+  },
+  {
+   "t": 900,
+   "kind": "detector_fail",
+   "approach": "S",
+   "duration": 120
+  }
+ ],
+ "_source": "A semi-actuated plan with a heavy N-S flow, an emergency pre-emption, a pedestrian request and a detector failure: the event mix of a real signal controller's fault tests.",
+ "domain": "traffic"
+}

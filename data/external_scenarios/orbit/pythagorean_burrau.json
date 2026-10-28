@@ -1,0 +1,31 @@
+{
+ "G": 1.0,
+ "dt": 0.005,
+ "steps": 4000,
+ "seed": 4,
+ "bodies": [
+  {
+   "x": 11.0,
+   "y": 9.0,
+   "vx": 0,
+   "vy": 0,
+   "m": 3.0
+  },
+  {
+   "x": 8.0,
+   "y": 5.0,
+   "vx": 0,
+   "vy": 0,
+   "m": 4.0
+  },
+  {
+   "x": 11.0,
+   "y": 5.0,
+   "vx": 0,
+   "vy": 0,
+   "m": 5.0
+  }
+ ],
+ "_source": "Pythagorean three-body problem (Burrau 1913; Szebehely and Peters 1967): masses 3, 4, 5 at rest at the vertices of a 3-4-5 right triangle, G=1. Chaotic with close encounters.",
+ "domain": "orbit"
+}
