@@ -36,3 +36,17 @@ rule catches are mostly always-on changes (a constant, a sign in a force term), 
 
 What this says about the oracle gap: it is not closable by learning invariants from the system under test alone. Closing it needs information from outside the system: a trusted reference run (regression testing against a previous version, where a hash difference is trivially enough), physical laws written by someone who knows the domain,
 or a second independent implementation (`rc_diff`). The miner remains useful where a reference is not available and a bug shows up only in a rare regime, and as a false-positive-free first screen on a new simulator, but this benchmark does not show it finding anything the other oracles miss.
+
+## On engines that are not the built-in simulators
+
+`rc_mine` runs the same miner on any engine (`results/mining_engines/mine.txt`; `RC_MODEL_CARD=examples/generic/tank_card.json ./build/rc_mine --domain generic --engine card --pool 300 --heldout 1000`):
+
+| engine | held-out scenarios | flagged by a mined invariant | of those, violating a declared rule | declared-rule violations not flagged |
+|---|---|---|---|---|
+| generic tank (flawed, model card) | 1000 | 1 (`level <= 230.8`) | 1 | 0 |
+| generic tank | 3000 | 1 | 1 | 9 |
+| Boost.odeint rk4, substep 0.02 (energy drifts) | 1000 | 3 | 3 | 101 |
+| Boost.odeint rk4, substep 0.004 (clean) | 1000 | 1 | **0** | 0 |
+
+So on outside engines the miner is a precise but low-recall screen: nearly everything it flags is a real declared-rule violation (4 of 5 flagged on the two flawed engines, the other being the clean-engine case below), it finds roughly 1 in 10 (tank) to 1 in 35 (rk4) of the violations a declared rule finds, and it can raise a false alarm (1 of 1000 on the clean fine-step engine, where
+no declared rule fires, so the 0% false-positive rate on the built-in domains is calibrated, not guaranteed). Use it as a cheap first screen where no one has written rules, not as a replacement for them.

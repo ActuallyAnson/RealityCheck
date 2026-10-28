@@ -1,0 +1,20 @@
+# rc_mine on engines that are not the built-in simulators (pool 300 seeds 900000+, held-out 1000 seeds 700000+ unless noted)
+
+## generic tank (model card), 1000 held-out
+libc++abi: terminating due to uncaught exception of type std::runtime_error: the generic domain needs a model card: set RC_MODEL_CARD=path/to/card.json (see docs/GENERIC_DOMAIN.md)
+
+## generic tank (model card), 3000 held-out
+libc++abi: terminating due to uncaught exception of type std::runtime_error: the generic domain needs a model card: set RC_MODEL_CARD=path/to/card.json (see docs/GENERIC_DOMAIN.md)
+
+## Boost.odeint rk4 substep 0.02 (energy not conserved)
+mined 24 invariants from 300 runs of exec:/tmp/odeint_orbit rk4 0.02
+held-out scenarios that break a mined invariant: 3 of 1000
+of those, also violating a declared rule: 3; declared-rule violations the mined invariants did not flag: 101
+  angular_momentum changes by at most 1.25486 per step (mined): 2 scenarios
+  energy >= -9518.33 (mined): 3 scenarios
+
+## Boost.odeint rk4 substep 0.004 (clean)
+mined 25 invariants from 300 runs of exec:/tmp/odeint_orbit rk4 0.004
+held-out scenarios that break a mined invariant: 1 of 1000
+of those, also violating a declared rule: 0; declared-rule violations the mined invariants did not flag: 0
+  energy changes by at most 1.47983 per step (mined): 1 scenarios
