@@ -183,6 +183,8 @@ Json to_json(const Invariant& v) {
   } else if (v.kind == "conserved") { j["abs_tol"] = v.abs_tol; j["rel_tol"] = v.rel_tol; }
   else if (v.kind == "monotone") { j["direction"] = v.direction; j["abs_tol"] = v.abs_tol; }
   else if (v.kind == "exclusive") j["signal_b"] = v.signal_b;
+  else if (v.kind == "step_bound") j["value"] = v.value;
+  else if (v.kind == "combo") { j["signal_b"] = v.signal_b; j["mult"] = v.mult; j["abs_tol"] = v.abs_tol; }
   else { j["equals"] = v.equals; if (v.steps_signal.empty()) j["steps"] = v.steps; else j["steps_signal"] = v.steps_signal; }
   return j;
 }
@@ -208,6 +210,12 @@ InvFail check_invariant(const Invariant& v, const Signals& s) {
     } else if (v.kind == "exclusive") {
       const std::vector<double>& y = s.at(v.signal_b);
       if (x[k] > 0.5 && y[k] > 0.5) { fail(k, x[k], y[k]); return f; }
+    } else if (v.kind == "step_bound" && k > 0) {  // mined (src/spec/miner.cpp); not part of the model-facing language
+      if (std::fabs(x[k] - x[k - 1]) > v.value) { fail(k, std::fabs(x[k] - x[k - 1]), v.value); return f; }
+    } else if (v.kind == "combo") {  // mined: signal + mult * signal_b stays near its initial value
+      const std::vector<double>& y = s.at(v.signal_b);
+      if (!std::isfinite(y[k])) { fail(k, y[k], 0); return f; }
+      if (std::fabs((x[k] + v.mult * y[k]) - (x[0] + v.mult * y[0])) > v.abs_tol) { fail(k, x[k] + v.mult * y[k], x[0] + v.mult * y[0]); return f; }
     } else if ((v.kind == "min_run" || v.kind == "max_run") && std::fabs(x[k] - v.equals) < 1e-9 && (k == 0 || std::fabs(x[k - 1] - v.equals) >= 1e-9)) {
       int e = k;
       while (e + 1 < n && std::fabs(x[e + 1] - v.equals) < 1e-9) ++e;

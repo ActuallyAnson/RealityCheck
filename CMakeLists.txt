@@ -28,6 +28,7 @@ add_library(rc_core
   src/agent/agent.cpp
   src/viewer/view_export.cpp
   src/spec/spec.cpp
+  src/spec/miner.cpp
   src/external/exec_sim.cpp
 )
 target_include_directories(rc_core PUBLIC src)
@@ -94,6 +95,8 @@ add_executable(rc_mutgen src/eval/mutgen_main.cpp)
 target_link_libraries(rc_mutgen rc_core)
 add_executable(mut_eval src/eval/mut_eval_main.cpp)
 target_link_libraries(mut_eval rc_core)
+add_executable(rc_minescore src/eval/minescore_main.cpp)
+target_link_libraries(rc_minescore rc_core)
 add_executable(rc_mutscore src/eval/mutscore_main.cpp)
 target_link_libraries(rc_mutscore rc_core)
 add_executable(rc_fuzz src/eval/fuzz_main.cpp)

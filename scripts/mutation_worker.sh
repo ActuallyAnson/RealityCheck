@@ -9,6 +9,6 @@ if ! c++ $FLAGS -I"$ROOT/src" -c "$W/$ID.cpp" -o "$W/$ID.o" 2> "$W/$ID.cc.log"; 
 if ! c++ "$ROOT/build/CMakeFiles/mut_eval.dir/src/eval/mut_eval_main.cpp.o" "$W/$ID.o" "$ROOT/build/librc_core.a" -o "$W/$ID.bin" 2>> "$W/$ID.cc.log"; then echo compile_failed > "$W/$ID.status"; exit 0; fi
 echo compiled > "$W/$ID.status"
 RUN=""; [ -n "${RC_SANDBOX:-}" ] && RUN="sandbox-exec -f $ROOT/scripts/repair_sandbox.sb"   # model-written builds run sandboxed (docs/REPAIR.md)
-(ulimit -t 600; nice -n 10 timeout 600 $RUN "$W/$ID.bin" --domain "$DOM" --scenarios "$N" --base-seed "$BASE" --invariants "$INV" --mr-scenarios "${MR_N:-300}" > "$W/$ID.tsv" 2> "$W/$ID.err")
+(ulimit -t 600; nice -n 10 timeout 600 $RUN "$W/$ID.bin" --domain "$DOM" --scenarios "$N" --base-seed "$BASE" --invariants "$INV" --mr-scenarios "${MR_N:-300}" ${MINE_ARGS:-} > "$W/$ID.tsv" 2> "$W/$ID.err")
 echo $? > "$W/$ID.exit"
 rm -f "$W/$ID.o" "$W/$ID.bin"
