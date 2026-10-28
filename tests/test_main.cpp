@@ -1005,6 +1005,24 @@ void test_rule_margins() {
   }
 }
 
+void test_spec_run_kinds() {
+  std::vector<std::string> pr;
+  auto v = parse_invariants("[{\"id\":\"y\",\"kind\":\"min_run\",\"signal\":\"state_N\",\"equals\":1,\"steps_signal\":\"yellow_seconds\"},"
+                            "{\"id\":\"w\",\"kind\":\"max_run\",\"signal\":\"state_N\",\"equals\":0,\"steps\":3}]", "traffic", &pr, 2);
+  CHECK(v.size() == 2 && pr.empty());
+  CHECK(parse_invariants("[{\"kind\":\"min_run\",\"signal\":\"state_N\",\"equals\":1,\"steps\":2}]", "traffic", &pr, 1).empty());  // language 1 rejects it
+  Signals s;
+  s["state_N"] = {0, 0, 2, 2, 1, 1, 0, 0, 0, 0, 2};
+  s["yellow_seconds"] = std::vector<double>(11, 3);
+  InvFail f = check_invariant(v[0], s);
+  CHECK(f.failed && f.step == 4 && f.observed == 2 && f.limit == 3);  // a 2-step yellow where 3 is required
+  s["state_N"] = {0, 0, 2, 2, 1, 1, 1, 0, 0, 0, 2};
+  CHECK(!check_invariant(v[0], s).failed);
+  CHECK(!check_invariant(v[1], s).failed);  // red runs have lengths 2 and 3, none above 3
+  s["state_N"] = {0, 0, 0, 0, 2};
+  CHECK(check_invariant(v[1], s).failed);   // a red run of 4 is above 3
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -1016,7 +1034,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds},
   };
   for (auto& t : tests) {
     int before = g_fail;

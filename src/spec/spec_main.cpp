@@ -75,13 +75,13 @@ int main(int argc, char** argv) {
   if (argc > 1 && std::string(argv[1]) == "summarize") return summarize(argc, argv);
   std::string domain = "orbit", replay, record, out = "runs/spec", config = "configs/hosted.json";
   bool live = false;
-  int clean_n = 1500, heldout_n = 3000, hunt_n = 300;
+  int language = 1, clean_n = 1500, heldout_n = 3000, hunt_n = 300;
   double budget = 0.5;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--domain") domain = val(); else if (a == "--live") live = true; else if (a == "--replay") replay = val();
-    else if (a == "--record") record = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val();
+    else if (a == "--language") language = std::atoi(val().c_str()); else if (a == "--record") record = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val();
     else if (a == "--clean-n") clean_n = std::atoi(val().c_str()); else if (a == "--heldout-n") heldout_n = std::atoi(val().c_str());
     else if (a == "--hunt-n") hunt_n = std::atoi(val().c_str()); else if (a == "--budget-usd") budget = std::atof(val().c_str());
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
@@ -99,12 +99,12 @@ int main(int argc, char** argv) {
   if (live) model.set_lifetime_ledger(default_ledger_path(), default_lifetime_cap_usd());
 
   std::vector<ChatMessage> msgs;
-  msgs.push_back({"user", spec_prompt(domain), {}, "", {}});
+  msgs.push_back({"user", spec_prompt(domain, language), {}, "", {}});
   std::vector<Invariant> accepted, rejected_all;
   std::vector<std::string> problems, rejected_evidence;
   try {
     std::string ans = ask(model, api, msgs, "spec_propose");
-    std::vector<Invariant> cand = parse_invariants(ans, domain, &problems);
+    std::vector<Invariant> cand = parse_invariants(ans, domain, &problems, language);
     int proposed = static_cast<int>(cand.size());
     if (cand.empty()) { std::cerr << "no invariants parsed from the answer\n"; return 1; }
     for (int round = 1; round <= 2; ++round) {
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
       std::cout << "round " << round << ": " << cand.size() << " candidates, " << (cand.size() - rej.size()) << " held on " << clean_n << " clean runs\n";
       if (round == 2 || rej.empty()) break;
       msgs.push_back({"user", revision_prompt(rej, ev), {}, "", {}});
-      cand = parse_invariants(ask(model, api, msgs, "spec_revise"), domain, &problems);
+      cand = parse_invariants(ask(model, api, msgs, "spec_revise"), domain, &problems, language);
       for (Invariant& c : cand) { c.id += "_r2"; }
       proposed += static_cast<int>(cand.size());
     }
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
   }
 
   Json report = Json::object();
-  report["domain"] = domain; report["model"] = api.model;
+  report["domain"] = domain; report["language"] = language; report["model"] = api.model;
   report["clean_validation_runs"] = clean_n; report["heldout_clean_runs"] = heldout_n; report["hunt_scenarios_per_bug"] = hunt_n;
   Json acc = Json::array(), rej = Json::array(), prob = Json::array();
   for (const Invariant& i : final_set) acc.push(to_json(i));

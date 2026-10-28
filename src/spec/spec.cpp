@@ -9,6 +9,21 @@
 
 namespace rc {
 
+const std::vector<SignalInfo>& signal_catalog(const std::string& domain, int language) {
+  if (language >= 2 && domain == "traffic") {
+    static const std::vector<SignalInfo> t2 = [] {
+      std::vector<SignalInfo> v = signal_catalog("traffic");
+      v.push_back({"any_active", "max of ns_active and ew_active (0 only while every approach is red)"});
+      v.push_back({"yellow_seconds", "the scenario's yellow duration in seconds (constant)"});
+      v.push_back({"all_red_seconds", "the scenario's all-red clearance in seconds (constant)"});
+      v.push_back({"max_green_seconds", "the scenario's maximum green in seconds (constant)"});
+      return v;
+    }();
+    return t2;
+  }
+  return signal_catalog(domain);
+}
+
 const std::vector<SignalInfo>& signal_catalog(const std::string& domain) {
   static const std::vector<SignalInfo> orbit = {
       {"energy", "total kinetic plus potential energy of all bodies"},
@@ -57,6 +72,8 @@ Signals extract_signals(const Scenario& sc, const Trace& tr) {
       s["ns_active"].push_back(std::max(st[0], st[2]));
       s["ew_active"].push_back(std::max(st[1], st[3]));
       s["longest_red_wait"].push_back(wmax);
+      s["any_active"].push_back(std::max(std::max(st[0], st[2]), std::max(st[1], st[3])));
+      s["yellow_seconds"].push_back(sc.tr.yellow); s["all_red_seconds"].push_back(sc.tr.all_red); s["max_green_seconds"].push_back(sc.tr.max_green);
     } else if (d == "cartpole") {
       const BodyState& q = r.body[0];
       s["cart_x"].push_back(q.x); s["theta"].push_back(q.y); s["cart_v"].push_back(q.vx); s["omega"].push_back(q.vy);
@@ -89,13 +106,13 @@ Signals extract_signals(const Scenario& sc, const Trace& tr) {
 }
 
 namespace {
-bool known_signal(const std::string& domain, const std::string& n) {
-  for (const SignalInfo& si : signal_catalog(domain)) if (si.name == n) return true;
+bool known_signal(const std::string& domain, const std::string& n, int language = 1) {
+  for (const SignalInfo& si : signal_catalog(domain, language)) if (si.name == n) return true;
   return false;
 }
 }  // namespace
 
-std::vector<Invariant> parse_invariants(const std::string& text, const std::string& domain, std::vector<std::string>* problems) {
+std::vector<Invariant> parse_invariants(const std::string& text, const std::string& domain, std::vector<std::string>* problems, int language) {
   std::vector<Invariant> out;
   auto bad = [&](const std::string& m) { if (problems) problems->push_back(m); };
   size_t a = text.find('['), b = text.rfind(']');
@@ -115,8 +132,9 @@ std::vector<Invariant> parse_invariants(const std::string& text, const std::stri
       v.text = j.str_or("text", "");
       v.signal = j.str_or("signal", "");
       if (!ids.insert(v.id).second) { bad(tag + "duplicate id " + v.id); continue; }
-      if (v.kind != "bound" && v.kind != "conserved" && v.kind != "monotone" && v.kind != "exclusive") { bad(tag + "unknown kind"); continue; }
-      if (!known_signal(domain, v.signal)) { bad(tag + "unknown signal '" + v.signal + "'"); continue; }
+      bool runk = language >= 2 && (v.kind == "min_run" || v.kind == "max_run");
+      if (v.kind != "bound" && v.kind != "conserved" && v.kind != "monotone" && v.kind != "exclusive" && !runk) { bad(tag + "unknown kind"); continue; }
+      if (!known_signal(domain, v.signal, language)) { bad(tag + "unknown signal '" + v.signal + "'"); continue; }
       v.abs_tol = j.num_or("abs_tol", 0); v.rel_tol = j.num_or("rel_tol", 0); v.add = j.num_or("add", 0);
       if (v.abs_tol < 0 || v.rel_tol < 0) { bad(tag + "negative tolerance"); continue; }
       if (v.kind == "bound") {
@@ -133,7 +151,16 @@ std::vector<Invariant> parse_invariants(const std::string& text, const std::stri
         if (v.direction != "nonincreasing" && v.direction != "nondecreasing") { bad(tag + "direction must be nonincreasing or nondecreasing"); continue; }
       } else if (v.kind == "exclusive") {
         v.signal_b = j.str_or("signal_b", "");
-        if (!known_signal(domain, v.signal_b)) { bad(tag + "unknown signal_b"); continue; }
+        if (!known_signal(domain, v.signal_b, language)) { bad(tag + "unknown signal_b"); continue; }
+      } else if (runk) {
+        if (!j.has("equals") || !j.at("equals").is_number()) { bad(tag + "run kinds need a numeric equals"); continue; }
+        v.equals = j.at("equals").num();
+        v.steps_signal = j.str_or("steps_signal", "");
+        bool has_steps = j.has("steps") && j.at("steps").is_number();
+        v.steps = j.num_or("steps", 0);
+        if (has_steps == !v.steps_signal.empty()) { bad(tag + "run kinds need exactly one of steps, steps_signal"); continue; }
+        if (!v.steps_signal.empty() && !known_signal(domain, v.steps_signal, language)) { bad(tag + "unknown steps_signal"); continue; }
+        if (v.kind == "max_run" && !v.steps_signal.empty()) { bad(tag + "max_run takes steps only"); continue; }
       }
       out.push_back(v);
     } catch (const std::exception& e) { bad(tag + e.what()); }
@@ -152,7 +179,8 @@ Json to_json(const Invariant& v) {
     if (v.add != 0) j["add"] = v.add;
   } else if (v.kind == "conserved") { j["abs_tol"] = v.abs_tol; j["rel_tol"] = v.rel_tol; }
   else if (v.kind == "monotone") { j["direction"] = v.direction; j["abs_tol"] = v.abs_tol; }
-  else j["signal_b"] = v.signal_b;
+  else if (v.kind == "exclusive") j["signal_b"] = v.signal_b;
+  else { j["equals"] = v.equals; if (v.steps_signal.empty()) j["steps"] = v.steps; else j["steps_signal"] = v.steps_signal; }
   return j;
 }
 
@@ -177,24 +205,35 @@ InvFail check_invariant(const Invariant& v, const Signals& s) {
     } else if (v.kind == "exclusive") {
       const std::vector<double>& y = s.at(v.signal_b);
       if (x[k] > 0.5 && y[k] > 0.5) { fail(k, x[k], y[k]); return f; }
+    } else if ((v.kind == "min_run" || v.kind == "max_run") && std::fabs(x[k] - v.equals) < 1e-9 && (k == 0 || std::fabs(x[k - 1] - v.equals) >= 1e-9)) {
+      int e = k;
+      while (e + 1 < n && std::fabs(x[e + 1] - v.equals) < 1e-9) ++e;
+      int len = e - k + 1;
+      if (v.kind == "max_run" && len > v.steps) { fail(k, len, v.steps); return f; }
+      if (v.kind == "min_run" && k > 0 && e < n - 1) {
+        double need = v.steps_signal.empty() ? v.steps : s.at(v.steps_signal)[k];
+        if (len < need) { fail(k, len, need); return f; }
+      }
     }
   }
   return f;
 }
 
-std::string spec_prompt(const std::string& domain) {
+std::string spec_prompt(const std::string& domain, int language) {
   std::string desc = simulation_description(domain);
   size_t cut = desc.find("DECLARED RULES");
   if (cut != std::string::npos) desc = desc.substr(0, cut);
   std::ostringstream o;
   o << "You are writing the correctness invariants for a simulator, using only its description. Nobody has told you how it is implemented or whether it has defects.\n\n"
     << desc << "\nSIGNALS you may refer to (recorded at every step, step 0 = initial state):\n";
-  for (const SignalInfo& si : signal_catalog(domain)) o << "- " << si.name << ": " << si.text << "\n";
+  for (const SignalInfo& si : signal_catalog(domain, language)) o << "- " << si.name << ": " << si.text << "\n";
   o << "\nINVARIANT LANGUAGE: a JSON array of objects, each with `id`, `text` (one sentence of why this must hold) and a `kind`:\n"
        "- {\"kind\":\"bound\",\"signal\":S,\"op\":\"<=\"|\">=\", and exactly one of \"value\":number | \"rhs_signal\":T (compare with signal T at the same step, optional \"add\") | \"mult\":m (compare with m * S at step 0, optional \"add\")}\n"
        "- {\"kind\":\"conserved\",\"signal\":S,\"abs_tol\":a,\"rel_tol\":r}   |S(t) - S(0)| <= a + r*|S(0)| at every step\n"
        "- {\"kind\":\"monotone\",\"signal\":S,\"direction\":\"nonincreasing\"|\"nondecreasing\",\"abs_tol\":a}   step-to-step change allowed within a\n"
-       "- {\"kind\":\"exclusive\",\"signal\":S,\"signal_b\":T}   S and T are never both greater than 0.5\n\n"
+       "- {\"kind\":\"exclusive\",\"signal\":S,\"signal_b\":T}   S and T are never both greater than 0.5\n"
+       + std::string(language >= 2 ? "- {\"kind\":\"min_run\",\"signal\":S,\"equals\":v,\"steps\":n | \"steps_signal\":T}   every stretch of consecutive steps where S equals v (not touching the first or last step) lasts at least n steps (or T steps)\n"
+                                        "- {\"kind\":\"max_run\",\"signal\":S,\"equals\":v,\"steps\":n}   no stretch of consecutive steps where S equals v lasts longer than n steps\n" : "") + "\n"
        "TASK: propose up to 12 invariants that must hold for EVERY valid scenario within the limits above, if the simulator is correct. The engine will run each one on many\n"
        "clean simulations and discard any that ever fails, so do not guess tight numbers you cannot justify; but an invariant that is too loose catches nothing. Prefer\n"
        "conservation laws, bounds implied by the description, and safety properties. Answer with the JSON array only.";
