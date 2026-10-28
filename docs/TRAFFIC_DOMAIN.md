@@ -24,10 +24,10 @@ agent v1):
 Controls: 0 reports in 3 runs. Cost $1.37 for 18 runs. Tables: `results/traffic_agent/summary.md`, `results/traffic/baseline.md`.
 
 **Read this as a negative result for the agent.** Random testing finds every traffic bug in every seed; the agent is worse on
-t02 and t03. Of the 9 failed agent runs, all 9 ended on the 26-turn cap (`stop_reason: turns`) without an accepted report,
+t02 and t03. Of the 6 agent runs without a valid report (4 on t02, 2 on t03), all 6 ended on the 26-turn cap (`stop_reason: turns`) without an accepted report,
 so the shortfall is search efficiency and turn budget, not wrong reports: no invalid report was accepted and the controls
-stayed clean. The bugs are not needles for random testing (needle size roughly 1 percent), so there is nothing for the
-agent's hypotheses to beat. I did not rerun with a larger turn budget; doing so after seeing these numbers would be a second
+stayed clean. Random testing needs a median of 4 to 47 scenarios per bug here, so these are not needles that
+the agent's hypotheses could be expected to beat. I did not rerun with a larger turn budget; doing so after seeing these numbers would be a second
 attempt and would be reported as one.
 
 Disclosures: the viewer draws each approach as a signal lamp plus a queue of cars; the lamp colour and queue length come from
