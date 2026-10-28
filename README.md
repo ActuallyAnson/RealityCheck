@@ -75,6 +75,8 @@ Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capp
 Optional, for the Box2D engine: `brew install box2d` before configuring. Everything else is plain C++17, no third-party dependencies, no network
 unless `--live` is passed. CI builds and tests on Ubuntu and macOS.
 
+    ./build/rc help                                 # one front door: rc hunt | agent | triage | spec | repro | diff | eval | corpus | api | serve | spend | doctor
+    ./build/rc doctor                               # check the installation, the key, the spend ledger
     ./build/rc_demo --open                          # viewer at http://127.0.0.1:8080 (recorded runs; Live needs MODEL_API_KEY)
     ./build/rc_hunt --engine builtin:o02 --domain orbit --scenarios 400 --bundles out/    # random hunt + regression bundles
     ./build/rc_diff --a builtin --b 'exec:./build/naive_orbit 0.03' --domain orbit --tol 0.1 --horizon 1
