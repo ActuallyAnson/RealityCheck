@@ -33,3 +33,11 @@ After the fix: 4 seeds x 400000 parser iterations and 1500 API calls each in log
 CI job `linux-evaluation` (Ubuntu) rebuilds and re-runs, with no model: the four random-baseline evaluations (orbit, cart-pole, traffic, and the rigid-body ablation lock), the validator red team, and the external-scenario corpus. Result (run 40710656165): **all four random-baseline tables are byte-identical to the committed macOS tables**,
 the red team gives the same table, and the corpus runs (Box2D and REBOUND rows are "n/a" there because those engines are not installed on the runner). So the libm difference that changes pinned trace hashes did not change any bug-finding count in these evaluations. What has still not been re-run on Linux: the model-dependent evaluations
 (agent, triage, spec), which are API runs that cost money and whose replayed tables depend on the simulator version, not the platform alone.
+
+### Recorded model reports replayed on Linux (no new model calls)
+
+The 244 triage reports written by the model on macOS (three models, 83 failures each) were re-validated on Linux (Docker, Ubuntu 24.04, `rc_strictcheck`): each session's shrunk scenario and counterfactual were re-simulated on the Linux build, then the report was checked with the default and the strict validator.
+Result: **the default validator accepts 244 of 244 and the strict validator accepts the same 47, 42 and 37 reports as on macOS; every forgery count is identical** (`results/validator/strict.txt` is the macOS output; the Linux output was compared line by line).
+This is a replay of macOS-recorded model output, not new model runs on Linux, so it shows that the engine's judgments of those reports do not depend on the platform; it does not show that the model would behave the same on a Linux run (it does not see the platform).
+CI repeats this on every push (`linux-evaluation`, step "Recorded reports on Linux").
+

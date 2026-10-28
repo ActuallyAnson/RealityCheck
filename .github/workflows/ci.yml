@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: cmake -S . -B build && cmake --build build -j 4 --target rc_eval rc_redteam rc_corpus rc_tests
+        run: cmake -S . -B build && cmake --build build -j 4 --target rc_eval rc_redteam rc_corpus rc_tests rc_strictcheck
       - name: Validator red team (deterministic; fails if a contradicting forgery is accepted)
         run: ./build/rc_redteam --per-bug 3 | tee redteam.md
       - name: External-scenario corpus
@@ -46,6 +46,11 @@ jobs:
             if diff -q "linux_results/$1/baseline.md" "$3/baseline.md" > /dev/null; then echo "$1: identical to the committed macOS table" | tee -a linux_summary.txt
             else echo "$1: DIFFERS from the committed macOS table" | tee -a linux_summary.txt; diff "$3/baseline.md" "linux_results/$1/baseline.md" | head -20 | tee -a linux_summary.txt; fi
           done
+      - name: Recorded reports on Linux (default and strict validator) against the committed macOS output
+        run: |
+          BUILD_DIR=build ./scripts/strictcheck.sh > /dev/null
+          if git diff --quiet -- results/validator/strict.txt; then echo "strict validator: identical to the committed macOS output" | tee -a linux_summary.txt
+          else echo "strict validator: DIFFERS from the committed macOS output" | tee -a linux_summary.txt; git diff -- results/validator/strict.txt | head -40 | tee -a linux_summary.txt; fi
       - uses: actions/upload-artifact@v4
         with:
           name: linux-evaluation
