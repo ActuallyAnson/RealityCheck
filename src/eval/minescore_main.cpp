@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "eval/ground_truth.hpp"
 #include "util/json.hpp"
 
 using namespace rc;
@@ -53,6 +54,6 @@ int main(int argc, char** argv) {
   Json o = Json::object();
   o["domain"] = domain; o["changed"] = changed; o["clean_false_positive_scenarios"] = clean_fp; o["clean_pool"] = static_cast<int>(clean.size()); o["killed_by_mined"] = kill_mined; o["killed_by_old_oracles"] = kill_old;
   o["union"] = kill_union; o["mined_only"] = mined_only; o["silent_to_old"] = silent; o["silent_caught_by_mined"] = silent_caught; o["mutants"] = rows;
-  std::ofstream(dir + "/minescore.json") << o.dump(2) << "\n";
+  std::ofstream(dir + "/minescore.json") << o.dump() << "\n";
   return 0;
 }

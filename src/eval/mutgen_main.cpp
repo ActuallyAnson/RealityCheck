@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   std::ifstream f(file);
-  if (!f || ranges.empty()) { std::cerr << "usage: rc_mutgen --file F --ranges a-b,c-d [--count N] [--seed S] [--out DIR]\n"; return 2; }
+  if (!f || ranges.empty()) { std::cerr << "usage: rc_mutgen --file F --ranges a-b,c-d [--count N] [--seed S] [--order K] [--out DIR]\n"; return 2; }
   std::vector<std::string> lines;
   for (std::string l; std::getline(f, l);) lines.push_back(l);
   const std::vector<std::pair<std::string, std::string>> ops = {{" <= ", " < "}, {" < ", " <= "}, {" >= ", " > "}, {" > ", " >= "}, {" == ", " != "}, {" != ", " == "},
