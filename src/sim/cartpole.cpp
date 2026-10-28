@@ -82,6 +82,12 @@ std::string cartpole_validate(const Scenario& s) {
     if (!in(p.len, s.dt, L::push_len_max)) return "push len outside [dt, 0.2]";
     if (!in(p.force, -L::push_force_max, L::push_force_max)) return "push force outside [-4, 4]";
   }
+  // overlapping pushes add up: the total force acting at any instant must stay within the same limit
+  for (const auto& p : c.pushes) {
+    double total = 0;
+    for (const auto& q : c.pushes) if (p.t >= q.t && p.t < q.t + q.len) total += q.force;
+    if (std::fabs(total) > L::push_force_max + 1e-9) return "overlapping pushes add up to more than 4 N";
+  }
   return "";
 }
 

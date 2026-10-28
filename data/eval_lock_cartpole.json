@@ -1,35 +1,35 @@
 {
- "_note": "LOCKED for the cart-pole evaluation, envelope 2. The first attempt (data/eval_lock_cartpole_envelope1.json, results/*_envelope1) exposed that the declared scenario envelope contained corners the controller cannot physically recover (3 of 3 agent control runs found violations on the clean simulator). The envelope was narrowed and verified with an exhaustive corner sweep (16384 corner scenarios, 0 violations on the clean simulator) plus 40000 random scenarios; bug triggers were recalibrated with the random baseline only. c01..c03 were seen by the agent in attempt 1 (under the wider envelope), so they are NOT fresh held-out here. The agent is the unchanged v1 agent.",
- "version": "cartpole-2",
+ "_note": "LOCKED for the cart-pole evaluation, envelope 3. Attempt 1 (envelope 1): 3 of 3 agent controls found violations on the clean simulator (physically unrecoverable corners). Envelope 2 narrowed the box and passed a one-push corner sweep, but stacked overlapping pushes (not covered by that sweep) still broke the clean simulator in 248 of 16384 corners; that attempt was stopped after 13 of 18 runs (partial results kept in results/cartpole_agent_envelope2_partial). Envelope 3 caps the total of overlapping pushes at 4 N; verified with a corner sweep including three stacked pushes (16384 corners, 0 violations) plus 40000 random scenarios. Bug triggers were recalibrated with the random baseline only. c01..c03 were seen by the agent in earlier attempts, so they are not fresh held-out. The agent is the unchanged v1 agent.",
+ "version": "cartpole-3",
  "domain": "cartpole",
  "budget": {
   "max_steps": 300000,
   "max_wall_ms": 60000
  },
  "test_seeds": [
-  3111,
-  3212,
-  3313,
-  3414,
-  3515
+  3121,
+  3222,
+  3323,
+  3424,
+  3525
  ],
  "control_seeds": [
-  3911,
-  3912,
-  3913
+  3921,
+  3922,
+  3923
  ],
  "bugs": [
   {
    "id": "c01",
-   "split": "seen_envelope1"
+   "split": "seen_earlier_attempt"
   },
   {
    "id": "c02",
-   "split": "seen_envelope1"
+   "split": "seen_earlier_attempt"
   },
   {
    "id": "c03",
-   "split": "seen_envelope1"
+   "split": "seen_earlier_attempt"
   }
  ]
 }

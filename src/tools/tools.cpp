@@ -433,7 +433,7 @@ std::string simulation_description(const std::string& domain) {
          "SCENARIO LIMITS\n"
          "dt in [0.002, 0.02]; steps in [1, 4000]; cart_mass in [0.5, 2]; pole_mass in [0.05, 0.3]; pole_length in [0.4, 1];\n"
          "gravity in [5, 12]; initial x in [-0.5, 0.5], v in [-0.5, 0.5], theta in [-0.1, 0.1], omega in [-0.3, 0.3];\n"
-         "force_limit in [40, 80]; sensor_noise in [0, 0.02]; up to 3 pushes with t inside the run, len in [dt, 0.2], force in [-4, 4].\n\n"
+         "force_limit in [40, 80]; sensor_noise in [0, 0.02]; up to 3 pushes with t inside the run, len in [dt, 0.2], force in [-4, 4]; pushes that overlap in time add up and the total must stay within [-4, 4].\n\n"
          "DECLARED RULES (checked at every step)\n";
     for (const auto& r : rule_catalog("cartpole")) o << "- " << r.id << ": " << r.text << "\n";
     o << "\nThe rule checker, not you, decides what is a violation.\n";
