@@ -46,8 +46,11 @@ std::vector<Row> load_tsv(const std::string& p) {
 // Patch text must be plain simulator code: no preprocessor, no process, file, network or dynamic-loading calls, no inline assembly.
 std::string denylist_hit(const std::string& code) {
   static const char* bad[] = {"#", "system", "popen", "exec", "fork", "fopen", "freopen", "ofstream", "ifstream", "fstream", "filesystem", "socket", "connect(", "asm", "dlopen", "dlsym", "getenv", "setenv",
-                              "unlink", "remove(", "rename(", "signal(", "kill(", "syscall", "mmap", "chmod", "std::thread", "pthread", "__"};
+                              "unlink", "remove(", "rename(", "kill(", "syscall", "mmap", "chmod", "std::thread", "pthread", "__"};
   for (const char* b : bad) if (code.find(b) != std::string::npos) return b;
+  // signal( is the POSIX call unless it is a member call (`s.signal(`) or `int signal(` (traffic.cpp's own accessor)
+  for (size_t at = code.find("signal("); at != std::string::npos; at = code.find("signal(", at + 1))
+    if (at == 0 || (code[at - 1] != '.' && code.compare(at >= 4 ? at - 4 : 0, 4, "int ") != 0)) return "signal(";
   return "";
 }
 
