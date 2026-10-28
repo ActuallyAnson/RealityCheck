@@ -20,6 +20,8 @@
 #include "sim/world.hpp"
 #include "tools/render.hpp"
 #include "tools/tools.hpp"
+#include "spec/spec.hpp"
+#include "sim/domains.hpp"
 
 using namespace rc;
 
@@ -959,6 +961,25 @@ static void test_traffic_domain() {
   CHECK(all.find("restitution") == std::string::npos && all.find("pole") == std::string::npos);
 }
 
+void test_spec_rules() {
+  for (std::string d : {"rigid2d", "orbit", "cartpole", "traffic"}) {
+    std::string p = spec_prompt(d);
+    CHECK(p.find("DECLARED RULES") == std::string::npos && p.find("seeded bug") == std::string::npos);
+    for (int b = 0; b < domain_num_bugs(d); ++b) CHECK(p.find(domain_bug_name(d, b)) == std::string::npos);
+    for (const auto& r : rule_catalog(d)) CHECK(p.find(std::string(r.id)) == std::string::npos);  // the hand-written rule ids are not in the prompt
+  }
+  std::vector<std::string> pr;
+  auto v = parse_invariants("text [{\"id\":\"a\",\"kind\":\"conserved\",\"signal\":\"energy\",\"abs_tol\":1e-3,\"rel_tol\":1e-6},"
+                            "{\"id\":\"b\",\"kind\":\"bound\",\"signal\":\"nope\",\"op\":\"<=\",\"value\":1},"
+                            "{\"id\":\"c\",\"kind\":\"bound\",\"signal\":\"energy\",\"op\":\"<=\"}] tail", "orbit", &pr);
+  CHECK(v.size() == 1 && pr.size() == 2);  // unknown signal and a bound with no right-hand side are dropped, not repaired
+  Scenario sc = random_orbit_scenario(7);
+  Signals clean = extract_signals(sc, simulate(sc, 0));
+  Invariant tight = v[0]; tight.abs_tol = 0; tight.rel_tol = 0;
+  Signals s2 = clean; s2["energy"].back() += 1;
+  CHECK(check_invariant(tight, s2).failed && check_invariant(tight, s2).step <= static_cast<int>(s2["energy"].size()) - 1);
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -970,7 +991,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules},
   };
   for (auto& t : tests) {
     int before = g_fail;

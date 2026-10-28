@@ -1,0 +1,2 @@
+{"cached_tokens":0,"call":1,"completion_tokens":4015,"cost_usd":0.018026250000000001,"label":"spec_propose","latency_ms":19903.646791994572,"ok":true,"prompt_tokens":770,"reasoning_tokens":3566,"total_cost_usd":0.018026250000000001}
+{"cached_tokens":739,"call":2,"completion_tokens":799,"cost_usd":0.0042866000000000007,"label":"spec_revise","latency_ms":4533.3025830388069,"ok":true,"prompt_tokens":1363,"reasoning_tokens":736,"total_cost_usd":0.022312850000000002}

@@ -25,6 +25,7 @@ add_library(rc_core
   src/model/model.cpp
   src/agent/agent.cpp
   src/viewer/view_export.cpp
+  src/spec/spec.cpp
   src/external/exec_sim.cpp
 )
 target_include_directories(rc_core PUBLIC src)
@@ -74,3 +75,5 @@ target_link_libraries(rc_agent rc_engines)
 add_executable(rc_diff src/external/diff_main.cpp)
 target_link_libraries(rc_diff rc_engines)
 target_link_libraries(rc_tests rc_engines)
+add_executable(rc_spec src/spec/spec_main.cpp)
+target_link_libraries(rc_spec rc_core)
