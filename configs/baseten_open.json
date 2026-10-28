@@ -1,0 +1,13 @@
+{
+  "backend": "meta_api",
+  "base_url": "https://inference.baseten.co/v1",
+  "model": "meta-models/muse-spark-open-1026",
+  "api_key_env": "BASETEN_API_KEY",
+  "native_tools": true,
+  "pricing": {
+    "input": 1.25,
+    "cached_input": 0.15,
+    "output": 4.25
+  },
+  "_note": "Pricing is a conservative proxy (the hosted Muse Spark rates) so per-run budget caps work; real spend is drawn from the Baseten hackathon credits."
+}

@@ -126,3 +126,11 @@ target_link_libraries(rc_strictcheck rc_core)
 
 add_executable(rc_plant src/eval/plant_main.cpp)
 target_link_libraries(rc_plant rc_core)
+
+add_executable(rc_stepdump src/eval/stepdump_main.cpp)
+target_link_libraries(rc_stepdump rc_core)
+add_executable(rc_refjudge src/eval/refjudge_main.cpp)
+add_executable(rc_refgen src/eval/refgen_main.cpp)
+target_link_libraries(rc_refgen rc_core)
+add_executable(rc_refscore src/eval/refscore_main.cpp)
+target_link_libraries(rc_refscore rc_core)

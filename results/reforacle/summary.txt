@@ -1,0 +1,28 @@
+## orbit: 40 sampled mutants (results/mutation/orbit/mutation.json)
+
+changed variants scored: 25; caught by the reference: 18
+of those a hand-written rule catches: 20, caught by the reference: 16
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 2
+mutants that crashed or timed out in the original evaluation: 6, flagged by the reference: 6
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 1
+## orbit: model-planted variants (results/blind/eval_orbit.txt)
+
+changed variants scored: 9; caught by the reference: 4
+of those a hand-written rule catches: 7, caught by the reference: 3
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 2, caught by the reference: 1
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## cartpole: 40 sampled mutants (results/mutation/cartpole/mutation.json)
+
+changed variants scored: 35; caught by the reference: 25
+of those a hand-written rule catches: 15, caught by the reference: 11
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 19, caught by the reference: 13
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## cartpole: model-planted variants (results/blind/eval_cartpole.txt)
+
+changed variants scored: 7; caught by the reference: 3
+of those a hand-written rule catches: 2, caught by the reference: 0
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 3
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
