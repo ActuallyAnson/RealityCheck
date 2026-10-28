@@ -14,13 +14,13 @@ namespace rc {
 struct CartPoleLimits {
   static constexpr double dt_min = 0.002, dt_max = 0.02;
   static constexpr int steps_max = 4000;
-  static constexpr double mc_min = 0.5, mc_max = 2.0, mp_min = 0.05, mp_max = 0.5, l_min = 0.3, l_max = 1.0;
-  static constexpr double g_min = 5.0, g_max = 15.0;
-  static constexpr double x0_max = 0.5, v0_max = 0.5, th0_max = 0.2, w0_max = 0.5;
-  static constexpr double fmax_min = 20.0, fmax_max = 50.0;
+  static constexpr double mc_min = 0.5, mc_max = 2.0, mp_min = 0.05, mp_max = 0.3, l_min = 0.4, l_max = 1.0;
+  static constexpr double g_min = 5.0, g_max = 12.0;
+  static constexpr double x0_max = 0.5, v0_max = 0.5, th0_max = 0.1, w0_max = 0.3;
+  static constexpr double fmax_min = 40.0, fmax_max = 80.0;
   static constexpr double noise_max = 0.02;
   static constexpr int pushes_max = 3;
-  static constexpr double push_force_max = 10.0, push_len_max = 0.2;
+  static constexpr double push_force_max = 4.0, push_len_max = 0.2;
 };
 
 // Seeded bugs (mask bit i = c(i+1)); internal names for sim code only.

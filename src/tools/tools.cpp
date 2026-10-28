@@ -431,9 +431,9 @@ std::string simulation_description(const std::string& domain) {
          "- The plant is integrated with RK4; the controller acts once per outer step (dt). Pushes are extra external forces on the cart.\n"
          "- theta is the pole angle from upright in radians (0 = upright). A run is a pure function of the scenario (including `seed`).\n\n"
          "SCENARIO LIMITS\n"
-         "dt in [0.002, 0.02]; steps in [1, 4000]; cart_mass in [0.5, 2]; pole_mass in [0.05, 0.5]; pole_length in [0.3, 1];\n"
-         "gravity in [5, 15]; initial x in [-0.5, 0.5], v in [-0.5, 0.5], theta in [-0.2, 0.2], omega in [-0.5, 0.5];\n"
-         "force_limit in [20, 50]; sensor_noise in [0, 0.02]; up to 3 pushes with t inside the run, len in [dt, 0.2], force in [-10, 10].\n\n"
+         "dt in [0.002, 0.02]; steps in [1, 4000]; cart_mass in [0.5, 2]; pole_mass in [0.05, 0.3]; pole_length in [0.4, 1];\n"
+         "gravity in [5, 12]; initial x in [-0.5, 0.5], v in [-0.5, 0.5], theta in [-0.1, 0.1], omega in [-0.3, 0.3];\n"
+         "force_limit in [40, 80]; sensor_noise in [0, 0.02]; up to 3 pushes with t inside the run, len in [dt, 0.2], force in [-4, 4].\n\n"
          "DECLARED RULES (checked at every step)\n";
     for (const auto& r : rule_catalog("cartpole")) o << "- " << r.id << ": " << r.text << "\n";
     o << "\nThe rule checker, not you, decides what is a violation.\n";

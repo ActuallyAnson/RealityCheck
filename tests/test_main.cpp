@@ -740,6 +740,12 @@ static void test_cartpole_domain() {
     bool found = false;
     for (int i = 0; i < 3000 && !found; ++i) {
       Scenario s = random_cartpole_scenario(70000 + static_cast<uint64_t>(i));
+      if (b == 1) {  // c02 is a needle (about 1 in 2000 random scenarios): use a designed worst case instead
+        s = Scenario();
+        s.domain = "cartpole"; s.steps = 300; s.dt = 0.01;
+        s.cp.mc = 2; s.cp.mp = 0.3; s.cp.l = 1.0; s.cp.g = 12; s.cp.th0 = 0.1; s.cp.w0 = 0.3; s.cp.fmax = 40; s.cp.x0 = 0.5; s.cp.v0 = 0.5;
+        s.cp.pushes.push_back({0.5, 0.2, 4});
+      }
       auto v = check_rules(s, simulate(s, m));
       if (v.empty()) continue;
       found = true;

@@ -434,7 +434,7 @@
       ]
     },
     "c02": {
-      "summary": "When any push exceeds 6 N, the controller force clamp is applied at 1.5 times the declared force_limit, so the applied force exceeds the limit.",
+      "summary": "When any push exceeds 2.5 N, the controller force clamp is applied at 1.5 times the declared force_limit, so the applied force can exceed the limit (only visible when the controller demand exceeds force_limit).",
       "expected_rules": [
         "controller_force_limit"
       ],

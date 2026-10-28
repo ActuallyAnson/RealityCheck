@@ -67,20 +67,20 @@ std::string cartpole_validate(const Scenario& s) {
   if (!in(s.dt, L::dt_min, L::dt_max)) return "dt outside [0.002, 0.02]";
   if (s.steps < 1 || s.steps > L::steps_max) return "steps outside [1, 4000]";
   if (!in(c.mc, L::mc_min, L::mc_max)) return "cart_mass outside [0.5, 2]";
-  if (!in(c.mp, L::mp_min, L::mp_max)) return "pole_mass outside [0.05, 0.5]";
-  if (!in(c.l, L::l_min, L::l_max)) return "pole_length outside [0.3, 1]";
-  if (!in(c.g, L::g_min, L::g_max)) return "gravity outside [5, 15]";
+  if (!in(c.mp, L::mp_min, L::mp_max)) return "pole_mass outside [0.05, 0.3]";
+  if (!in(c.l, L::l_min, L::l_max)) return "pole_length outside [0.4, 1]";
+  if (!in(c.g, L::g_min, L::g_max)) return "gravity outside [5, 12]";
   if (!in(c.x0, -L::x0_max, L::x0_max)) return "initial x outside [-0.5, 0.5]";
   if (!in(c.v0, -L::v0_max, L::v0_max)) return "initial v outside [-0.5, 0.5]";
-  if (!in(c.th0, -L::th0_max, L::th0_max)) return "initial theta outside [-0.2, 0.2]";
-  if (!in(c.w0, -L::w0_max, L::w0_max)) return "initial omega outside [-0.5, 0.5]";
-  if (!in(c.fmax, L::fmax_min, L::fmax_max)) return "force_limit outside [20, 50]";
+  if (!in(c.th0, -L::th0_max, L::th0_max)) return "initial theta outside [-0.1, 0.1]";
+  if (!in(c.w0, -L::w0_max, L::w0_max)) return "initial omega outside [-0.3, 0.3]";
+  if (!in(c.fmax, L::fmax_min, L::fmax_max)) return "force_limit outside [40, 80]";
   if (!in(c.noise, 0, L::noise_max)) return "sensor_noise outside [0, 0.02]";
   if (static_cast<int>(c.pushes.size()) > L::pushes_max) return "at most 3 pushes";
   for (const auto& p : c.pushes) {
     if (!in(p.t, 0, s.dt * s.steps)) return "push time outside the run";
     if (!in(p.len, s.dt, L::push_len_max)) return "push len outside [dt, 0.2]";
-    if (!in(p.force, -L::push_force_max, L::push_force_max)) return "push force outside [-10, 10]";
+    if (!in(p.force, -L::push_force_max, L::push_force_max)) return "push force outside [-4, 4]";
   }
   return "";
 }
@@ -173,7 +173,7 @@ Trace simulate_cartpole(const Scenario& sc, BugMask bugs) {
     double lim = c.fmax;
     // seeded: under strong pushes the clamp is applied at 1.5x the declared limit
     bool pushed = false;
-    for (const auto& p : c.pushes) pushed |= std::fabs(p.force) > 6.0;
+    for (const auto& p : c.pushes) pushed |= std::fabs(p.force) > 2.5;
     if (has(kCartLooseClamp) && pushed) lim = 1.5 * c.fmax;
     u = std::max(-lim, std::min(lim, u));
     u_applied = u;

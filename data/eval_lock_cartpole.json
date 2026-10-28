@@ -1,35 +1,35 @@
 {
- "_note": "LOCKED for the cart-pole evaluation. Domain 'cartpole' (balancing controller). Trigger conditions of c01..c03 were calibrated with the random baseline only (rc_orbit_cal --domain cartpole) before this lock; the clean simulator was checked on 40000 random scenarios. No agent had run on this domain when this file was written; all three bugs are fresh held-out. The agent evaluated is the unchanged v1 agent (domain text and tool schemas swapped, nothing else).",
- "version": "cartpole-1",
+ "_note": "LOCKED for the cart-pole evaluation, envelope 2. The first attempt (data/eval_lock_cartpole_envelope1.json, results/*_envelope1) exposed that the declared scenario envelope contained corners the controller cannot physically recover (3 of 3 agent control runs found violations on the clean simulator). The envelope was narrowed and verified with an exhaustive corner sweep (16384 corner scenarios, 0 violations on the clean simulator) plus 40000 random scenarios; bug triggers were recalibrated with the random baseline only. c01..c03 were seen by the agent in attempt 1 (under the wider envelope), so they are NOT fresh held-out here. The agent is the unchanged v1 agent.",
+ "version": "cartpole-2",
  "domain": "cartpole",
  "budget": {
   "max_steps": 300000,
   "max_wall_ms": 60000
  },
  "test_seeds": [
-  3101,
-  3202,
-  3303,
-  3404,
-  3505
+  3111,
+  3212,
+  3313,
+  3414,
+  3515
  ],
  "control_seeds": [
-  3901,
-  3902,
-  3903
+  3911,
+  3912,
+  3913
  ],
  "bugs": [
   {
    "id": "c01",
-   "split": "heldout"
+   "split": "seen_envelope1"
   },
   {
    "id": "c02",
-   "split": "heldout"
+   "split": "seen_envelope1"
   },
   {
    "id": "c03",
-   "split": "heldout"
+   "split": "seen_envelope1"
   }
  ]
 }
