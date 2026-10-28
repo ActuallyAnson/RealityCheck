@@ -11,11 +11,10 @@ part I tested the premise with no model at all (`rc_climb`, free):
   Every simulation, including mutations, is charged against the same 300000-step budget as random sampling.
 - 10 seeds per bug; a hit counts only if the violation does not also appear on the clean simulator for the same scenario.
 
-Result (`results/climb/offline.md`, reproduced by the commands in that file's header): **random sampling finds the bug at
-least as often as the hill-climber in 14 of 15 bug rows, and usually needs fewer simulations.** For example b11 9/10 against
-4/10, c01 10/10 against 5/10, o01 10/10 against 3/10. The one exception is c03, where the climber needed fewer simulations
-(19 against 41) but found it in 3/10 seeds against 10/10. The bugs that random sampling cannot find (b02, b12, c02) were not
-found by the climber either.
+Result (`results/climb/offline.md`, reproduced by the commands in that file's header): **in all 15 bug rows random sampling found the bug in at least as many seeds as the hill-climber** (three rows are 0/10 for
+both, one is a 10/10 tie), and where both found it, random usually needed fewer simulations. For example b11 9/10 against 4/10, c01 10/10 against
+5/10, o01 10/10 against 3/10. The one row where the climber needed fewer simulations is c03 (19 against 41 median), but it found it
+in 3/10 seeds against 10/10. The bugs that random sampling cannot find (b02, b12, c02) were not found by the climber either.
 
 Why, as far as the data says: most seeded bugs fire on a discrete condition (a body count, a step size, a duration) and the
 rule margin is flat or uninformative until the bug fires, so there is no gradient to follow; and the mutations spend budget on
