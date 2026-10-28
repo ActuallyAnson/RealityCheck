@@ -21,4 +21,5 @@ sec "Cart-pole domain (envelope 3): random baseline" results/cartpole/baseline.m
 sec "Traffic-signal domain: agent v1" results/traffic_agent/summary.md "Bugs t01-t03, all fresh. Random testing finds all three in every seed; see docs/TRAFFIC_DOMAIN.md."
 sec "Traffic-signal domain: random baseline" results/traffic/baseline.md ""
 sec "Spec to rules: model-written invariants vs hand-written rules" results/spec_summary.md "One run per domain, 300 scenarios per bug; see docs/SPEC_RULES.md."
+sec "Triage: fuzzer finds, agent explains, against a no-model localizer" results/triage/summary.md "5 seeds x 22 bugs; see docs/TRIAGE.md."
 echo "wrote $out"

@@ -53,6 +53,7 @@ Headline, read together with the caveats below:
 - Agent v1 and v2 find, shrink and explain bugs with grounded reports in the rigid-body, orbit and cart-pole domains
   (cost per run about $0.05 to $0.09). Controls on clean simulators are mostly clean, with exceptions listed in the caveats. In the traffic domain the agent is **worse than random testing** (t02 1/5, t03 3/5 against 5/5);
   see `docs/TRAFFIC_DOMAIN.md`.
+- **Where the model clearly helps: triage.** Given a failure that random testing found, the agent localizes the cause in 52 of 83 cases against 35 for a no-model localizer (paired p = 0.006; `docs/TRIAGE.md`), with 81 of 83 reports passing the engine's checks.
 - Against random testing the advantage is **mixed**: the agent wins on needle bugs (conditions random sampling rarely
   hits) and ties or loses where the condition is common. The ablation on fresh held-out bugs (b11-b13, 10 seeds; v1 19/30, v2 20/30, v2 without frames 18/30 valid and attributable,
   overlapping intervals) is in `docs/RESULTS.md`: v2 does not clearly beat v1; its cause localization is better with frames (20/30 against 15/30).

@@ -219,3 +219,38 @@ Source: `results/spec_summary.md`
 |  |  |  | t03 | 0/300 | 2/300 |  |
 
 Bugs hit at least once in the hunt: model-written invariants 9/22, hand-written rules 19/22. Model cost $0.0679471.
+
+## Triage: fuzzer finds, agent explains, against a no-model localizer
+
+5 seeds x 22 bugs; see docs/TRIAGE.md.
+
+Source: `results/triage/summary.md`
+
+| domain | bug | fuzzer found it | agent valid report | agent cause localized | no-model localizer cause localized | share of single-field removing edits that hit the cause |
+|---|---|---|---|---|---|---|
+| cartpole | c01 | 5/5 | 5/5 | 5/5 | 2/5 | 32% |
+| cartpole | c02 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| cartpole | c03 | 5/5 | 5/5 | 0/5 | 1/5 | 31% |
+| orbit | o01 | 5/5 | 5/5 | 5/5 | 0/5 | 6% |
+| orbit | o02 | 5/5 | 5/5 | 1/5 | 0/5 | 15% |
+| orbit | o03 | 5/5 | 4/5 | 1/5 | 5/5 | 81% |
+| rigid2d | b01 | 5/5 | 5/5 | 3/5 | 2/5 | 33% |
+| rigid2d | b02 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| rigid2d | b03 | 5/5 | 5/5 | 1/5 | 1/5 | 17% |
+| rigid2d | b04 | 5/5 | 5/5 | 3/5 | 2/5 | 75% |
+| rigid2d | b05 | 5/5 | 5/5 | 5/5 | 1/5 | 13% |
+| rigid2d | b06 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| rigid2d | b07 | 5/5 | 5/5 | 0/5 | 0/5 | 1% |
+| rigid2d | b08 | 5/5 | 5/5 | 5/5 | 2/5 | 21% |
+| rigid2d | b09 | 1/5 | 1/1 | 1/1 | 1/1 | 32% |
+| rigid2d | b10 | 5/5 | 5/5 | 1/5 | 4/5 | 27% |
+| rigid2d | b11 | 4/5 | 4/4 | 4/4 | 3/4 | 83% |
+| rigid2d | b12 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| rigid2d | b13 | 4/5 | 4/4 | 4/4 | 4/4 | 74% |
+| traffic | t01 | 5/5 | 5/5 | 5/5 | 1/5 | 46% |
+| traffic | t02 | 5/5 | 4/5 | 4/5 | 4/5 | 79% |
+| traffic | t03 | 4/5 | 4/4 | 4/4 | 2/4 | 30% |
+
+All bugs with a fuzzer failure: agent valid report 81/83 [0.92-0.99], agent cause localized 52/83 [0.52-0.72], no-model localizer cause localized 35/83 [0.32-0.53]. Runs with a fuzzer failure: 83 of 110. Agent cost $3.6538.
+
+Paired comparison (same failures): agent localized and baseline did not 26 times, baseline and not agent 9 times; exact sign test p = 0.0060. Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): 70 runs, agent 46, baseline 30, agent-only 23, baseline-only 7, p = 0.0052.
