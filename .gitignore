@@ -29,3 +29,4 @@ results/**/*.png
 
 # viewer exports of saved runs (regenerable); curated demo recordings live in web/demo/
 web/data/
+build_*/
