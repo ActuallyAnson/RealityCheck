@@ -35,7 +35,7 @@ Counts are k/n with a 95% Wilson interval. 'explained (keywords)' is the keyword
 
 ## Agent v1 on the rigid-body simulator v1 (5 seeds)
 
-First evaluation; the simulator was later fixed (v2) after the controls found a weakness.
+First evaluation, on rigid-body simulator v1; the simulator was later fixed (v2) after the controls found a weakness. The attribution column was computed with simulator v1: regenerating it with the current clean simulator would change two cells (b04, b09), so this table is kept as committed.
 
 Source: `results/agent_hosted/summary.md`
 

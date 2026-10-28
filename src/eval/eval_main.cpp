@@ -489,7 +489,7 @@ int main(int argc, char** argv) {
   if (mode == "summarize") {  // regenerate the agent summary from saved runs; no API calls
     ao.out = out_dir.empty() ? "results/agent" : out_dir;
     EvalLock lock = load_lock(lock_path);
-    std::string model = read_json_file(ao.out + "/runs/b01_" + std::to_string(lock.test_seeds.at(0)) + ".json").str_or("model", "unknown");
+    std::string model = read_json_file(ao.out + "/runs/" + lock.bugs.at(0).id + "_" + std::to_string(lock.test_seeds.at(0)) + ".json").str_or("model", "unknown");
     write_agent_summary(ao, lock, model);
     return 0;
   }
