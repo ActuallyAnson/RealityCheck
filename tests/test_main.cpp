@@ -834,6 +834,82 @@ static void test_engines_and_differential() {
   }
 }
 
+static void test_agent_v2_counterfactual() {
+  struct St { std::string shrunk, cf; int vstep = 0; Json shrunk_scenario; } st;
+  MockBackend mock([&st](const ModelRequest& req, int i) -> ModelResponse {
+    switch (i) {
+      case 0: { Json a = Json::object(); a["scenario"] = to_json(trigger(kBigRadiusBound)); return MockBackend::tool("run_scenario", a, "c0"); }
+      case 1: { Json a = Json::object(); a["scenario_id"] = last_tool_json(req).at("scenario_id").str(); return MockBackend::tool("shrink", a, "c1"); }
+      case 2: {  // the intervention: same shrunk scenario with a small radius (one field)
+        Json j = last_tool_json(req);
+        st.shrunk = j.at("scenario_id").str();
+        st.vstep = static_cast<int>(j.at("violation").at("step").num());
+        Json sc = j.at("scenario");
+        sc["bodies"].arr()[0]["r"] = 0.5;
+        Json a = Json::object(); a["scenario"] = sc;
+        return MockBackend::tool("run_scenario", a, "c2");
+      }
+      case 3: { st.cf = last_tool_json(req).at("scenario_id").str(); Json a = Json::object(); a["scenario_id"] = st.shrunk; a["step"] = st.vstep; return MockBackend::tool("inspect_state", a, "c3"); }
+      case 4: {  // no counterfactual: rejected
+        double x = last_tool_json(req).at("bodies").arr()[0].at("x").num();
+        return MockBackend::tool("submit_report", spent_report(st.shrunk, st.vstep, x, "Body 0 passes the right wall at step " + std::to_string(st.vstep) + "."), "c4");
+      }
+      case 5: {  // counterfactual = the shrunk scenario itself: rejected
+        Json r = last_tool_json(req);
+        CHECK(!r.at("ok").boolean());
+        Json a = Json::object(); a["scenario_id"] = st.shrunk; a["step"] = st.vstep;
+        return MockBackend::tool("inspect_state", a, "c5");
+      }
+      case 6: {
+        double x = last_tool_json(req).at("bodies").arr()[0].at("x").num();
+        Json rep = spent_report(st.shrunk, st.vstep, x, "Body 0 passes the right wall at step " + std::to_string(st.vstep) + ".");
+        Json cf = Json::object(); cf["scenario_id"] = st.shrunk;
+        rep["counterfactual"] = cf;
+        return MockBackend::tool("submit_report", rep, "c6");
+      }
+      case 7: {
+        Json r = last_tool_json(req);
+        CHECK(!r.at("ok").boolean());
+        double x = 0;
+        Json a = Json::object(); a["scenario_id"] = st.shrunk; a["step"] = st.vstep;
+        (void)x;
+        return MockBackend::tool("inspect_state", a, "c7");
+      }
+      case 8: {
+        double x = last_tool_json(req).at("bodies").arr()[0].at("x").num();
+        Json rep = spent_report(st.shrunk, st.vstep, x, "Body 0 passes the right wall at step " + std::to_string(st.vstep) + ".");
+        Json cf = Json::object(); cf["scenario_id"] = st.cf; cf["change"] = "radius 1.2 -> 0.5";
+        rep["counterfactual"] = cf;
+        return MockBackend::tool("submit_report", rep, "c8");
+      }
+      default:
+        return MockBackend::text(R"({"description":"ok","agrees":true,"disagreement":""})");
+    }
+  });
+  BudgetedModel bm(mock, Pricing(), 1.0);
+  ToolSession ts(bug_bit(kBigRadiusBound), ToolBudget(), ".");
+  AgentConfig cfg;
+  cfg.version = 2;
+  AgentResult r = run_agent(bm, ts, cfg);
+  CHECK(r.stop_reason == "report_accepted");
+  CHECK(r.report_valid && r.rejected_reports == 2);
+  CHECK(r.counterfactual.is_object());
+  CHECK(r.counterfactual.at("changed_paths").arr().size() == 1 && r.counterfactual.at("changed_paths").arr()[0].str() == "bodies[0].r");
+  // localization scoring: radius is a trigger field of the seeded bug, speed is not
+  Json truth = Json::parse(read_file("data/ground_truth.json"));
+  CHECK(counterfactual_localizes(truth, "b10", {"bodies[0].r"}));
+  CHECK(!counterfactual_localizes(truth, "b10", {"dt"}));
+  CHECK(counterfactual_localizes(truth, "b01", {"walls[2].w"}));
+  // the v2 prompt and schema add the counterfactual; v1 stays unchanged (pinned above)
+  CHECK(system_prompt(true, "rigid2d", 2).find("counterfactual") != std::string::npos);
+  CHECK(system_prompt(true, "rigid2d", 1).find("counterfactual") == std::string::npos);
+  // scenario_diff
+  Json a = to_json(trigger(kBigRadiusBound)), b = a;
+  b["bodies"].arr()[0]["r"] = 0.5;
+  CHECK(scenario_diff(a, b).size() == 1);
+  CHECK(scenario_diff(a, a).empty());
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -845,7 +921,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"engines and differential", test_engines_and_differential},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual},
   };
   for (auto& t : tests) {
     int before = g_fail;
