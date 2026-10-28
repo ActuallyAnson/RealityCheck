@@ -74,6 +74,7 @@ Json report_tool_spec(int version = 1) {
 
 Json all_tools(const std::string& domain = "rigid2d", int version = 1) {
   Json t = tool_specs(domain);
+  if (version >= 3) t.push(sample_random_spec(domain, version));
   t.push(report_tool_spec(version));
   return t;
 }
@@ -377,6 +378,19 @@ std::string system_prompt(bool native_tools, const std::string& domain, int vers
         "- submit_report must include `counterfactual` with the id of that passing scenario. It is rejected if the scenario does not "
         "exist, still violates the rule, differs from the shrunk scenario in more than two fields, or is too short to show the failure.\n"
         "- render_frames output may be shown to you as an image: use it to check that your picture of what happens matches the numbers.\n";
+  }
+  if (version >= 3) {
+    p +=
+        "\nVERSION 3 (hybrid)\n"
+        "- You also have `sample_random`: it runs plain random scenarios, like an ordinary fuzzer, and spends the same step budget. Random sampling is good at common failures and at covering "
+        "ground you would not think of; your own hypotheses are better for rare conditions that random scenarios almost never produce. Use both: for example start with one or two batches of "
+        "random scenarios, and when they find nothing, reason about which parameter combinations the random generator is unlikely to reach and test those yourself.\n";
+  }
+  if (version >= 4) {
+    p +=
+        "\nVERSION 4 (hybrid, larger batches)\n"
+        "- A rare failure often needs 50 to 200 random scenarios before one hits it, and each sample_random call is a single turn: a batch of 20 is usually too small. Prefer batches of 100 to 400 (the step budget is "
+        "the limit, not the turn count). Try a few batches with different seeds before you spend turns on hypotheses.\n";
   }
   return p;
 }

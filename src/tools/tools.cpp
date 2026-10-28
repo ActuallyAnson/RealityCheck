@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "shrink/shrink.hpp"
+#include "sim/domains.hpp"
 #include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "tools/render.hpp"
@@ -84,6 +85,7 @@ Json ToolSession::call(const std::string& name, const Json& args) {
   ++usage_.tool_calls;
   try {
     if (name == "run_scenario") return run_scenario(args);
+    if (name == "sample_random") return sample_random(args);
     if (name == "check_rules") return check_rules_tool(args);
     if (name == "inspect_state") return inspect_state(args);
     if (name == "render_frames") return render_frames(args);
@@ -131,6 +133,50 @@ Json ToolSession::run_scenario(const Json& a) {
   r["energy_initial"] = s0.energy;
   r["energy_final"] = sn.energy;
   r["controller_work"] = sn.work;
+  r["budget"] = budget_json();
+  return r;
+}
+
+Json ToolSession::sample_random(const Json& a) {
+  if (domain_ == "generic") return err("sample_random is not available for the generic domain");
+  int count = std::max(1, std::min(400, static_cast<int>(a.num_or("count", 20))));
+  uint64_t seed = static_cast<uint64_t>(std::max(0.0, a.num_or("seed", 1)));
+  int run = 0;
+  for (int i = 0; i < count; ++i) {
+    long long left = budget_.max_steps - usage_.steps_used;
+    if (left <= 0) break;
+    Scenario sc = random_scenario_for(domain_, seed * 1000003ull + static_cast<uint64_t>(i));
+    bool truncated = false;
+    if (sc.steps > left) { sc.steps = static_cast<int>(left); truncated = true; }
+    Trace tr = sim_(sc);
+    usage_.steps_used += sc.steps;
+    ++usage_.scenarios_run;
+    ++run;
+    std::string id = store(sc, std::move(tr));
+    const Entry& e = cache_.at(id);
+    if (e.viol.empty()) continue;
+    if (!has_failure_) { has_failure_ = true; failure_id_ = id; usage_.scenarios_until_first_violation = usage_.scenarios_run; }
+    Json r = Json::object();
+    r["ok"] = true;
+    r["sampled"] = run;
+    r["found_violation"] = true;
+    r["scenario_id"] = id;
+    r["steps"] = sc.steps;
+    r["truncated_to_budget"] = truncated;
+    r["trace_hash"] = hex(e.tr.hash());
+    r["violation_count"] = static_cast<int>(e.viol.size());
+    Json rules = Json::array();
+    for (const auto& v : e.viol) rules.push(v.rule);
+    r["rules_violated"] = rules;
+    r["first_violation"] = to_json(e.viol.front());
+    r["budget"] = budget_json();
+    return r;
+  }
+  Json r = Json::object();
+  r["ok"] = true;
+  r["sampled"] = run;
+  r["found_violation"] = false;
+  r["note"] = "no declared rule was violated in any sampled scenario";
   r["budget"] = budget_json();
   return r;
 }
@@ -420,6 +466,13 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
   return f;
 }
 }  // namespace
+
+Json sample_random_spec(const std::string&, int version) {
+  Json p = Json::object();
+  p["count"] = prop("integer", version >= 4 ? "How many random scenarios to run (1 to 400, default 20). Stops at the first violation." : "How many random scenarios to run (1 to 100, default 20). Stops at the first violation.");
+  p["seed"] = prop("integer", "Different seeds give different scenarios; the same seed repeats the same ones.");
+  return fn("sample_random", "Run random scenarios from the plain random generator (the same one an ordinary fuzzer uses). Each scenario spends the step budget exactly like run_scenario. Stops at the first violation and returns it like run_scenario does.", p, {});
+}
 
 Json tool_specs(const std::string& domain) {
   const bool orbit = domain == "orbit";

@@ -74,6 +74,7 @@ private:
   std::string failure_id_;
 
   Json run_scenario(const Json& a);
+  Json sample_random(const Json& a);
   Json check_rules_tool(const Json& a);
   Json inspect_state(const Json& a);
   Json inspect_orbit(const Scenario& sc, const StepRecord& rec, int k);
@@ -86,6 +87,9 @@ private:
   std::string store(const Scenario& sc, Trace tr);
   Json budget_json() const;
 };
+
+// The extra tool of agent v3 (hybrid): runs plain random scenarios from the built-in generator. Not part of tool_specs, so v1 and v2 prompts are unchanged.
+Json sample_random_spec(const std::string& domain, int version = 3);
 
 // Tool schemas (OpenAI function-calling style: name, description, parameters) for the model client.
 Json tool_specs(const std::string& domain = "rigid2d");
