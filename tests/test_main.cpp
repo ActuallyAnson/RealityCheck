@@ -642,6 +642,31 @@ static void test_lifetime_ledger() {
   std::remove(path.c_str());
 }
 
+
+// Frozen rigid2d fingerprints: replay caches key on the exact prompt/schema bytes and the locked
+// evaluation depends on trace/scenario hashes. Adding domains must not change any of these.
+static std::string pin_string() {
+  std::string o;
+  auto h = [&](const std::string& s) { o += std::to_string(fnv1a(s.data(), s.size())) + ","; };
+  h(system_prompt(true));
+  h(system_prompt(false));
+  h(simulation_description());
+  h(tool_specs().dump());
+  for (uint64_t sd : {7ULL, 99ULL, 12345ULL}) {
+    Scenario sc = random_scenario(sd);
+    o += std::to_string(scenario_hash(sc)) + ",";
+    o += std::to_string(simulate(sc, 0).hash()) + ",";
+    o += std::to_string(simulate(sc, bug_bit(1) | bug_bit(10)).hash()) + ",";
+    h(to_json(sc).dump());
+  }
+  return o;
+}
+static void test_rigid2d_pins() {
+  std::string got = pin_string();
+  const char* want = "10735996641746562028,15931588914492324236,14810643062030168830,13911634046129575570,17059249879344406273,674525538864104921,9591784889939524908,17059249879344406273,1912743565877773604,5151511153684636756,8710745316820828267,1912743565877773604,16313155137686225922,12623240308662354969,13798852851292246572,16313155137686225922,";
+  CHECK(got == want);
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -653,7 +678,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins},
   };
   for (auto& t : tests) {
     int before = g_fail;
