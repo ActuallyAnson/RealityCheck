@@ -9,8 +9,7 @@ namespace rc {
 namespace {
 
 struct Shrinker {
-  SimFn sim;
-  std::string rule;
+  FailFn fails;  // true when the candidate still fails; fills the violation
   int max_attempts;
   int attempts = 0, accepted = 0;
   long long steps_simulated = 0;
@@ -23,14 +22,10 @@ struct Shrinker {
     if (!validate(c).empty()) return false;
     ++attempts;
     steps_simulated += c.steps;
-    Trace tr = sim(c);
-    for (const Violation& v : check_rules(c, tr)) {
-      if (v.rule == rule) {
-        if (out) *out = v;
-        return true;
-      }
-    }
-    return false;
+    Violation v;
+    if (!fails(c, &v)) return false;
+    if (out) *out = v;
+    return true;
   }
 
   bool accept(Scenario c) {
@@ -64,9 +59,21 @@ struct Shrinker {
 }  // namespace
 
 ShrinkResult shrink(const Scenario& sc, const SimFn& sim, const std::string& rule, int max_attempts) {
+  return shrink(sc, [&sim, &rule](const Scenario& c, Violation* out) {
+    Trace tr = sim(c);
+    for (const Violation& v : check_rules(c, tr)) {
+      if (v.rule == rule) {
+        if (out) *out = v;
+        return true;
+      }
+    }
+    return false;
+  }, max_attempts);
+}
+
+ShrinkResult shrink(const Scenario& sc, const FailFn& fails, int max_attempts) {
   Shrinker s;
-  s.sim = sim;
-  s.rule = rule;
+  s.fails = fails;
   s.max_attempts = max_attempts;
   ShrinkResult res;
   res.size_before = scenario_size(sc);

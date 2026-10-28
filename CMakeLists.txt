@@ -24,6 +24,7 @@ add_library(rc_core
   src/model/model.cpp
   src/agent/agent.cpp
   src/viewer/view_export.cpp
+  src/external/exec_sim.cpp
 )
 target_include_directories(rc_core PUBLIC src)
 
@@ -32,6 +33,9 @@ target_link_libraries(rc_tool rc_core)
 
 add_executable(rc_agent src/agent/agent_main.cpp)
 target_link_libraries(rc_agent rc_core)
+
+add_executable(naive_orbit examples/external/naive_orbit.cpp)
+target_include_directories(naive_orbit PRIVATE src)
 
 add_executable(rc_orbit_cal src/eval/orbit_cal_main.cpp)
 target_link_libraries(rc_orbit_cal rc_core)
@@ -48,17 +52,24 @@ find_package(Threads REQUIRED)
 add_executable(rc_demo src/demo/demo_main.cpp)
 target_link_libraries(rc_demo rc_core Threads::Threads)
 
-# Optional: test an unmodified outside engine (Box2D v3, e.g. `brew install box2d`).
+# Engines: BYO-simulator over a pipe (always), plus optionally unmodified Box2D v3 (`brew install box2d`).
+add_library(rc_engines src/external/engine.cpp)
+target_link_libraries(rc_engines rc_core)
 find_library(BOX2D_LIB box2d HINTS /opt/homebrew/lib /usr/local/lib)
 find_path(BOX2D_INC box2d/box2d.h HINTS /opt/homebrew/include /usr/local/include)
 if(BOX2D_LIB AND BOX2D_INC)
-  add_executable(rc_box2d src/external/box2d_main.cpp src/external/box2d_sim.cpp)
-  target_include_directories(rc_box2d PRIVATE ${BOX2D_INC})
-  target_link_libraries(rc_box2d rc_core ${BOX2D_LIB})
-  target_compile_definitions(rc_agent PRIVATE RC_HAVE_BOX2D)
-  target_include_directories(rc_agent PRIVATE ${BOX2D_INC} src)
-  target_sources(rc_agent PRIVATE src/external/box2d_sim.cpp)
-  target_link_libraries(rc_agent ${BOX2D_LIB})
+  target_sources(rc_engines PRIVATE src/external/box2d_sim.cpp)
+  target_include_directories(rc_engines PRIVATE ${BOX2D_INC})
+  target_compile_definitions(rc_engines PUBLIC RC_HAVE_BOX2D)
+  target_link_libraries(rc_engines ${BOX2D_LIB})
 else()
-  message(STATUS "Box2D not found: rc_box2d not built")
+  message(STATUS "Box2D not found: box2d engines not built")
 endif()
+add_executable(rc_hunt src/external/hunt_main.cpp)
+target_link_libraries(rc_hunt rc_engines)
+add_executable(rc_repro src/external/repro_main.cpp)
+target_link_libraries(rc_repro rc_engines)
+target_link_libraries(rc_agent rc_engines)
+add_executable(rc_diff src/external/diff_main.cpp)
+target_link_libraries(rc_diff rc_engines)
+target_link_libraries(rc_tests rc_engines)

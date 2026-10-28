@@ -11,6 +11,9 @@
 #include "model/model.hpp"
 #include "rules/checker.hpp"
 #include "shrink/shrink.hpp"
+#include "external/bundle.hpp"
+#include "external/diverge.hpp"
+#include "external/engine.hpp"
 #include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "sim/world.hpp"
@@ -778,6 +781,59 @@ static void test_cartpole_domain() {
   CHECK(all.find("restitution") == std::string::npos && all.find("walls") == std::string::npos);
 }
 
+static void test_engines_and_differential() {
+  // engine specs
+  CHECK(make_engine("builtin", "orbit") != nullptr);
+  bool threw = false;
+  try { make_engine("nonsense", "orbit"); } catch (const std::exception&) { threw = true; }
+  CHECK(threw);
+  threw = false;
+  try { make_engine("builtin:zz9", "orbit"); } catch (const std::exception&) { threw = true; }
+  CHECK(threw);
+  // a program that dies is reported, not hung or silently accepted
+  threw = false;
+  try { Scenario s = random_orbit_scenario(3); make_engine("exec:false", "orbit")(s); } catch (const std::exception&) { threw = true; }
+  CHECK(threw);
+  // differential: identical engines agree; a seeded bug is found with no rules
+  SimFn clean = make_engine("builtin", "orbit"), bugged = make_engine("builtin:o02", "orbit");
+  int agree_flags = 0, bug_flags = 0;
+  for (int i = 0; i < 120; ++i) {
+    Scenario s = random_orbit_scenario(9000 + static_cast<uint64_t>(i));
+    if (first_divergence(s, clean(s), clean(s), 0.05, nullptr, 1.0)) ++agree_flags;
+    if (first_divergence(s, clean(s), bugged(s), 0.05, nullptr)) ++bug_flags;
+  }
+  CHECK(agree_flags == 0);
+  CHECK(bug_flags > 0);
+  // the independent external integrator speaks the protocol and agrees with the built-in one over 1 s
+  if (std::ifstream("build/naive_orbit").good()) {
+    SimFn ext = make_engine("exec:build/naive_orbit 0.004", "orbit");
+    int ext_flags = 0;
+    for (int i = 0; i < 40; ++i) {
+      Scenario s = random_orbit_scenario(9500 + static_cast<uint64_t>(i));
+      if (first_divergence(s, clean(s), ext(s), 0.1, nullptr, 1.0)) ++ext_flags;
+    }
+    CHECK(ext_flags == 0);
+  }
+  // regression bundle round trip: fails on the buggy engine, passes on the clean one
+  for (int i = 0; i < 400; ++i) {
+    Scenario s = random_orbit_scenario(100 + static_cast<uint64_t>(i));
+    auto v = check_rules(s, bugged(s));
+    if (v.empty()) continue;
+    ShrinkResult sr = shrink(s, bugged, v.front().rule);
+    CHECK(sr.ok);
+    Json e = Json::object();
+    e["domain"] = "orbit"; e["rule"] = v.front().rule;
+    write_bundle("/tmp/rc_test_bundle", sr.scenario, e, "test");
+    Scenario back = scenario_from_json(Json::parse(read_file("/tmp/rc_test_bundle/scenario.json")), "orbit");
+    CHECK(back == sr.scenario);
+    bool fails_bugged = false, fails_clean = false;
+    for (const auto& x : check_rules(back, bugged(back))) fails_bugged |= x.rule == v.front().rule;
+    for (const auto& x : check_rules(back, clean(back))) fails_clean |= x.rule == v.front().rule;
+    CHECK(fails_bugged && !fails_clean);
+    break;
+  }
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -789,7 +845,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"engines and differential", test_engines_and_differential},
   };
   for (auto& t : tests) {
     int before = g_fail;

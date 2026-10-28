@@ -14,9 +14,7 @@
 #include "agent/agent.hpp"
 #include "eval/ground_truth.hpp"
 #include "sim/orbit.hpp"
-#ifdef RC_HAVE_BOX2D
-#include "external/box2d_sim.hpp"
-#endif
+#include "external/engine.hpp"
 
 using namespace rc;
 
@@ -39,7 +37,7 @@ int main(int argc, char** argv) {
     else if (a == "--config") config_path = val();
     else if (a == "--bugs") bugs_arg = val();
     else if (a == "--domain") domain = val();  // rigid2d (default) | orbit | cartpole
-    else if (a == "--engine") engine = val();  // box2d | box2d-noccd: test an outside engine instead
+    else if (a == "--engine") engine = val();  // box2d | box2d-noccd | exec:CMD: test an outside engine instead
     else if (a == "--budget-usd") budget_usd = std::atof(val().c_str());
     else if (a == "--max-steps") tb.max_steps = std::atoll(val().c_str());
     else if (a == "--max-tool-calls") tb.max_tool_calls = std::atoi(val().c_str());
@@ -112,18 +110,9 @@ int main(int argc, char** argv) {
   }
   BudgetedModel model(*backend, api.pricing, budget_usd, out + "/cost.jsonl");
   if (live) model.set_lifetime_ledger(default_ledger_path(), default_lifetime_cap_usd());
-#ifdef RC_HAVE_BOX2D
   if (!engine.empty()) {
-    if (engine != "box2d" && engine != "box2d-noccd") { std::cerr << "unknown --engine " << engine << "\n"; return 2; }
-    Box2DOptions bo;
-    bo.continuous = engine == "box2d";
-    SimFn inner = box2d_sim(bo);
-    // The controller does not exist in Box2D, so scenarios are run with it off.
-    sim = [inner](const Scenario& s) { Scenario c = s; c.ctrl.enabled = false; return inner(c); };
+    try { sim = make_engine(engine, domain); } catch (const std::exception& e) { std::cerr << e.what() << "\n"; return 2; }
   }
-#else
-  if (!engine.empty()) { std::cerr << "built without Box2D\n"; return 2; }
-#endif
   ToolSession tools = sim ? ToolSession(sim, tb, out) : ToolSession(mask, tb, out);
   tools.set_domain(domain);
   std::ofstream events(out + "/events.jsonl", std::ios::trunc);
