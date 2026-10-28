@@ -90,5 +90,4 @@ the hang does not depend on softening (0, 0.1, 0.3, 1.0), on the position offset
 once, and only the default mode 2 (PRS23, the default since January 2024) hangs; BS and leapfrog on the same input are fine. A web search found no report of it.
 What I did not check: other REBOUND versions, why PRS23 loops (I read none of its code), or whether the exact symmetry of the initial condition is the trigger (a 1e-9 shift of one body made
 the full adapter finish but not the standalone file, so I do not claim a trigger). It may be a configuration subtlety on my side, so I call it a reproducible hang found through the corpus,
-not a confirmed REBOUND bug, and I have not reported it upstream. The tool found it because the exec protocol made a non-returning simulator visible; a per-request timeout in `exec_sim` is the missing
-safeguard (a hung engine currently blocks the run).
+not a confirmed REBOUND bug, and I have not reported it upstream. The tool found it because the exec protocol made a non-returning simulator visible; the missing safeguard, a per-request deadline in the exec engine, was added because of it: a simulator that does not answer within `RC_EXEC_TIMEOUT_S` seconds (default 60) is killed and the run stops with an error, never a finding (checked on this hang with a 3 s limit).

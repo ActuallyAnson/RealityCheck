@@ -1,11 +1,13 @@
 #include "external/exec_sim.hpp"
 
+#include <poll.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -33,12 +35,12 @@ public:
     close(to_child[0]);
     close(from_child[1]);
     in_ = fdopen(to_child[1], "w");
-    out_ = fdopen(from_child[0], "r");
+    out_fd_ = from_child[0];
     signal(SIGPIPE, SIG_IGN);
   }
   ~Child() {
     if (in_) fclose(in_);   // closing stdin tells the child to exit
-    if (out_) fclose(out_);
+    if (out_fd_ >= 0) close(out_fd_);
     if (pid_ > 0) { kill(pid_, SIGTERM); int st; waitpid(pid_, &st, 0); }
   }
   Child(const Child&) = delete;
@@ -47,16 +49,34 @@ public:
   std::string ask(const std::string& line) {
     if (fputs(line.c_str(), in_) < 0 || fputc('\n', in_) < 0 || fflush(in_) != 0)
       throw std::runtime_error("external simulator closed its input (did it crash?)");
-    std::string reply;
-    int c;
-    while ((c = fgetc(out_)) != EOF && c != '\n') reply.push_back(static_cast<char>(c));
-    if (c == EOF && reply.empty()) throw std::runtime_error("external simulator closed its output (did it crash?)");
-    return reply;
+    // One reply line, with a deadline: a simulator that never returns (a hang, an infinite loop) is killed and reported as an error,
+    // never as a finding. RC_EXEC_TIMEOUT_S sets the per-request limit (default 60 s).
+    const char* env = std::getenv("RC_EXEC_TIMEOUT_S");
+    const double limit_s = env ? std::atof(env) : 60.0;
+    for (;;) {
+      size_t nl = buf_.find('\n');
+      if (nl != std::string::npos) { std::string reply = buf_.substr(0, nl); buf_.erase(0, nl + 1); return reply; }
+      pollfd p{out_fd_, POLLIN, 0};
+      int r = poll(&p, 1, static_cast<int>(limit_s * 1000));
+      if (r == 0) {
+        kill(pid_, SIGKILL);
+        throw std::runtime_error("external simulator did not answer within " + std::to_string(static_cast<int>(limit_s)) + " s and was killed (a hang, not a finding)");
+      }
+      char tmp[65536];
+      ssize_t n = r < 0 ? -1 : read(out_fd_, tmp, sizeof tmp);
+      if (n <= 0) {
+        if (!buf_.empty()) { std::string reply = buf_; buf_.clear(); return reply; }
+        throw std::runtime_error("external simulator closed its output (did it crash?)");
+      }
+      buf_.append(tmp, static_cast<size_t>(n));
+    }
   }
 
 private:
   pid_t pid_ = -1;
-  FILE *in_ = nullptr, *out_ = nullptr;
+  FILE* in_ = nullptr;
+  int out_fd_ = -1;
+  std::string buf_;
 };
 
 const Json& need(const Json& j, const char* key) {

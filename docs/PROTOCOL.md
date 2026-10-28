@@ -29,8 +29,8 @@ four numbers per body, in scenario order: `x, y, vx, vy`. Use `null` for a non-f
 | `orbit` | one `[x,y,vx,vy]` per body | |
 | `cartpole` | one body: `[x, theta, v, omega]` | optional `"force":[...]` (controller force per step) and `"work":[...]` |
 
-The program is started once and kept running, so per-scenario cost is the simulation itself. If it exits or writes a
-malformed line, the tool stops with an error instead of reporting a false finding.
+The program is started once and kept running, so per-scenario cost is the simulation itself. If it exits, writes a
+malformed line, or does not answer within `RC_EXEC_TIMEOUT_S` seconds (default 60; it is killed), the tool stops with an error instead of reporting a false finding.
 
 ## Example
 
