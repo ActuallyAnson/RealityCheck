@@ -18,3 +18,15 @@ How to read it (these are not claims of new engine bugs):
   tunneling at low frame rates) and is the documented reason continuous collision exists. It is a
   misconfiguration check, not a newly found bug.
 - No energy gain was flagged in either configuration.
+
+## Model-driven agent on Box2D (one run per configuration, live API, ~$0.03 and ~$0.05)
+
+`rc_agent --live --engine box2d|box2d-noccd` (reports in `results/box2d_agent/`). There is no ground truth for an
+outside engine, so only two things are checked: the violation is real under the declared rules (reproduced by the
+deterministic checker after shrinking) and every cited state matches the recorded run.
+- `box2d-noccd`: valid report, `no_wall_penetration`, shrunk to a 60 m/s body at a 0.1 m wall. The model's
+  *cause* (substep count too low) is a hypothesis nobody verified here.
+- `box2d` (defaults): valid report, `in_arena`, from a 100:1 mass-ratio head-on squeeze against the boundary.
+  The cause given (solver overlap in a sandwich) is again unverified. It is a rule-tolerance flag, not a
+  confirmed engine defect.
+Two runs are an anecdote, not an evaluation.
