@@ -50,3 +50,15 @@ Per-bug counts are in `results/spec_summary.md`.
   placeholder value when there are fewer than two bodies; the model's revision was a vacuous bound of 2e9, which was kept and cannot fail).
 - A first attempt returned nothing because the model spent the whole output budget on reasoning; the fix was a low reasoning
   effort and a larger output cap (a harness change, not a change to the prompt's content).
+
+## Second attempt on traffic: duration forms (language 2)
+
+After the first result I added two forms to the language, `min_run` and `max_run` (every run of steps where a signal equals a value lasts at least or at most N
+steps, optionally N read from a constant signal), and three constant signals for traffic (`yellow_seconds`, `all_red_seconds`, `max_green_seconds`) and `any_active`.
+Language 1 is unchanged and its prompt is byte-identical. This is a second attempt on a domain where the first failed, made after seeing that failure; both are reported.
+
+Result (`results/spec_traffic_lang2/`, one run, $0.017): **0 of 3 traffic bugs hit again.** The model did use the new forms, but with constants it could not
+justify: `min_run(any_active == 0, steps 1)` (an all-red of at least one second) and `max_run(any_active == 0, steps 30)`, instead of comparing yellow and all-red runs
+with the scenario's own `yellow_seconds` and `all_red_seconds`, which were available as signals. Those invariants hold on every clean run and also on the buggy ones.
+It also spent three of twelve slots on the constants being constant. So the language was not the only limit: the model proposes invariants that are safe to keep (they must
+survive clean validation) and therefore loose. I stopped here rather than keep rewording the prompt until it passed.
