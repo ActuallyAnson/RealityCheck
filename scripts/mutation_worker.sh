@@ -3,6 +3,7 @@
 # Writes WORKDIR/ID.status (compiled | compile_failed), WORKDIR/ID.tsv (the evaluation) and WORKDIR/ID.exit (exit code, 124 = timeout).
 set -u
 W="$1"; ID="$2"; DOM="$3"; INV="$4"; N="$5"; BASE="$6"
+[ -n "${RESUME:-}" ] && [ -f "$W/$ID.exit" ] && exit 0   # RESUME=1: skip mutants that already finished
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FLAGS="-O3 -DNDEBUG -std=c++17 -fno-fast-math -ffp-contract=off -w"       # the project's flags (CMakeLists.txt), warnings off
 if ! c++ $FLAGS -I"$ROOT/src" -c "$W/$ID.cpp" -o "$W/$ID.o" 2> "$W/$ID.cc.log"; then echo compile_failed > "$W/$ID.status"; exit 0; fi

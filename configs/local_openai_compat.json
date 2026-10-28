@@ -1,0 +1,8 @@
+{
+  "backend": "meta_api",
+  "base_url": "http://127.0.0.1:11434/v1",
+  "model": "REPLACE_WITH_LOCAL_MODEL_NAME",
+  "api_key_env": "",
+  "native_tools": false,
+  "pricing": {"input": 0, "cached_input": 0, "output": 0}
+}

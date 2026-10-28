@@ -221,8 +221,9 @@ std::string cfg_quote(const std::string& s) {
 
 ModelResponse MetaApiBackend::complete(const ModelRequest& req) {
   ModelResponse out;
-  const char* key = std::getenv(cfg_.api_key_env.c_str());
-  if (!key || !*key) {
+  const bool keyless = cfg_.api_key_env.empty();  // a local OpenAI-compatible server (llama.cpp, vLLM, Ollama) needs no key
+  const char* key = keyless ? "" : std::getenv(cfg_.api_key_env.c_str());
+  if (!keyless && (!key || !*key)) {
     out.error = "environment variable " + cfg_.api_key_env + " is not set";
     return out;
   }
@@ -240,7 +241,7 @@ ModelResponse MetaApiBackend::complete(const ModelRequest& req) {
   {
     std::ofstream c(cfg_path);
     c << "url = " << cfg_quote(cfg_.base_url + "/chat/completions") << "\n"
-      << "header = " << cfg_quote(std::string("Authorization: Bearer ") + key) << "\n"
+      << (keyless ? std::string() : "header = " + cfg_quote(std::string("Authorization: Bearer ") + key) + "\n")
       << "header = \"Content-Type: application/json\"\n";
   }
   {
