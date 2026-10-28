@@ -20,6 +20,7 @@ during that period. No code was imported from earlier projects.
 - 2026-10-28: API and MCP server, GitHub Action and CI (which found a Linux build error and a cross-platform determinism difference), sanitizer and fuzzing pass (16 undefined-behaviour sites fixed), exec-engine deadline, process-group kill and memory cap.
 - 2026-10-28: REBOUND tested as an external engine, a 14-scenario literature corpus, and a reproducible hang in REBOUND's default IAS15 mode; a 160-mutant benchmark with hand-written, model-written and metamorphic oracles.
 - 2026-10-28: the generic domain (a model card makes any simulator testable without C++), the `rc` front door, `scripts/reproduce.sh`, a run-to-run variance study, an adversarial evaluation, and the security, architecture and contributing documents.
+- 2026-10-28: repair loop (sandboxed model-written code, bit-identity acceptance), invariant miner, validator red team, Boost.odeint engine, blind-bug-set mechanism, keyless local-model endpoints, Linux CI evaluation, multi-change mutants; full-set triage replication on two older models.
 
 ## Third-party dependencies
 None in the core (C++17 standard library only). Box2D and REBOUND are used as external engines under test and are not included; see `THIRD_PARTY.md`.
