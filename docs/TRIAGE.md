@@ -53,3 +53,16 @@ about $2.8). `./build/rc_triage variance --lock data/eval_lock_triage_variance.j
 The no-model localizer localized 15 of the same 34. Per failure across the three runs: localized every time 19, never 11, **sometimes 4**. So the outcome is mostly a property of the failure, not of the model's randomness: about 12% of failures
 flip between runs, and the aggregate rate moved by at most 2 of 34 (6 percentage points). In each repetition the agent's total is above the baseline's (22, 22, 20 against 15), but 34 failures alone are too few to show it (paired sign test p = 0.14 and 0.12 for the first two repetitions);
 the significance of the full evaluation (p = 0.006) comes from its 83 failures. Repetition 2 produced fewer valid reports (30 of 34), which counts against localization.
+
+## Portability: older models of the same family
+
+Seed-1 failures only (17 failures with a fuzzer hit, lock `data/eval_lock_triage_portability.json`), same prompts, same price, run on `muse-spark-1.2` and `muse-spark-1.1` (`configs/hosted_1_2.json`, `configs/hosted_1_1.json`; reproduce with `rc_triage run --lock ... --config ...`).
+
+| model | valid reports | cause localized | no-model localizer | agent-only / baseline-only | sign test p |
+|---|---|---|---|---|---|
+| muse-spark-1.3 | 16/17 | 11/17 | 6/17 | 6 / 1 | 0.125 |
+| muse-spark-1.2 | 15/17 | 9/17 | 6/17 | 7 / 4 | 0.55 |
+| muse-spark-1.1 | 15/17 | 9/17 | 6/17 | 6 / 3 | 0.51 |
+
+Every model localizes at least as often as the baseline in raw counts, but with 17 failures none of these is significant by itself; the claim that rests on a test remains the 83-failure run. What the portability run supports is narrower: the pipeline works unchanged on
+older models with comparable validity (15 to 16 of 17), and the older ones localize slightly less often (9 against 11). Cost $0.66 and $0.65. Summaries: `results/triage_spark12/summary.md`, `results/triage_spark11/summary.md`.

@@ -24,3 +24,16 @@ Up to two attempts per mutant; on failure the model is told why (compiler errors
 
 Domains: orbit (`src/sim/orbit.cpp`, regions 74-146 and 164-189) and cart-pole (`src/sim/cartpole.cpp`, regions 94-139 and 147-197); every mutant of the locked benchmark that a declared rule catches (20 and 15). Model: `muse-spark-1.3`, low reasoning effort, 2 attempts,
 $1.5 budget per domain. Pool: the first 300 scenarios of the benchmark pool (seeds 700000+).
+
+## Results (live run, muse-spark-1.3, $0.59 in total)
+
+| domain | mutants | restored | restored on attempt 1 | rules_pass_differs | other outcomes | cost |
+|---|---|---|---|---|---|---|
+| orbit | 20 | 20 | 19 | 0 | 0 | $0.26 |
+| cart-pole | 15 | 14 | 14 | 1 | 0 | $0.33 |
+
+34 of 35 repairs reproduced the unmodified simulator bit for bit on all 300 pool scenarios. The one exception (cart-pole `m001`, `*` changed to `/`, energy bound) passed every declared rule and invariant yet differed from the unmodified
+simulator on all 300 scenarios: **a check that only asks "do the rules pass" would have accepted a wrong repair**; the bit-identity check rejected it. One sample is an existence proof, not a rate.
+
+Reading this honestly: these are single-token mutants in a few dozen lines the model is shown, together with the failing scenario and the rule that broke, and the model has seen physics code like this; high restoration is expected. It does not show the model can repair bugs it
+cannot localize from the shown region, nor bugs in code it has not been shown. Bit-identity on a 300-scenario pool is strong evidence but not a proof of equivalence. Raw rows: `results/repair/{orbit,cartpole}/repair.json`.
