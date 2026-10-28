@@ -35,6 +35,7 @@ nasty scenario, and lets a plain program prove or disprove it.
 |---|---|
 | Four domains | rigid-body physics (13 seeded bugs), orbits (3), cart-pole control (3), a traffic-signal state machine (3); same tools, rules, shrinker and agent |
 | Spec to rules | the model proposes invariants from a description; the engine keeps those that hold on clean runs (`docs/SPEC_RULES.md`) |
+| API and MCP | `rc_api_server`: the deterministic tools over local HTTP or MCP, no model needed (`docs/API.md`) |
 | Shareable report | `scripts/share_report.sh RUN_ID` writes one offline HTML file per finding |
 | Outside engines | unmodified Box2D 3.x tested through the same rules (`docs/EXTERNAL_ENGINE.md`) |
 | Bring your own simulator | any program speaking a JSON-lines pipe protocol (`docs/PROTOCOL.md`) |

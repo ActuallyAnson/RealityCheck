@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info: {title: RealityCheck deterministic tools, version: "1.0", description: "No model, no key. Local service (127.0.0.1)."}
+servers: [{url: "http://127.0.0.1:8090"}]
+components:
+  securitySchemes: {bearer: {type: http, scheme: bearer}}
+  schemas:
+    Domain: {type: string, enum: [rigid2d, orbit, cartpole, traffic]}
+    Common:
+      type: object
+      properties:
+        domain: {$ref: "#/components/schemas/Domain"}
+        engine: {type: string, description: "builtin (default), builtin:b02,b05, box2d, box2d-noccd; exec:... only with --allow-exec"}
+        scenario: {type: object, description: "scenario of the domain; see GET /v1/domains"}
+    Violation:
+      type: object
+      properties: {rule: {type: string}, step: {type: integer}, body: {type: integer}, value: {type: number}, limit: {type: number}, detail: {type: string}}
+security: [{}, {bearer: []}]
+paths:
+  /v1/domains: {get: {summary: Domains, rules and descriptions, responses: {"200": {description: ok}}}}
+  /v1/random_scenario:
+    post: {summary: A valid random scenario, requestBody: {content: {application/json: {schema: {type: object, properties: {domain: {$ref: "#/components/schemas/Domain"}, seed: {type: integer}}}}}}, responses: {"200": {description: "{ok, scenario}"}}}
+  /v1/run:
+    post: {summary: Simulate and check every declared rule, requestBody: {content: {application/json: {schema: {$ref: "#/components/schemas/Common"}}}}, responses: {"200": {description: "{ok, steps, violation_count, violations[], rule_margins{}, trace_hash}"}, "400": {description: "{ok:false, error}"}}}
+  /v1/shrink:
+    post: {summary: Shrink a failing scenario, requestBody: {content: {application/json: {schema: {$ref: "#/components/schemas/Common"}}}}, responses: {"200": {description: "{ok, rule, scenario, violation, size_before, size_after, attempts}"}}}
+  /v1/bundle:
+    post: {summary: Shrink and return a regression-test bundle, requestBody: {content: {application/json: {schema: {$ref: "#/components/schemas/Common"}}}}, responses: {"200": {description: "{ok, files{scenario.json, expected.json, test.sh, README.md}}"}}}
+  /v1/hunt:
+    post: {summary: Random-testing hunt, requestBody: {content: {application/json: {schema: {type: object, properties: {domain: {$ref: "#/components/schemas/Domain"}, engine: {type: string}, seed: {type: integer}, budget_steps: {type: integer, minimum: 1000, maximum: 300000}}}}}}, responses: {"200": {description: "{ok, found, scenarios_run, steps_used, scenario?, violation?}"}}}

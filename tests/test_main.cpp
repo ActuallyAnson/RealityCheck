@@ -20,6 +20,7 @@
 #include "sim/world.hpp"
 #include "tools/render.hpp"
 #include "tools/tools.hpp"
+#include "api/api.hpp"
 #include "spec/spec.hpp"
 #include "sim/domains.hpp"
 
@@ -1023,6 +1024,32 @@ void test_spec_run_kinds() {
   CHECK(check_invariant(v[1], s).failed);   // a red run of 4 is above 3
 }
 
+void test_api() {
+  Json d = api_call("domains", Json::object());
+  CHECK(d.at("ok").boolean() && d.at("domains").arr().size() == 4);
+  Json a = Json::object();
+  a["domain"] = "orbit"; a["seed"] = 3; a["engine"] = "builtin:o02";
+  Json h = api_call("hunt", a);
+  CHECK(h.at("ok").boolean() && h.at("found").boolean());
+  Json r = Json::object();
+  r["domain"] = "orbit"; r["scenario"] = h.at("scenario");
+  CHECK(api_call("run", r).at("violation_count").num() == 0);  // clean engine: the same scenario passes
+  r["engine"] = "builtin:o02";
+  Json rb = api_call("run", r);
+  CHECK(rb.at("violation_count").num() >= 1 && rb.at("rule_margins").at("momentum_conserved").num() > 1.0);
+  Json sh = api_call("shrink", r);
+  CHECK(sh.at("ok").boolean() && sh.at("size_after").num() <= sh.at("size_before").num());
+  Json bu = api_call("bundle", r);
+  CHECK(bu.at("ok").boolean() && bu.at("files").has("test.sh"));
+  r["engine"] = "exec:/bin/echo";
+  CHECK(!api_call("run", r).at("ok").boolean());  // arbitrary programs are refused unless the operator allows them
+  CHECK(!api_call("nope", Json::object()).at("ok").boolean());
+  Json bad = Json::object();
+  bad["domain"] = "orbit"; bad["scenario"] = Json::object();
+  CHECK(!api_call("run", bad).at("ok").boolean());  // malformed scenario is an error object, not a crash
+  CHECK(mcp_tool_list().arr().size() == 6);
+}
+
 int main() {
   struct T { const char* name; std::function<void()> fn; };
   T tests[] = {
@@ -1034,7 +1061,7 @@ int main() {
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
       {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
-      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds},
+      {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds}, {"api", test_api},
   };
   for (auto& t : tests) {
     int before = g_fail;
