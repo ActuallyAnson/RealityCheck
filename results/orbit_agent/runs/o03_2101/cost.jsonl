@@ -1,0 +1,3 @@
+{"cached_tokens":2033,"call":1,"completion_tokens":285,"cost_usd":0.0016274500000000001,"label":"hunt","latency_ms":1676.9313340187073,"ok":true,"prompt_tokens":2122,"reasoning_tokens":91,"total_cost_usd":0.0016274500000000001}
+{"cached_tokens":2033,"call":2,"completion_tokens":639,"cost_usd":0.0035231999999999998,"label":"hunt","latency_ms":3366.4831669926643,"ok":true,"prompt_tokens":2435,"reasoning_tokens":443,"total_cost_usd":0.0051506499999999997}
+{"cached_tokens":2033,"call":3,"completion_tokens":431,"cost_usd":0.0030317,"label":"hunt","latency_ms":2023.6767920255661,"ok":true,"prompt_tokens":2749,"reasoning_tokens":77,"total_cost_usd":0.0081823499999999997}

@@ -24,7 +24,56 @@ std::string clip(const std::string& s, size_t n) { return s.size() <= n ? s : s.
 
 }  // namespace
 
+namespace {
+Json view_orbit(const Scenario& sc, BugMask mask, const std::string& label) {
+  Trace tr = simulate(sc, mask);
+  std::vector<Violation> viol = check_rules(sc, tr);
+  Json v = Json::object();
+  v["label"] = label;
+  v["domain"] = "orbit";
+  Json world = Json::object();
+  world["w"] = 20; world["h"] = 12;
+  v["world"] = world;
+  v["dt"] = sc.dt;
+  v["steps"] = tr.steps();
+  v["static"] = Json::array();
+  Json ents = Json::array();
+  for (size_t i = 0; i < sc.bodies.size(); ++i) {
+    Json o = Json::object();
+    o["id"] = "body " + std::to_string(i);
+    o["k"] = "circle";  // frame layout: x, y, vx, vy; drawn with a radius that grows with mass
+    o["r"] = 0.15 + 0.1 * std::cbrt(sc.bodies[i].m);
+    o["m"] = sc.bodies[i].m;
+    o["ctrl"] = false;
+    ents.push(o);
+  }
+  v["ents"] = ents;
+  Json frames = Json::array(), energy = Json::array(), ang = Json::array(), px = Json::array(), py = Json::array();
+  for (const StepRecord& rec : tr.rec) {
+    Json f = Json::array();
+    for (const BodyState& b : rec.body) { f.push(r3(b.x)); f.push(r3(b.y)); f.push(r3(b.vx)); f.push(r3(b.vy)); }
+    frames.push(f);
+    energy.push(r3(rec.energy)); ang.push(r3(rec.ang)); px.push(r3(rec.px)); py.push(r3(rec.py));
+  }
+  v["frames"] = frames;
+  Json sig = Json::object();
+  sig["energy"] = energy;
+  sig["angular_momentum"] = ang;
+  sig["momentum_x"] = px;
+  sig["momentum_y"] = py;
+  v["signals"] = sig;
+  v["signal_limits"] = Json::object();
+  Json vj = Json::array();
+  for (const Violation& x : viol) vj.push(to_json(x));
+  v["violations"] = vj;
+  v["scenario"] = to_json(sc);
+  v["size"] = scenario_size(sc);
+  return v;
+}
+}  // namespace
+
 Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label) {
+  if (sc.domain == "orbit") return view_orbit(sc, mask, label);
   Trace tr = simulate(sc, mask);
   std::vector<Violation> viol = check_rules(sc, tr);
   Json v = Json::object();

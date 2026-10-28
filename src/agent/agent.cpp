@@ -4,6 +4,7 @@
 #include <fstream>
 #include <regex>
 
+#include "sim/orbit.hpp"
 #include "tools/render.hpp"
 
 namespace rc {
@@ -89,9 +90,16 @@ bool extract_json_object(const std::string& text, Json* out) {
   return false;
 }
 
-double field_value(const StepRecord& rec, int body, const std::string& f, bool* ok) {
+double field_value(const Scenario& sc, const StepRecord& rec, int body, const std::string& f, bool* ok) {
   *ok = true;
   if (f == "energy") return rec.energy;
+  if (sc.domain == "orbit") {  // whole-system quantities reported by inspect_state
+    double ke, pe;
+    if (f == "angular_momentum") return rec.ang;
+    if (f == "momentum_x") return rec.px;
+    if (f == "momentum_y") return rec.py;
+    if (f == "kinetic" || f == "potential") { orbit_energies(sc, rec, &ke, &pe); return f == "kinetic" ? ke : pe; }
+  }
   if (body < 0 || body >= static_cast<int>(rec.body.size())) { *ok = false; return 0; }
   const BodyState& q = rec.body[static_cast<size_t>(body)];
   if (f == "x") return q.x;
@@ -152,7 +160,7 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
       if (cj.has("value") && cj.at("value").is_number()) {
         std::string f = cj.str_or("field", "");
         bool ok;
-        double actual = field_value(run.tr.rec[static_cast<size_t>(step)], body, f, &ok);
+        double actual = field_value(run.sc, run.tr.rec[static_cast<size_t>(step)], body, f, &ok);
         if (!ok) { bad(tag + "cannot check value: unknown field '" + f + "' for body " + std::to_string(body)); continue; }
         double claimed = cj.at("value").num();
         double tol = std::max(0.02, 0.01 * std::fabs(actual));

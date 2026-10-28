@@ -323,7 +323,7 @@ $("#plot").addEventListener("click", (e) => { const v = plotStage && plotStage.v
 // ---- evidence ----
 function frameValue(view, step, body, field) {
   if (!view || step < 0 || step >= view.frames.length) return null;
-  if (field === "energy") return view.signals.energy ? view.signals.energy[step] : null;
+  if (view.signals && view.signals[field] && (field === "energy" || body < 0)) return view.signals[field][step];
   if (body < 0) return null;
   let off = 0; for (let i = 0; i < body; i++) off += STRIDE[view.ents[i].k] || 0;
   const f = view.frames[step].slice(off, off + 4); if (f.length < 4) return null;
