@@ -254,3 +254,17 @@ Source: `results/triage/summary.md`
 All bugs with a fuzzer failure: agent valid report 81/83 [0.92-0.99], agent cause localized 52/83 [0.52-0.72], no-model localizer cause localized 35/83 [0.32-0.53]. Runs with a fuzzer failure: 83 of 110. Agent cost $3.6538.
 
 Paired comparison (same failures): agent localized and baseline did not 26 times, baseline and not agent 9 times; exact sign test p = 0.0060. Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): 70 runs, agent 46, baseline 30, agent-only 23, baseline-only 7, p = 0.0052.
+
+## Mutation benchmark: 160 mechanically sampled bugs
+
+40 mutants per domain, 1000-scenario pool; see docs/MUTATION.md.
+
+Source: `results/mutation/total.md`
+
+| domain | mutants | unchanged on the pool | crashed or timed out | changed, no declared rule fires | killed by hand-written rules | of the changed: killed by hand-written rules | of the changed: killed by model-written invariants | killed mutants that random testing finds in every step-budget window |
+|---|---|---|---|---|---|---|---|---|
+| orbit | 40 | 8 | 6 | 5 | 21 | 21/26 | 15/26 | 20/21 |
+| cartpole | 40 | 5 | 0 | 20 | 15 | 15/35 | 12/35 | 15/15 |
+| traffic | 40 | 2 | 0 | 31 | 7 | 7/38 | 2/38 | 7/7 |
+| rigid2d | 40 | 15 | 1 | 13 | 11 | 11/24 | 8/24 | 9/11 |
+| **all** | 160 | 30 | 7 | 69 | 54 | 54/123 | 37/123 | 51/54 |
