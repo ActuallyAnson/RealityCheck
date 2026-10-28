@@ -25,3 +25,32 @@ jobs:
         run: ASAN_OPTIONS=detect_leaks=0 ./build_san/rc_tests
       - name: Fuzz the parsers and the API
         run: ASAN_OPTIONS=detect_leaks=0 ./build_san/rc_fuzz --iterations 100000 --api-iterations 500 --seed 1
+  linux-evaluation:
+    # Re-runs the model-free evaluations on Linux and reports how they differ from the macOS-produced tables. Informational: libm differences make some
+    # traces differ across platforms (docs/ROBUSTNESS.md), so a difference is a finding to read, not a failure.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cmake -S . -B build && cmake --build build -j 4 --target rc_eval rc_redteam rc_corpus rc_tests
+      - name: Validator red team (deterministic; fails if a contradicting forgery is accepted)
+        run: ./build/rc_redteam --per-bug 3 | tee redteam.md
+      - name: External-scenario corpus
+        run: ./build/rc_corpus | tee corpus.txt
+      - name: Random baselines on Linux against the committed (macOS) tables
+        run: |
+          mkdir -p linux_results
+          for spec in "orbit data/eval_lock_orbit.json results/orbit" "cartpole data/eval_lock_cartpole.json results/cartpole" "traffic data/eval_lock_traffic.json results/traffic" "ablation data/eval_lock_ablation.json results/ablation"; do
+            set -- $spec
+            ./build/rc_eval baseline --lock "$2" --out "linux_results/$1" > /dev/null
+            if diff -q "linux_results/$1/baseline.md" "$3/baseline.md" > /dev/null; then echo "$1: identical to the committed macOS table" | tee -a linux_summary.txt
+            else echo "$1: DIFFERS from the committed macOS table" | tee -a linux_summary.txt; diff "$3/baseline.md" "linux_results/$1/baseline.md" | head -20 | tee -a linux_summary.txt; fi
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-evaluation
+          path: |
+            linux_summary.txt
+            linux_results
+            redteam.md
+            corpus.txt
