@@ -47,6 +47,6 @@ Per-bug counts are in `results/spec_summary.md`.
 - One run per domain, 300 scenarios per bug, no repeated model draws, so there are no confidence intervals. The hand-written
   rules were written by the author, who knew the simulators; they are an upper reference, not an independent baseline.
 - The revision round was used once (rigid bodies, 1 invariant rejected on clean runs because the "gap" signal is a
-  placeholder value when there are fewer than two bodies; the model's revision was kept).
+  placeholder value when there are fewer than two bodies; the model's revision was a vacuous bound of 2e9, which was kept and cannot fail).
 - A first attempt returned nothing because the model spent the whole output budget on reasoning; the fix was a low reasoning
   effort and a larger output cap (a harness change, not a change to the prompt's content).
