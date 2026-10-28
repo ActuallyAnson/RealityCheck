@@ -12,6 +12,7 @@
 #include "sim/scenario.hpp"
 #include "sim/world.hpp"
 #include "util/json.hpp"
+#include "util/rng.hpp"
 
 namespace rc {
 
@@ -41,6 +42,8 @@ public:
   // Domain of the scenarios this session accepts ("rigid2d" default or "orbit").
   void set_domain(const std::string& d) { domain_ = d; }
   const std::string& domain() const { return domain_; }
+  // Seeds the stream that sample_random draws scenarios from (the evaluation passes the run's seed, as the random baseline does). Successive calls continue the stream.
+  void set_sampler_seed(uint64_t seed) { sampler_ = Rng(seed); }
   const ToolUsage& usage() const { return usage_; }
   const ToolBudget& budget() const { return budget_; }
   bool budget_exhausted() const { return usage_.steps_used >= budget_.max_steps || usage_.tool_calls >= budget_.max_tool_calls; }
@@ -75,6 +78,7 @@ private:
 
   Json run_scenario(const Json& a);
   Json sample_random(const Json& a);
+  Rng sampler_{12345};
   Json check_rules_tool(const Json& a);
   Json inspect_state(const Json& a);
   Json inspect_orbit(const Scenario& sc, const StepRecord& rec, int k);

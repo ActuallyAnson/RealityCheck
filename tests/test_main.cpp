@@ -435,6 +435,27 @@ static Json spent_report(const std::string& id, int step, double x, const std::s
   return r;
 }
 
+static void test_sample_random() {
+  ToolBudget tb;
+  ToolSession a(0, tb, "."), b(0, tb, "."), c(0, tb, ".");
+  for (ToolSession* t : {&a, &b, &c}) t->set_domain("orbit");
+  a.set_sampler_seed(7); b.set_sampler_seed(7); c.set_sampler_seed(8);
+  Json args = Json::object(); args["count"] = 3;
+  Json ra = a.call("sample_random", args), rb = b.call("sample_random", args), rc2 = c.call("sample_random", args);
+  CHECK(ra.bool_or("ok", false));
+  CHECK(!ra.bool_or("found_violation", true));  // the clean orbit simulator passes
+  CHECK(a.usage().scenarios_run == 3);
+  CHECK(a.usage().steps_used == b.usage().steps_used);  // same seed, same stream
+  CHECK(ra.dump() == rb.dump());
+  (void)rc2;
+  // a buggy simulator is found by plain sampling, and the failure is recorded so shrink works on it
+  ToolSession d(bug_bit(0), tb, ".");
+  d.set_domain("orbit"); d.set_sampler_seed(1);
+  Json big = Json::object(); big["count"] = 200;
+  Json rd = d.call("sample_random", big);
+  CHECK(rd.bool_or("found_violation", false) == d.has_failure());
+}
+
 static void test_citation_validation() {
   ToolBudget tb;
   ToolSession ts(bug_bit(kBigRadiusBound), tb, ".");
@@ -1131,7 +1152,7 @@ int main() {
       {"baseline budget", test_baseline_budget}, {"tools", test_tools}, {"render", test_render},
       {"ground truth scoring", test_ground_truth_scoring},
       {"wire format", test_wire_format}, {"live backend refuses without key", test_live_backend_refuses_without_key},
-      {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation},
+      {"budget stop", test_budget}, {"lifetime ledger", test_lifetime_ledger}, {"citation validation", test_citation_validation}, {"sample_random tool", test_sample_random},
       {"agent end-to-end (mock)", test_agent_end_to_end_mock}, {"agent model budget stop", test_agent_model_budget_stop},
       {"agent JSON protocol", test_agent_json_protocol_mode}, {"record and replay", test_record_and_replay}, {"rigid2d pins", test_rigid2d_pins}, {"orbit domain", test_orbit_domain}, {"cartpole domain", test_cartpole_domain}, {"traffic domain", test_traffic_domain}, {"engines and differential", test_engines_and_differential}, {"agent v2 counterfactual", test_agent_v2_counterfactual}, {"spec rules", test_spec_rules}, {"rule margins", test_rule_margins}, {"spec run kinds", test_spec_run_kinds}, {"api", test_api}, {"generic domain", test_generic_domain},
   };

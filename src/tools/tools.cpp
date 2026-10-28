@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "shrink/shrink.hpp"
+#include "util/rng.hpp"
 #include "sim/domains.hpp"
 #include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
@@ -140,12 +141,11 @@ Json ToolSession::run_scenario(const Json& a) {
 Json ToolSession::sample_random(const Json& a) {
   if (domain_ == "generic") return err("sample_random is not available for the generic domain");
   int count = std::max(1, std::min(400, static_cast<int>(a.num_or("count", 20))));
-  uint64_t seed = static_cast<uint64_t>(std::max(0.0, a.num_or("seed", 1)));
   int run = 0;
   for (int i = 0; i < count; ++i) {
     long long left = budget_.max_steps - usage_.steps_used;
     if (left <= 0) break;
-    Scenario sc = random_scenario_for(domain_, seed * 1000003ull + static_cast<uint64_t>(i));
+    Scenario sc = random_scenario_for(domain_, sampler_.next());  // drawn from the session stream exactly as the random baseline does
     bool truncated = false;
     if (sc.steps > left) { sc.steps = static_cast<int>(left); truncated = true; }
     Trace tr = sim_(sc);
@@ -470,7 +470,6 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
 Json sample_random_spec(const std::string&, int version) {
   Json p = Json::object();
   p["count"] = prop("integer", version >= 4 ? "How many random scenarios to run (1 to 400, default 20). Stops at the first violation." : "How many random scenarios to run (1 to 100, default 20). Stops at the first violation.");
-  p["seed"] = prop("integer", "Different seeds give different scenarios; the same seed repeats the same ones.");
   return fn("sample_random", "Run random scenarios from the plain random generator (the same one an ordinary fuzzer uses). Each scenario spends the step budget exactly like run_scenario. Stops at the first violation and returns it like run_scenario does.", p, {});
 }
 

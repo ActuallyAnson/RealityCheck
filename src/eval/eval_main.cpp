@@ -123,6 +123,7 @@ Json execute_run(const PlannedRun& pr, const EvalLock& lock, const Json& truth, 
   tb.max_steps = lock.max_steps;  // same simulation-step budget as the random baseline
   ToolSession tools(mask, tb, dir);
   tools.set_domain(lock.domain);
+  tools.set_sampler_seed(pr.seed);  // sample_random (agent v3 and later) draws from this run's seed, as the random baseline does
   AgentConfig ac;
   ac.domain = lock.domain;
   ac.model = api.model;
