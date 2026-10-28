@@ -72,6 +72,7 @@ Headline, read together with the caveats below:
 - Attribution ("the failure is due to the seeded bug") is checked post hoc by replaying on the clean simulator.
 - The wall-clock budget of the random baseline is not applied to the agent; the step budgets are identical.
 - Differential testing works when two engines are numerically close; for contact dynamics it mostly reports chaos.
+- Determinism is per platform: a run is bit-for-bit reproducible on the same machine type, but libm differences (sin, cos) change simulated traces on Linux compared with macOS. CI found this; the pinned trace hashes are checked on macOS only. Verdicts on the scenarios here did not depend on it in the tests, but I have not re-run the evaluations on Linux.
 - Agent explanations can read telemetry the tools return (for example substep counts), so "names cause" partly measures
   reading that telemetry.
 
