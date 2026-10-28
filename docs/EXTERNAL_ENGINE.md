@@ -74,5 +74,5 @@ leapfrog with 1 substep 9.
 **Reading it correctly:** these are not bugs in REBOUND. A fixed-step second-order integrator run at the scenario's outer step (up to 1/30 s)
 violates a 2% energy bound in close encounters, and SABA (built for a dominant central mass) also prints convergence warnings on these equal-mass,
 softened systems. What the run shows is that the tool, with no knowledge of REBOUND, (1) agrees with the library's high-accuracy integrators, (2) isolates
-the step-size dependence of its fixed-step ones with shrunk two-body reproductions, and (3) works against a real C library written by someone else, through the
-same pipe protocol as the sample simulator. Momentum and angular momentum were conserved in every integrator and scenario. No defect in REBOUND is claimed.
+the step-size dependence of its fixed-step ones with shrunk reproductions (two bodies for the 1-substep leapfrog and SABA, 8 for the 4-substep leapfrog), and (3) works against a real C library written by someone else, through the
+same pipe protocol as the sample simulator. Momentum and angular momentum stayed within the declared tolerances in every integrator and scenario. No defect in REBOUND is claimed.
