@@ -107,6 +107,11 @@ open-weight tool calling is untested.
   0 of 20000 random scenarios, and both agent control scenarios are clean. New bugs b11 to b13 and `data/eval_lock_v2.json`
   (fresh seeds; b11 to b13 are the held-out set; no agent may run on them until the reported agent version is final).
 
+- Oct 28: viewer redesign + Simple view; live mode (rc_demo spawns rc_agent, SSE). Simulator seam (`SimFn`); unmodified
+  Box2D 3.2.0 tested through the same rules (`docs/EXTERNAL_ENGINE.md`); orbit domain done (`docs/ORBIT_DOMAIN.md`);
+  cart-pole domain built and calibrated (clean sim 0 of 40000 random scenarios, baseline c01 5/5, c02 3/5, c03 5/5).
+  Next: cart-pole agent run, agent v2 + v2 evaluation on fresh held-out b11-b13, recordings, README, video.
+
 ## Multi-domain plan (added Oct 27 at the user's request: "more spread than one physics")
 The viewer already draws from a domain-agnostic document (static layer, entity kinds, flat frames, named signals,
 violations). A new domain needs: a simulator with a hidden-bug mask, declared rules, a scenario generator for the random
