@@ -38,3 +38,18 @@ claim, not the individual bugs.
 - One baseline design. A stronger no-model localizer (for example ranking all removing edits, or two-field edits) might close part of the gap. The share of single-field
   removing edits that hit the cause is in the last column of the table (between 1% and 83% per bug; about a third overall), which is the chance rate for picking among them.
 - Seeds label independent, nondeterministic model runs. The two agent failures to produce a valid report were one o03 run and one t02 run.
+
+## Run-to-run variance (the model is not seeded)
+
+The 34 failures found with fuzzer seeds 1 and 2 (the same failures as in the table above) were triaged by the agent twice more, with everything else unchanged (`data/eval_lock_triage_variance.json`, `results/triage_rep1`, `results/triage_rep2`;
+about $2.8). `./build/rc_triage variance --lock data/eval_lock_triage_variance.json --dirs results/triage,results/triage_rep1,results/triage_rep2` prints `results/triage_variance.md`:
+
+| repetition | failures | agent localized | agent valid reports |
+|---|---|---|---|
+| original run | 34 | 22 [0.48-0.79] | not shown here |
+| repetition 1 | 34 | 22 [0.48-0.79] | 34 of 34 |
+| repetition 2 | 34 | 20 [0.42-0.74] | 30 of 34 |
+
+The no-model localizer localized 15 of the same 34. Per failure across the three runs: localized every time 19, never 11, **sometimes 4**. So the outcome is mostly a property of the failure, not of the model's randomness: about 12% of failures
+flip between runs, and the aggregate rate moved by at most 2 of 34 (6 percentage points). In each repetition the agent's total is above the baseline's (22, 22, 20 against 15), but 34 failures alone are too few to show it (paired sign test p = 0.14 and 0.12 for the first two repetitions);
+the significance of the full evaluation (p = 0.006) comes from its 83 failures. Repetition 2 produced fewer valid reports (30 of 34), which counts against localization.
