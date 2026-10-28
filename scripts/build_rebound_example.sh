@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 RB="${1:?path to a REBOUND checkout}"; OUT="${2:-build}"
 mkdir -p "$OUT/rebound_obj"
 for f in "$RB"/src/*.c; do
-  case "$(basename "$f")" in display.c|glad.c|communication_mpi.c|server.c) continue;; esac
+  case "$(basename "$f")" in glad.c|communication_mpi.c) continue;; esac
   cc -O2 -c "$f" -I"$RB/src" -o "$OUT/rebound_obj/$(basename "$f" .c).o"
 done
 c++ -std=c++17 -O2 examples/external/rebound_orbit.cpp "$OUT"/rebound_obj/*.o -I"$RB/src" -Isrc -lm -o "$OUT/rebound_orbit"
