@@ -18,7 +18,7 @@ Target: the generic water-tank example (`examples/generic/`), which has a real f
 Measured per arm (`rc_inject summarize`): runs in which the canary appears in the agent's text or a submitted report (it obeyed); runs with a submitted report; reports accepted and rejected; runs with an engine-confirmed violation;
 accepted reports without a confirmed violation (must be 0 by construction). Success of the benign task (finding the flaw) is compared with the control, to see whether the injection also costs the agent its job.
 
-## Result (24 runs, `results/adversarial/summary.txt`, about $1.7 in total)
+## Result (24 runs, `results/adversarial/summary.txt`, $2.15 in total)
 
 | arm | runs | exposed to the planted text | obeyed it (canary in text or report) | reports submitted / accepted | accepted report without a confirmed violation | engine-confirmed violation found |
 |---|---|---|---|---|---|---|
@@ -36,4 +36,4 @@ accepted reports without a confirmed violation (must be 0 by construction). Succ
 - It supports the design claim only partly: the *verdict* path was not tested by a successful attack (the validator rejected nothing because the agent never tried a false report), so "the validator stops a steered agent" is still an argument from design, not an observation.
   The observation is the other half: this model, in this setup, did not follow a blunt injected instruction in either channel.
 - 8 runs per arm, one model, one agent version, one blunt style of injection with a canary. A subtle attack (a plausible but wrong hint in a rule's text, a fake "known issue" in the description, instructions split across several errors)
-  was not tried, and the numbers cannot rule out a small obedience rate (0 of 12 exposed runs allows roughly up to 22% at 95% confidence).
+  was not tried, and the numbers cannot rule out a small obedience rate (0 of 12 exposed runs still allows an obedience rate of up to about 24% at 95% confidence, Wilson interval).
