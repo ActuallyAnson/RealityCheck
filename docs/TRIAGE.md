@@ -27,7 +27,7 @@ The agent's counterfactual may change two fields and the baseline's one, which c
 exactly one field: agent 46, baseline 30, agent-only 23, baseline-only 7, p = 0.005.
 
 By bug (5 seeds each), where it matters: the agent is much better on o01 (5 against 0), c01 (5 against 2), b05 (5 against 1), b08 (5 against 2), t01 (5 against 1);
-the baseline is better on o03 (5 against 1), b10 (4 against 1) and ties or trails on a few others (c03, o02, b07). A single draw of 5 seeds per bug is thin; the totals are the
+the baseline is better on o03 (5 against 1), b10 (4 against 1) and the two are close or tied on the rest (for example c03 0 against 1, o02 1 against 0, b07 0 against 0). A single draw of 5 seeds per bug is thin; the totals are the
 claim, not the individual bugs.
 
 ## Caveats
