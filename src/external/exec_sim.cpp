@@ -2,6 +2,7 @@
 
 #include <poll.h>
 #include <signal.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -26,6 +27,11 @@ public:
     pid_ = fork();
     if (pid_ < 0) throw std::runtime_error("fork failed");
     if (pid_ == 0) {
+      setpgid(0, 0);  // own process group, so a kill reaches the shell's children too
+      // Best-effort memory cap for the simulator (RC_EXEC_MEM_MB, default 4096; 0 disables). Enforced by the OS on Linux, only partly on macOS.
+      const char* mem = std::getenv("RC_EXEC_MEM_MB");
+      long mb = mem ? std::atol(mem) : 4096;
+      if (mb > 0) { rlimit rl{static_cast<rlim_t>(mb) * 1024 * 1024, static_cast<rlim_t>(mb) * 1024 * 1024}; setrlimit(RLIMIT_AS, &rl); }
       dup2(to_child[0], 0);
       dup2(from_child[1], 1);
       close(to_child[0]); close(to_child[1]); close(from_child[0]); close(from_child[1]);
@@ -41,7 +47,7 @@ public:
   ~Child() {
     if (in_) fclose(in_);   // closing stdin tells the child to exit
     if (out_fd_ >= 0) close(out_fd_);
-    if (pid_ > 0) { kill(pid_, SIGTERM); int st; waitpid(pid_, &st, 0); }
+    if (pid_ > 0) { kill(-pid_, SIGTERM); kill(pid_, SIGTERM); int st; waitpid(pid_, &st, 0); }
   }
   Child(const Child&) = delete;
   Child& operator=(const Child&) = delete;
@@ -59,6 +65,7 @@ public:
       pollfd p{out_fd_, POLLIN, 0};
       int r = poll(&p, 1, static_cast<int>(limit_s * 1000));
       if (r == 0) {
+        kill(-pid_, SIGKILL);
         kill(pid_, SIGKILL);
         throw std::runtime_error("external simulator did not answer within " + std::to_string(static_cast<int>(limit_s)) + " s and was killed (a hang, not a finding)");
       }

@@ -30,7 +30,7 @@ four numbers per body, in scenario order: `x, y, vx, vy`. Use `null` for a non-f
 | `cartpole` | one body: `[x, theta, v, omega]` | optional `"force":[...]` (controller force per step) and `"work":[...]` |
 
 The program is started once and kept running, so per-scenario cost is the simulation itself. If it exits, writes a
-malformed line, or does not answer within `RC_EXEC_TIMEOUT_S` seconds (default 60; it is killed), the tool stops with an error instead of reporting a false finding.
+malformed line, or does not answer within `RC_EXEC_TIMEOUT_S` seconds (default 60; it and its process group are killed; the child also gets a best-effort memory cap, `RC_EXEC_MEM_MB`, default 4096), the tool stops with an error instead of reporting a false finding.
 
 ## Example
 
