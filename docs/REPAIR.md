@@ -61,3 +61,17 @@ generated and scored by the same benchmark code; only those a declared rule catc
 - Arm A: the same regions as the first run (cart-pole 94-139,147-197; traffic 112-253), same prompt, 2 attempts.
 - Arm B (no hint): the region is the entire body of the source file after its `#include` lines (cart-pole and traffic: from the first line after the includes to the end), so the model is not told where to look.
 Same model, effort, pool (300), budget ($2 per arm per domain). Outcomes as before; the result is whatever comes out, appended below.
+
+### Results of the third run (two simultaneous changes, fresh mutants; $1.41 in total)
+
+| domain | arm | mutants | restored | rules_pass_differs | other |
+|---|---|---|---|---|---|
+| cart-pole | A: regions as before | 15 | 15 | 0 | 0 |
+| cart-pole | B: whole file body, no hint | 15 | 14 | 0 | 1 unparsed |
+| traffic | A: regions as before | 11 | 8 | **3** | 0 |
+| traffic | B: whole file body, no hint | 11 | 6 | **5** | 0 |
+
+Two simultaneous changes and removing the hint did not hurt cart-pole (29 of 30 restored; the one miss is an answer with no code block for every region, not a wrong repair). On traffic they did: 3 of 11 (arm A) and 5 of 11 (arm B) repairs **passed every declared rule and invariant yet differed from the unmodified simulator**, where
+a check that only asks "do the rules pass" would have accepted a wrong repair. Together with the earlier single case, rules-pass-but-wrong repairs now number 9 of 105 repaired mutants in all runs (1 of 35, 0 of 18, 0 of 30 cart-pole, 8 of 22 traffic second-order), and all of the wrong ones sit in the domain where the declared rules are weakest (traffic: 31 of 38 changed
+mutants silent in `docs/MUTATION.md`). That is the point of the bit-identity acceptance criterion: where the oracle is weak, a model's plausible repair is often not the original, and rules alone cannot tell. Caveats: one run per arm; traffic's second-order set is only 11 mutants; arm B and arm A share mutants, so they are not independent samples.
+Raw rows: `results/repair2/*/repair.json`.

@@ -66,3 +66,16 @@ Seed-1 failures only (17 failures with a fuzzer hit, lock `data/eval_lock_triage
 
 Every model localizes at least as often as the baseline in raw counts, but with 17 failures none of these is significant by itself; the claim that rests on a test remains the 83-failure run. What the portability run supports is narrower: the pipeline works unchanged on
 older models with comparable validity (15 to 16 of 17), and the older ones localize slightly less often (9 against 11). Cost $0.66 and $0.65. Summaries: `results/triage_spark12/summary.md`, `results/triage_spark11/summary.md`.
+
+### Portability on the full set
+
+The seed-1 subset above was too small to test anything. The same full locked evaluation (83 failures, `data/eval_lock_triage.json`) was then run on the two older models:
+
+| model | valid reports | cause localized | no-model localizer | agent-only / baseline-only | sign test p | 1-field restriction p | cost |
+|---|---|---|---|---|---|---|---|
+| muse-spark-1.3 | 81/83 | 52/83 | 35/83 | | 0.006 | 0.005 | $3.65 |
+| muse-spark-1.2 | 81/83 | 49/83 | 35/83 | 25 / 11 | 0.029 | 0.007 | $2.97 |
+| muse-spark-1.1 | 82/83 | 48/83 | 35/83 | 25 / 12 | 0.047 | 0.041 | $2.41 |
+
+The finding replicates on both older models of the same family: each localizes the cause in 48 to 49 of 83 failures against 35 for the no-model localizer, with p below 0.05 on each. The effect is slightly smaller on older models (48 to 49 against 52), as expected. Caveats: three tests were run on one failure set, so the p-values are not
+independent evidence and the 1.2 and 1.1 values are borderline (0.03 to 0.05) taken alone; the three models are one family, so this is not evidence about other model families. Summaries: `results/triage_spark12_full/summary.md`, `results/triage_spark11_full/summary.md`.

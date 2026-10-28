@@ -1,0 +1,10 @@
+{"cached_tokens":2417,"call":1,"completion_tokens":145,"cost_usd":0.0010788,"label":"hunt","latency_ms":1512.720833003521,"ok":true,"prompt_tokens":2497,"reasoning_tokens":37,"total_cost_usd":0.0010788}
+{"cached_tokens":2417,"call":2,"completion_tokens":87,"cost_usd":0.0014223,"label":"hunt","latency_ms":1433.3288339972496,"ok":true,"prompt_tokens":2969,"reasoning_tokens":29,"total_cost_usd":0.0025011}
+{"cached_tokens":2929,"call":3,"completion_tokens":155,"cost_usd":0.0013031,"label":"hunt","latency_ms":1312.5954169631004,"ok":true,"prompt_tokens":3093,"reasoning_tokens":52,"total_cost_usd":0.0038041999999999998}
+{"cached_tokens":2417,"call":4,"completion_tokens":66,"cost_usd":0.0022968000000000003,"label":"hunt","latency_ms":1249.347541987896,"ok":true,"prompt_tokens":3740,"reasoning_tokens":0,"total_cost_usd":0.0061010000000000005}
+{"cached_tokens":3697,"call":5,"completion_tokens":66,"cost_usd":0.0016600499999999999,"label":"hunt","latency_ms":1423.3002089858055,"ok":true,"prompt_tokens":4357,"reasoning_tokens":0,"total_cost_usd":0.0077610500000000002}
+{"cached_tokens":4337,"call":6,"completion_tokens":66,"cost_usd":0.0017323,"label":"hunt","latency_ms":1206.6256250143051,"ok":true,"prompt_tokens":4978,"reasoning_tokens":0,"total_cost_usd":0.0094933500000000011}
+{"cached_tokens":3057,"call":7,"completion_tokens":66,"cost_usd":0.0038890500000000002,"label":"hunt","latency_ms":1297.9047920107841,"ok":true,"prompt_tokens":5577,"reasoning_tokens":0,"total_cost_usd":0.013382400000000001}
+{"cached_tokens":4977,"call":8,"completion_tokens":648,"cost_usd":0.00488055,"label":"hunt","latency_ms":3822.2672920227051,"ok":true,"prompt_tokens":6081,"reasoning_tokens":260,"total_cost_usd":0.01826295}
+{"cached_tokens":5489,"call":9,"completion_tokens":982,"cost_usd":0.0063243500000000003,"label":"hunt","latency_ms":5342.4452909827232,"ok":true,"prompt_tokens":6551,"reasoning_tokens":420,"total_cost_usd":0.024587299999999999}
+{"cached_tokens":0,"call":10,"completion_tokens":403,"cost_usd":0.0039552500000000004,"label":"vision","latency_ms":5123.9312080144882,"ok":true,"prompt_tokens":1794,"reasoning_tokens":330,"total_cost_usd":0.02854255}

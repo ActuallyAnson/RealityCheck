@@ -27,7 +27,7 @@ Seeded bugs are planted by me; see the caveats before reading anything as "the m
 
 | Question | Answer | Where |
 |---|---|---|
-| Given a failure, does the model find the cause better than a program? | **Yes.** On 83 failures found by random testing, the agent localized the cause in 52 (63%) against 35 (42%) for a no-model localizer; paired sign test p = 0.006. 81 of 83 reports passed the engine's checks. | `docs/TRIAGE.md` |
+| Given a failure, does the model find the cause better than a program? | **Yes.** On 83 failures found by random testing, the agent localized the cause in 52 (63%) against 35 (42%) for a no-model localizer; paired sign test p = 0.006. 81 of 83 reports passed the engine's checks. The result replicates on two older models of the same family (49 and 48 of 83, p = 0.03 and 0.047). | `docs/TRIAGE.md` |
 | Does the model find failures better than random testing? | **Not in general.** It helps on a few rare-condition bugs, ties on common ones, and loses on the traffic domain (t02 1/5, t03 3/5 against 5/5 for random). | `docs/RESULTS.md`, `docs/TRAFFIC_DOMAIN.md` |
 | Does a smarter search (margin-guided hill climbing) beat random? | **No.** Tested with no model at equal step budget; it found each bug no more often than random in all 15 rows. So guided search was not built into the agent. | `docs/GUIDED_SEARCH.md` |
 | Can a model write the rules from a description? | **Partly.** Model-written invariants hit 9 of 22 seeded bugs against 19 of 22 for hand-written rules; they find conservation laws but write loose bounds. A second attempt with duration forms hit 0 of 3 on traffic. | `docs/SPEC_RULES.md` |
