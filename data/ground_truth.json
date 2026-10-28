@@ -578,6 +578,100 @@
         "plant.pole_length",
         "plant.cart_mass"
       ]
+    },
+    "t01": {
+      "summary": "With yellow_seconds >= 5, an emergency pre-emption request arriving during the other direction's yellow jumps straight to the emergency direction's green: the all-red is skipped and the other direction's yellow is cut short.",
+      "expected_rules": [
+        "all_red_clearance",
+        "yellow_duration",
+        "no_conflicting_signals"
+      ],
+      "cause_keywords": [
+        [
+          "emergency",
+          "pre-empt",
+          "preempt",
+          "priority"
+        ],
+        [
+          "yellow",
+          "all-red",
+          "all red",
+          "clearance",
+          "skip",
+          "jump",
+          "straight",
+          "immediate"
+        ]
+      ],
+      "trigger_fields": [
+        "events",
+        "yellow_seconds"
+      ]
+    },
+    "t02": {
+      "summary": "With max_green_seconds >= 80, an actuated gap-out after a green of 60 s or more gets a yellow that is 2 s shorter than yellow_seconds (at least 1 s).",
+      "expected_rules": [
+        "yellow_duration"
+      ],
+      "cause_keywords": [
+        [
+          "yellow",
+          "amber"
+        ],
+        [
+          "short",
+          "cut",
+          "gap-out",
+          "gap out",
+          "early",
+          "long green",
+          "actuat",
+          "reduced",
+          "shorten",
+          "less than",
+          "too brief"
+        ]
+      ],
+      "trigger_fields": [
+        "max_green_seconds",
+        "green_seconds",
+        "actuated",
+        "arrival_per_second"
+      ]
+    },
+    "t03": {
+      "summary": "While a detector on the direction currently holding green has failed, neither the maximum green nor the wait recall is enforced, so green is held until the failure ends and the other direction waits past 200 s.",
+      "expected_rules": [
+        "max_wait"
+      ],
+      "cause_keywords": [
+        [
+          "detector",
+          "sensor",
+          "fail",
+          "blind",
+          "stuck"
+        ],
+        [
+          "max green",
+          "max_green",
+          "recall",
+          "starv",
+          "held",
+          "hold",
+          "not enforced",
+          "ignor",
+          "unlimited",
+          "never switch",
+          "never ends",
+          "indefinite"
+        ]
+      ],
+      "trigger_fields": [
+        "events",
+        "actuated"
+      ]
     }
   },
   "_trigger_fields_note": "Scenario paths whose change can switch a bug's trigger condition off. A v2 counterfactual (a passing variant that differs from the shrunk scenario in at most two fields) 'localizes' the cause when one changed path matches an entry (indices written as [*]; an entry also matches deeper paths). Necessary, not sufficient: a different change can also remove a failure by luck."

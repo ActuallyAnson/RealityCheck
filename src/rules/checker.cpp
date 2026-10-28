@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "sim/orbit.hpp"
+#include "sim/traffic.hpp"
 
 namespace rc {
 
@@ -24,7 +25,15 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
       {"controller_force_limit", "The controller never applies a force above the scenario's force_limit."},
       {"energy_bound", "Mechanical energy never exceeds the initial energy plus the work of all external forces, beyond 5% of (|E0|+|work|) plus 0.05."},
   };
+  static const std::vector<RuleInfo> traffic_cat = {
+      {"valid_signal", "Every approach shows a valid signal (red, yellow or green) and a non-negative, finite queue."},
+      {"no_conflicting_signals", "The N/S and E/W directions are never both non-red (green or yellow) in the same second."},
+      {"all_red_clearance", "Before a direction turns green, the opposite direction has been red for at least all_red_seconds."},
+      {"yellow_duration", "A green always ends in yellow, and every yellow lasts at least yellow_seconds before red."},
+      {"max_wait", "No approach waits at red with vehicles queued for more than 200 seconds."},
+  };
   if (domain == "orbit") return orbit_cat;
+  if (domain == "traffic") return traffic_cat;
   if (domain == "cartpole") return cart_cat;
   static const std::vector<RuleInfo> cat = {
       {"no_nan", "Every position, velocity and energy value stays finite."},
@@ -39,6 +48,54 @@ const std::vector<RuleInfo>& rule_catalog(const std::string& domain) {
 
 namespace {
 std::string fmt(const char* f, double a = 0, double b = 0, double c = 0);
+}
+
+std::vector<Violation> check_traffic_rules(const Scenario& sc, const Trace& tr) {
+  std::vector<Violation> out;
+  std::set<std::pair<std::string, int>> seen;
+  auto add = [&](Violation v) {
+    if (seen.insert({v.rule, v.body}).second) out.push_back(std::move(v));
+  };
+  const int n = tr.steps();
+  auto sig = [&](int k, int a) { return static_cast<int>(tr.rec[static_cast<size_t>(k)].body[static_cast<size_t>(a)].x); };
+  std::vector<int> yellow_run(4, 0);
+  for (int k = 0; k <= n; ++k) {
+    const StepRecord& r = tr.rec[static_cast<size_t>(k)];
+    for (int a = 0; a < 4; ++a) {
+      const BodyState& q = r.body[static_cast<size_t>(a)];
+      if (!(std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.vx)) || q.x < 0 || q.x > 2 || q.y < 0)
+        add({"valid_signal", k, a, q.x, 0, "invalid signal or queue value"});
+      if (q.vx > TrafficLimits::wait_limit)
+        add({"max_wait", k, a, q.vx, TrafficLimits::wait_limit, fmt("approach %.0f has waited %.0f s at red with vehicles queued (limit 200)", a, q.vx)});
+    }
+    bool ns = sig(k, 0) != 0 || sig(k, 2) != 0, ew = sig(k, 1) != 0 || sig(k, 3) != 0;
+    if (ns && ew) add({"no_conflicting_signals", k, -1, 0, 0, "N/S and E/W are both non-red"});
+    for (int a = 0; a < 4; ++a) {
+      int cur = sig(k, a), prev = k > 0 ? sig(k - 1, a) : cur;
+      if (cur == 2 && prev != 2) {  // a green starts: the other direction must have been red for all_red seconds
+        for (int back = 1; back <= sc.tr.all_red && k - back >= 0; ++back)
+          for (int o = 1 - a % 2; o < 4; o += 2)
+            if (sig(k - back, o) != 0) {
+              add({"all_red_clearance", k, a, static_cast<double>(back - 1), static_cast<double>(sc.tr.all_red),
+                   fmt("approach %.0f turned green after only %.0f s of all-red (need %.0f s)", a, back - 1.0, sc.tr.all_red)});
+              back = sc.tr.all_red + 1;
+              break;
+            }
+      }
+      if (cur == 1) ++yellow_run[static_cast<size_t>(a)];
+      if (prev == 2 && cur == 0) add({"yellow_duration", k, a, 0, static_cast<double>(sc.tr.yellow), fmt("approach %.0f went from green straight to red (no yellow)", a)});
+      if (prev == 1 && cur != 1) {
+        if (cur == 0 && yellow_run[static_cast<size_t>(a)] < sc.tr.yellow)
+          add({"yellow_duration", k, a, static_cast<double>(yellow_run[static_cast<size_t>(a)]), static_cast<double>(sc.tr.yellow), fmt("yellow lasted %.0f s on approach %.0f", yellow_run[static_cast<size_t>(a)], a)});
+        yellow_run[static_cast<size_t>(a)] = 0;
+      }
+    }
+  }
+  std::stable_sort(out.begin(), out.end(), [](const Violation& a, const Violation& b) {
+    if (a.step != b.step) return a.step < b.step;
+    return a.rule < b.rule;
+  });
+  return out;
 }
 
 std::vector<Violation> check_cartpole_rules(const Scenario& sc, const Trace& tr) {
@@ -154,6 +211,7 @@ std::string fmt(const char* f, double a, double b, double c) {
 std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const RuleSpec& spec) {
   if (sc.domain == "orbit") return check_orbit_rules(sc, tr);
   if (sc.domain == "cartpole") return check_cartpole_rules(sc, tr);
+  if (sc.domain == "traffic") return check_traffic_rules(sc, tr);
   std::vector<Violation> out;
   std::set<std::pair<std::string, int>> seen;
   auto add = [&](Violation v) {

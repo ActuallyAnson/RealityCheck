@@ -36,6 +36,7 @@ std::vector<Violation> check_rules(const Scenario& sc, const Trace& tr, const Ru
 
 std::vector<Violation> check_orbit_rules(const Scenario& sc, const Trace& tr);
 std::vector<Violation> check_cartpole_rules(const Scenario& sc, const Trace& tr);
+std::vector<Violation> check_traffic_rules(const Scenario& sc, const Trace& tr);
 
 Json to_json(const Violation& v);
 

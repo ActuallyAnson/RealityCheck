@@ -50,8 +50,30 @@ struct CartPoleDef {
   }
 };
 
+// Traffic-signal domain: a four-approach intersection (N, E, S, W) with a signal controller. Only used when
+// Scenario::domain == "traffic". One step = one second.
+struct TrafficEvent {
+  int t = 0;          // second at which it starts
+  int kind = 0;       // 0 emergency vehicle on `approach`, 1 pedestrian request, 2 detector failure on `approach`
+  int approach = 0;   // 0 N, 1 E, 2 S, 3 W
+  int duration = 10;  // seconds (ignored for pedestrian requests)
+  bool operator==(const TrafficEvent& o) const { return t == o.t && kind == o.kind && approach == o.approach && duration == o.duration; }
+};
+struct TrafficDef {
+  double arrival[4] = {0.1, 0.1, 0.1, 0.1};  // vehicles per second arriving at N, E, S, W
+  int green_ns = 20, green_ew = 20;          // nominal green seconds
+  int yellow = 4, all_red = 2, max_green = 60;
+  bool actuated = true;                       // false: fixed-time cycle
+  std::vector<TrafficEvent> events;
+  bool operator==(const TrafficDef& o) const {
+    for (int i = 0; i < 4; ++i) if (arrival[i] != o.arrival[i]) return false;
+    return green_ns == o.green_ns && green_ew == o.green_ew && yellow == o.yellow && all_red == o.all_red &&
+           max_green == o.max_green && actuated == o.actuated && events == o.events;
+  }
+};
+
 struct Scenario {
-  std::string domain = "rigid2d";  // "rigid2d" (default), "orbit" or "cartpole"; omitted from JSON for rigid2d
+  std::string domain = "rigid2d";  // "rigid2d" (default), "orbit", "cartpole" or "traffic"; omitted from JSON for rigid2d
   uint64_t seed = 1;
   double dt = 1.0 / 120.0;
   int steps = 600;
@@ -61,6 +83,7 @@ struct Scenario {
   std::vector<WallDef> walls;
   ControllerDef ctrl;
   CartPoleDef cp;
+  TrafficDef tr;
 };
 
 // Public limits of the scenario space (given to testers and to the model as part of the spec).

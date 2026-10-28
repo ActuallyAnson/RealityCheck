@@ -16,6 +16,7 @@ add_library(rc_core
   src/sim/world.cpp
   src/sim/orbit.cpp
   src/sim/cartpole.cpp
+  src/sim/traffic.cpp
   src/rules/checker.cpp
   src/tools/render.cpp
   src/tools/tools.cpp

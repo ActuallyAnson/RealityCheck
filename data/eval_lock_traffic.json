@@ -1,0 +1,35 @@
+{
+ "_note": "LOCKED for the traffic-signal evaluation. Domain 'traffic' (intersection controller). Trigger conditions of t01..t03 were calibrated with the random baseline only (rc_orbit_cal --domain traffic) before this lock. The clean simulator was checked on 40000 random scenarios and 30000 extreme-biased scenarios (0 violations). No agent had run on this domain when this file was written; t01..t03 are fresh held-out. The agent is the unchanged v1 agent (domain text, tool schemas and citation fields swapped, nothing else).",
+ "version": "traffic-1",
+ "domain": "traffic",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  5101,
+  5202,
+  5303,
+  5404,
+  5505
+ ],
+ "control_seeds": [
+  5901,
+  5902,
+  5903
+ ],
+ "bugs": [
+  {
+   "id": "t01",
+   "split": "heldout"
+  },
+  {
+   "id": "t02",
+   "split": "heldout"
+  },
+  {
+   "id": "t03",
+   "split": "heldout"
+  }
+ ]
+}

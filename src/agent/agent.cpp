@@ -5,6 +5,7 @@
 #include <regex>
 
 #include "sim/orbit.hpp"
+#include "sim/traffic.hpp"
 #include "tools/render.hpp"
 
 namespace rc {
@@ -107,6 +108,14 @@ bool extract_json_object(const std::string& text, Json* out) {
 double field_value(const Scenario& sc, const StepRecord& rec, int body, const std::string& f, bool* ok) {
   *ok = true;
   if (f == "energy") return rec.energy;
+  if (sc.domain == "traffic") {  // per-approach values: body = approach index
+    if (body < 0 || body >= static_cast<int>(rec.body.size())) { *ok = false; return 0; }
+    const BodyState& q = rec.body[static_cast<size_t>(body)];
+    if (f == "signal") return q.x;
+    if (f == "queue") return q.y;
+    if (f == "wait") return q.vx;
+    if (f == "flag") return q.vy;
+  }
   if (sc.domain == "cartpole" && !rec.body.empty()) {  // body index is irrelevant: one cart-pole
     const BodyState& q = rec.body[0];
     if (f == "x") return q.x;
@@ -140,7 +149,7 @@ CitationCheck validate_report(const ToolSession::Entry& run, bool shrunk, const 
   CitationCheck c;
   auto bad = [&](const std::string& m) { c.problems.push_back(m); };
   const int steps = run.tr.steps();
-  const int nbodies = run.sc.domain == "cartpole" ? 1 : static_cast<int>(run.sc.bodies.size());
+  const int nbodies = run.sc.domain == "cartpole" ? 1 : run.sc.domain == "traffic" ? 4 : static_cast<int>(run.sc.bodies.size());
   if (!shrunk) bad("scenario_id must be the shrunk scenario returned by the shrink tool");
   std::string rule = report.str_or("rule", "");
   const Violation* viol = nullptr;

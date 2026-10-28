@@ -78,6 +78,7 @@ private:
   Json inspect_state(const Json& a);
   Json inspect_orbit(const Scenario& sc, const StepRecord& rec, int k);
   Json inspect_cartpole(const Scenario& sc, const StepRecord& rec, int k);
+  Json inspect_traffic(const Scenario& sc, const StepRecord& rec, int k);
   Json render_frames(const Json& a);
   Json shrink_tool(const Json& a);
   Json replay(const Json& a);

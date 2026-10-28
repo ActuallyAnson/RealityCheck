@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "sim/cartpole.hpp"
+#include "sim/traffic.hpp"
 #include "sim/orbit.hpp"
 #include "util/rng.hpp"
 
@@ -12,6 +13,7 @@ namespace rc {
 Json to_json(const Scenario& s) {
   if (s.domain == "orbit") return orbit_to_json(s);
   if (s.domain == "cartpole") return cartpole_to_json(s);
+  if (s.domain == "traffic") return traffic_to_json(s);
   Json j = Json::object();
   j["seed"] = static_cast<double>(s.seed);
   j["dt"] = s.dt;
@@ -57,6 +59,7 @@ Json to_json(const Scenario& s) {
 Scenario scenario_from_json(const Json& j, const std::string& default_domain) {
   if (j.str_or("domain", default_domain) == "orbit") return orbit_from_json(j);
   if (j.str_or("domain", default_domain) == "cartpole") return cartpole_from_json(j);
+  if (j.str_or("domain", default_domain) == "traffic") return traffic_from_json(j);
   Scenario s;
   s.seed = static_cast<uint64_t>(j.num_or("seed", 1));
   s.dt = j.num_or("dt", s.dt);
@@ -105,6 +108,7 @@ Scenario scenario_from_json(const Json& j, const std::string& default_domain) {
 bool operator==(const Scenario& a, const Scenario& b) {
   if (a.domain != b.domain) return false;
   if (a.domain == "cartpole") return a.seed == b.seed && a.dt == b.dt && a.steps == b.steps && a.cp == b.cp;
+  if (a.domain == "traffic") return a.seed == b.seed && a.steps == b.steps && a.tr == b.tr;
   if (a.seed != b.seed || a.dt != b.dt || a.steps != b.steps || a.gravity != b.gravity) return false;
   if (!(a.bodies == b.bodies) || !(a.walls == b.walls)) return false;
   const ControllerDef &x = a.ctrl, &y = b.ctrl;
@@ -127,6 +131,7 @@ std::string fail(const char* fmt, double a = 0, double b = 0) {
 std::string validate(const Scenario& s) {
   if (s.domain == "orbit") return orbit_validate(s);
   if (s.domain == "cartpole") return cartpole_validate(s);
+  if (s.domain == "traffic") return traffic_validate(s);
   using L = ScenarioLimits;
   if (!std::isfinite(s.dt) || s.dt < L::dt_min || s.dt > L::dt_max)
     return fail("dt %g outside [1e-4, 1/30]", s.dt);
@@ -186,6 +191,7 @@ uint64_t scenario_hash(const Scenario& s) {
 
 int scenario_size(const Scenario& s) {
   if (s.domain == "cartpole") return static_cast<int>(s.cp.pushes.size()) + (s.cp.noise > 0 ? 1 : 0) + s.steps / 100;
+  if (s.domain == "traffic") return static_cast<int>(s.tr.events.size()) + s.steps / 100;
   return static_cast<int>(s.bodies.size()) + static_cast<int>(s.walls.size()) +
          static_cast<int>(s.ctrl.enabled ? 1 + s.ctrl.waypoints.size() : 0) + s.steps / 100;
 }

@@ -8,6 +8,7 @@
 #include "sim/bugs.hpp"
 #include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
+#include "sim/traffic.hpp"
 #include "util/json.hpp"
 #include "util/rng.hpp"
 
@@ -53,6 +54,7 @@ inline EvalLock load_lock(const std::string& path) {
 inline int domain_bug_index(const std::string& domain, const std::string& id) {
   if (domain == "orbit") return orbit_bug_index(id);
   if (domain == "cartpole") return cart_bug_index(id);
+  if (domain == "traffic") return traffic_bug_index(id);
   return bug_index(id);
 }
 

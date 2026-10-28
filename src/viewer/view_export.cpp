@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "rules/checker.hpp"
+#include "sim/traffic.hpp"
 #include "sim/world.hpp"
 
 namespace rc {
@@ -122,7 +123,66 @@ Json view_cartpole(const Scenario& sc, BugMask mask, const std::string& label) {
   return v;
 }
 
+Json view_traffic(const Scenario& sc, BugMask mask, const std::string& label) {
+  Trace tr = simulate(sc, mask);
+  std::vector<Violation> viol = check_rules(sc, tr);
+  static const char* names[4] = {"N", "E", "S", "W"};
+  Json v = Json::object();
+  v["label"] = label;
+  v["domain"] = "traffic";
+  Json world = Json::object();
+  world["w"] = 12; world["h"] = 12;
+  v["world"] = world;
+  v["dt"] = 1.0;
+  v["steps"] = tr.steps();
+  Json stat = Json::array();
+  Json road = Json::object();
+  road["k"] = "crossroad";
+  stat.push(road);
+  v["static"] = stat;
+  Json ents = Json::array();
+  for (int a = 0; a < 4; ++a) {
+    Json o = Json::object();
+    o["id"] = std::string("approach ") + names[a];
+    o["k"] = "approach";  // frame layout: signal (0 red, 1 yellow, 2 green), queue, red wait seconds, flag
+    o["dir"] = a;
+    o["r"] = 0.3;
+    ents.push(o);
+  }
+  v["ents"] = ents;
+  Json frames = Json::array();
+  Json sig = Json::object();
+  Json q[4], waitmax = Json::array();
+  for (int a = 0; a < 4; ++a) q[a] = Json::array();
+  for (const StepRecord& rec : tr.rec) {
+    Json f = Json::array();
+    double wmax = 0;
+    for (int a = 0; a < 4; ++a) {
+      const BodyState& b = rec.body[static_cast<size_t>(a)];
+      f.push(b.x); f.push(b.y); f.push(b.vx); f.push(b.vy);
+      q[a].push(b.y);
+      wmax = std::max(wmax, b.vx);
+    }
+    frames.push(f);
+    waitmax.push(wmax);
+  }
+  v["frames"] = frames;
+  for (int a = 0; a < 4; ++a) sig[std::string("queue ") + names[a]] = q[a];
+  sig["longest red wait"] = waitmax;
+  v["signals"] = sig;
+  Json lim = Json::object();
+  lim["longest red wait"] = TrafficLimits::wait_limit;
+  v["signal_limits"] = lim;
+  Json vj = Json::array();
+  for (const Violation& x : viol) vj.push(to_json(x));
+  v["violations"] = vj;
+  v["scenario"] = to_json(sc);
+  v["size"] = scenario_size(sc);
+  return v;
+}
+
 Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label) {
+  if (sc.domain == "traffic") return view_traffic(sc, mask, label);
   if (sc.domain == "orbit") return view_orbit(sc, mask, label);
   if (sc.domain == "cartpole") return view_cartpole(sc, mask, label);
   Trace tr = simulate(sc, mask);

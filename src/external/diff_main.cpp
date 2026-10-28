@@ -12,8 +12,7 @@
 #include "external/diverge.hpp"
 #include "external/engine.hpp"
 #include "shrink/shrink.hpp"
-#include "sim/cartpole.hpp"
-#include "sim/orbit.hpp"
+#include "sim/domains.hpp"
 #include "util/rng.hpp"
 
 using namespace rc;
@@ -48,8 +47,7 @@ int main(int argc, char** argv) {
   std::vector<int> steps_of_first;
   try {
     for (int i = 1; i <= n; ++i) {
-      Scenario s = domain == "orbit" ? random_orbit_scenario(rng.next())
-                   : domain == "cartpole" ? random_cartpole_scenario(rng.next()) : random_scenario(rng.next());
+      Scenario s = random_scenario_for(domain, rng.next());
       if (domain == "rigid2d") { s.ctrl.enabled = false; s.ctrl.waypoints.clear(); }
       if (disagree(s, nullptr)) { if (!flagged++) { first = s; first_idx = i; } }
     }

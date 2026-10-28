@@ -108,6 +108,20 @@ ShrinkResult shrink(const Scenario& sc, const FailFn& fails, int max_attempts) {
         }
       });
     }
+    if (s.cur.domain == "traffic") {
+      for (size_t i = s.cur.tr.events.size(); i-- > 0;)
+        progress |= s.try_field([&](Scenario& c) { c.tr.events.erase(c.tr.events.begin() + static_cast<long>(i)); });
+      for (size_t i = 0; i < s.cur.tr.events.size(); ++i) {
+        progress |= s.try_field([i](Scenario& c) { c.tr.events[i].duration = std::max(1, c.tr.events[i].duration / 2); });
+        progress |= s.try_field([i](Scenario& c) { c.tr.events[i].t = c.tr.events[i].t / 2; });
+      }
+      progress |= s.try_field([](Scenario& c) { c.seed = 1; });
+      for (int a = 0; a < 4; ++a)
+        progress |= s.try_field([a](Scenario& c) { c.tr.arrival[a] = std::round(c.tr.arrival[a] * 10) / 10; });
+      progress |= s.try_field([](Scenario& c) { c.tr.green_ns = std::max(8, c.tr.green_ns / 2); });
+      progress |= s.try_field([](Scenario& c) { c.tr.green_ew = std::max(8, c.tr.green_ew / 2); });
+      progress |= s.try_field([](Scenario& c) { c.tr.actuated = true; });
+    }
     if (s.cur.domain == "cartpole") {
       for (size_t i = s.cur.cp.pushes.size(); i-- > 0;)
         progress |= s.try_field([&](Scenario& c) { c.cp.pushes.erase(c.cp.pushes.begin() + static_cast<long>(i)); });

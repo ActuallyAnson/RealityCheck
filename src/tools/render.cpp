@@ -112,6 +112,43 @@ std::vector<uint8_t> encode_png(const Img& im) {
 
 }  // namespace
 
+std::vector<uint8_t> render_traffic_strip(const Trace& tr, const std::vector<int>& steps, int cols) {
+  const int tw = 220, th = 220, gap = 4;
+  int n = std::max<int>(1, static_cast<int>(steps.size()));
+  cols = std::max(1, std::min(cols, n));
+  int rows = (n + cols - 1) / cols;
+  Img im(cols * tw + (cols + 1) * gap, rows * th + (rows + 1) * gap);
+  fill_rect(im, 0, 0, im.w, im.h, {40, 40, 48});
+  for (size_t t = 0; t < steps.size(); ++t) {
+    int k = std::max(0, std::min(steps[t], tr.steps()));
+    int ox = gap + static_cast<int>(t % cols) * (tw + gap), oy = gap + static_cast<int>(t / cols) * (th + gap);
+    fill_rect(im, ox, oy, ox + tw, oy + th, {250, 250, 245});
+    const int c = tw / 2, rw = 36;
+    fill_rect(im, ox + c - rw / 2, oy, ox + c + rw / 2, oy + th, {90, 90, 100});   // N-S road
+    fill_rect(im, ox, oy + c - rw / 2, ox + tw, oy + c + rw / 2, {90, 90, 100});   // E-W road
+    const StepRecord& rec = tr.rec[static_cast<size_t>(k)];
+    // approach i: N top, E right, S bottom, W left; light near the stop line, queue behind it
+    const int lx[4] = {c - rw / 2 - 12, c + rw / 2 + 12, c + rw / 2 + 12, c - rw / 2 - 12};
+    const int ly[4] = {c - rw / 2 - 12, c - rw / 2 - 12, c + rw / 2 + 12, c + rw / 2 + 12};
+    const int dx[4] = {0, 1, 0, -1}, dy[4] = {-1, 0, 1, 0};
+    for (int a = 0; a < 4; ++a) {
+      const BodyState& q = rec.body[static_cast<size_t>(a)];
+      int s = static_cast<int>(q.x);
+      Col col = s == 2 ? Col{40, 180, 80} : s == 1 ? Col{240, 190, 40} : Col{215, 40, 40};
+      fill_circle(im, ox + lx[a], oy + ly[a], 7, col);
+      int qn = std::min(8, static_cast<int>(q.y));
+      for (int i = 0; i < qn; ++i) {
+        int px = ox + c + (a % 2 == 0 ? (a == 0 ? -rw / 4 : rw / 4) : 0) + dx[a] * (rw / 2 + 10 + i * 12);
+        int py = oy + c + (a % 2 == 1 ? (a == 1 ? -rw / 4 : rw / 4) : 0) + dy[a] * (rw / 2 + 10 + i * 12);
+        fill_rect(im, px - 4, py - 4, px + 5, py + 5, {70, 120, 200});
+      }
+    }
+    fill_rect(im, ox, oy, ox + 40, oy + 12, {255, 255, 255});
+    draw_number(im, ox + 3, oy + 3, k, 2, {0, 0, 0});
+  }
+  return encode_png(im);
+}
+
 std::vector<uint8_t> render_cartpole_strip(const Scenario& sc, const Trace& tr, const std::vector<int>& steps, int cols) {
   const double ppu = 50, W = 6.0, H = 2.6;  // 6 m wide view centred on the track, pole drawn at its true length
   const int tw = static_cast<int>(W * ppu), th = static_cast<int>(H * ppu), gap = 4;
@@ -179,6 +216,7 @@ std::vector<uint8_t> render_strip_png(const Scenario& sc, const Trace& tr, const
                                       int cols, int ppu) {
   if (sc.domain == "orbit") return render_orbit_strip(sc, tr, steps, highlight, cols, ppu);
   if (sc.domain == "cartpole") return render_cartpole_strip(sc, tr, steps, cols);
+  if (sc.domain == "traffic") return render_traffic_strip(tr, steps, cols);
   const int tw = static_cast<int>(sc.arena_w * ppu), th = static_cast<int>(sc.arena_h * ppu), gap = 4;
   int n = std::max<int>(1, static_cast<int>(steps.size()));
   cols = std::max(1, std::min(cols, n));

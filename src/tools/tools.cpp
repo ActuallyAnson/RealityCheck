@@ -163,6 +163,7 @@ Json ToolSession::inspect_state(const Json& a) {
   const StepRecord& rec = en->tr.rec[static_cast<size_t>(k)];
   if (sc.domain == "orbit") return inspect_orbit(sc, rec, k);
   if (sc.domain == "cartpole") return inspect_cartpole(sc, rec, k);
+  if (sc.domain == "traffic") return inspect_traffic(sc, rec, k);
   Json r = Json::object();
   r["ok"] = true;
   r["step"] = k;
@@ -205,6 +206,42 @@ Json ToolSession::inspect_state(const Json& a) {
       }
     }
   r["touching_pairs"] = pairs;
+  return r;
+}
+
+Json ToolSession::inspect_traffic(const Scenario& sc, const StepRecord& rec, int k) {
+  static const char* names[4] = {"N", "E", "S", "W"};
+  static const char* sig[3] = {"red", "yellow", "green"};
+  static const char* phase[6] = {"NS green", "NS yellow", "all-red before EW", "EW green", "EW yellow", "all-red before NS"};
+  Json r = Json::object();
+  r["ok"] = true;
+  r["step"] = k;
+  r["time_s"] = k;
+  r["phase"] = phase[static_cast<int>(rec.fmag) % 6];
+  Json ap = Json::array();
+  for (int a = 0; a < 4; ++a) {
+    const BodyState& q = rec.body[static_cast<size_t>(a)];
+    Json o = Json::object();
+    o["index"] = a;
+    o["approach"] = names[a];
+    o["signal"] = q.x;
+    o["signal_name"] = sig[std::max(0, std::min(2, static_cast<int>(q.x)))];
+    o["queue"] = q.y;
+    o["wait"] = q.vx;
+    o["flag"] = q.vy;
+    ap.push(o);
+  }
+  r["approaches"] = ap;
+  Json active = Json::array();
+  for (const auto& e : sc.tr.events) {
+    bool on = e.kind == 1 ? k == e.t : (k >= e.t && k < e.t + e.duration);
+    if (!on) continue;
+    Json eo = Json::object();
+    eo["kind"] = e.kind == 0 ? "emergency" : e.kind == 1 ? "ped" : "detector_fail";
+    eo["approach"] = names[e.approach];
+    active.push(eo);
+  }
+  r["active_events"] = active;
   return r;
 }
 
@@ -374,8 +411,10 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
 Json tool_specs(const std::string& domain) {
   const bool orbit = domain == "orbit";
   const bool cart = domain == "cartpole";
+  const bool traffic = domain == "traffic";
   Json scen = prop("object",
                    orbit ? "Scenario: {seed, dt, steps, G, bodies:[{x,y,vx,vy,m}]}. See the simulation description for limits."
+                         : traffic ? "Scenario: {seed, steps, arrival_per_second:{N,E,S,W}, green_seconds:{ns,ew}, yellow_seconds, all_red_seconds, max_green_seconds, actuated, events:[{t,kind:emergency|ped|detector_fail,approach:N|E|S|W,duration}]}. See the simulation description for limits."
                          : cart ? "Scenario: {seed, dt, steps, plant:{cart_mass,pole_mass,pole_length,gravity}, initial:{x,v,theta,omega}, force_limit, sensor_noise, pushes:[{t,len,force}]}. See the simulation description for limits."
                          : "Scenario: {seed, dt, steps, gravity, bodies:[{x,y,vx,vy,r,m,e}], walls:[{x,y,w,h}], "
                            "controller:{enabled, body, kp, fmax, vcmd, noise, waypoints:[{x,y}]}}. See the simulation description for limits.");
@@ -397,7 +436,7 @@ Json tool_specs(const std::string& domain) {
     Json p = Json::object();
     p["scenario_id"] = prop("string", "Id returned by run_scenario or shrink.");
     p["step"] = prop("integer", "State index, 0 = initial state.");
-    specs.push(fn("inspect_state", orbit ? "Exact state of every body at one step, with energies, momentum, angular momentum and close pairs." : cart ? "Exact cart-pole state at one step: cart position and velocity, pole angle and rate, controller force, margins to the limits." : "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
+    specs.push(fn("inspect_state", orbit ? "Exact state of every body at one step, with energies, momentum, angular momentum and close pairs." : traffic ? "Exact intersection state at one step: phase, each approach's signal, queue, red wait and flags, and the events active now." : cart ? "Exact cart-pole state at one step: cart position and velocity, pole angle and rate, controller force, margins to the limits." : "Exact state of every body at one step, with wall distances and touching pairs.", p, {"scenario_id", "step"}));
   }
   {
     Json p = Json::object();
@@ -422,6 +461,25 @@ Json tool_specs(const std::string& domain) {
 }
 
 std::string simulation_description(const std::string& domain) {
+  if (domain == "traffic") {
+    std::ostringstream o;
+    o << "SIMULATION UNDER TEST\n"
+         "A four-approach traffic-signal intersection (N, E, S, W). N and S form the NS direction, E and W the EW direction. One step is one second.\n"
+         "- Vehicles arrive at random with a per-approach rate (seeded by `seed`) and queue; a green discharges one vehicle every two seconds.\n"
+         "- The controller cycles NS green, NS yellow, all-red, EW green, EW yellow, all-red. A green lasts at least its green_seconds; when\n"
+         "  `actuated` is true it ends early once its own detectors see no queue and the other direction has demand, and no later than\n"
+         "  max_green_seconds. A direction that has waited long is recalled. With `actuated` false it is a fixed-time cycle.\n"
+         "- Events: `emergency` (a vehicle on an approach: its direction gets and keeps green while active), `ped` (a pedestrian request: the next\n"
+         "  all-red is extended by 8 s for a walk phase), `detector_fail` (the controller cannot see that approach's queue while active).\n\n"
+         "SCENARIO LIMITS\n"
+         "steps in [60, 3000]; arrival_per_second in [0, 0.4] per approach; green_seconds in [8, 45]; yellow_seconds in [3, 6]; all_red_seconds in [1, 4];\n"
+         "max_green_seconds in [45, 90] and not below a green time; at most 6 events, of which at most 2 emergencies (duration 1 to 30) and 2 ped\n"
+         "requests; detector_fail duration 1 to 220; event times inside the run.\n\n"
+         "DECLARED RULES (checked at every second)\n";
+    for (const auto& r : rule_catalog("traffic")) o << "- " << r.id << ": " << r.text << "\n";
+    o << "\nThe rule checker, not you, decides what is a violation.\n";
+    return o.str();
+  }
   if (domain == "cartpole") {
     std::ostringstream o;
     o << "SIMULATION UNDER TEST\n"

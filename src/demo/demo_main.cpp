@@ -133,6 +133,7 @@ bool safe_token(const std::string& s) {
 std::string domain_for(const std::string& bug) {
   if (!bug.empty() && bug[0] == 'o') return "orbit";
   if (!bug.empty() && bug[0] == 'c') return "cartpole";
+  if (!bug.empty() && bug[0] == 't') return "traffic";
   return "rigid2d";
 }
 BugMask mask_for(const std::string& bug) {

@@ -14,7 +14,7 @@ const bus = new EventTarget();
 const emit = (name, detail) => bus.dispatchEvent(new CustomEvent(name, { detail }));
 
 const PALETTE = ["#4cc9f0", "#b79cff", "#5ee0a0", "#ffb454", "#ff9ec4", "#8fa8ff", "#c8e06a", "#ff9b6c"];
-const STRIDE = { circle: 4, cartpole: 4 };  // numbers per entity in a frame
+const STRIDE = { circle: 4, cartpole: 4, approach: 4 };  // numbers per entity in a frame
 
 // ---- per-kind renderers ----
 function glowCircle(ctx, cx, cy, r, col, ctrl) {
@@ -24,6 +24,15 @@ function glowCircle(ctx, cx, cy, r, col, ctrl) {
   ctx.lineWidth = ctrl ? 2.6 : 1.6; ctx.strokeStyle = ctrl ? "#f4f8fc" : col; ctx.stroke();
 }
 const RENDERERS = {
+  approach(ctx, tf, ent, f) {  // frame: signal (0 red, 1 yellow, 2 green), queue, red wait, flag; dir 0 N, 1 E, 2 S, 3 W
+    const d = tf.d, dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]][ent.dir], cx = 6, cy = 6, col = ["#ff5c6c", "#ffb454", "#5ee0a0"][Math.max(0, Math.min(2, Math.round(f[0])))];
+    const px = -dirs[1], py = dirs[0];  // lateral unit vector (lane offset)
+    const lane = 0.5, stop = 1.35, sx = cx + dirs[0] * stop + px * lane, sy = cy + dirs[1] * stop + py * lane;
+    ctx.beginPath(); ctx.arc(tf.x(cx + dirs[0] * stop - px * 1.25), tf.y(cy + dirs[1] * stop - py * 1.25), 7 * d, 0, 7); ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10 * d; ctx.fill(); ctx.shadowBlur = 0;
+    const n = Math.min(12, Math.round(f[1])); ctx.fillStyle = f[3] ? "#ff5c6c" : "#4cc9f0";
+    for (let k = 0; k < n; k++) { const t = stop + 0.25 + k * 0.42; ctx.fillRect(tf.x(cx + dirs[0] * t + px * lane) - 5 * d, tf.y(cy + dirs[1] * t + py * lane) - 5 * d, 10 * d, 10 * d); }
+    if (f[1] > 12) { ctx.fillStyle = "rgba(233,240,247,.8)"; ctx.font = `${10 * d}px ui-monospace, Menlo, monospace`; ctx.fillText("+" + (Math.round(f[1]) - 12), tf.x(cx + dirs[0] * 5.9 + px * lane) - 8 * d, tf.y(cy + dirs[1] * 5.9 + py * lane)); }
+  },
   cartpole(ctx, tf, ent, f) {  // frame: x, theta, v, omega
     const d = tf.d, gy = 0.6, cx = tf.x(f[0]), cy = tf.y(gy), cw = 0.5 * tf.s, ch = 0.28 * tf.s;
     const tipx = cx + ent.r * tf.s * Math.sin(f[1]), tipy = cy - ch - ent.r * tf.s * Math.cos(f[1]);
@@ -49,6 +58,11 @@ const RENDERERS = {
   },
 };
 const STATIC = {
+  crossroad(ctx, tf) {
+    ctx.fillStyle = "#121a24"; ctx.fillRect(tf.x(5), tf.y(12), 2 * tf.s, 12 * tf.s); ctx.fillRect(tf.x(0), tf.y(7), 12 * tf.s, 2 * tf.s);
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.setLineDash([6 * tf.d, 6 * tf.d]); ctx.lineWidth = tf.d;
+    ctx.beginPath(); ctx.moveTo(tf.x(6), tf.y(12)); ctx.lineTo(tf.x(6), tf.y(7.2)); ctx.moveTo(tf.x(6), tf.y(4.8)); ctx.lineTo(tf.x(6), tf.y(0)); ctx.moveTo(tf.x(0), tf.y(6)); ctx.lineTo(tf.x(4.8), tf.y(6)); ctx.moveTo(tf.x(7.2), tf.y(6)); ctx.lineTo(tf.x(12), tf.y(6)); ctx.stroke(); ctx.setLineDash([]);
+  },
   track_end(ctx, tf, o) {
     const x = tf.x(o.x), y0 = tf.y(0.6), y1 = tf.y(1.4); ctx.strokeStyle = "#ff5c6c"; ctx.lineWidth = 2 * tf.d; ctx.beginPath(); ctx.moveTo(x, y0 + 4 * tf.d); ctx.lineTo(x, y1); ctx.stroke();
     ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = tf.d; ctx.beginPath(); ctx.moveTo(tf.x(-2.4), y0 + 4 * tf.d); ctx.lineTo(tf.x(2.4), y0 + 4 * tf.d); ctx.stroke();
@@ -140,9 +154,9 @@ async function loadIndex() {
   const idx = await (await fetch("data/index.json")).json();
   S.index = idx;
   const sel = $("#runSel"); sel.innerHTML = "";
-  const DOMAINS = { rigid2d: "Rigid bodies", orbit: "Orbits", cartpole: "Cart-pole" }, groups = {};
+  const DOMAINS = { rigid2d: "Rigid bodies", orbit: "Orbits", cartpole: "Cart-pole", traffic: "Traffic signal" }, groups = {};
   for (const r of idx) {
-    const dom = r.domain || ({ o: "orbit", c: "cartpole" }[(r.bug || r.id)[0]] || "rigid2d");
+    const dom = r.domain || ({ o: "orbit", c: "cartpole", t: "traffic" }[(r.bug || r.id)[0]] || "rigid2d");
     if (!groups[dom]) { groups[dom] = el("optgroup"); groups[dom].label = DOMAINS[dom] || dom; sel.appendChild(groups[dom]); }
     const o = el("option"); o.value = r.id; o.textContent = `${r.id}${r.status === "failure_reported" ? "" : " (" + r.status.replace(/_/g, " ") + ")"}`; groups[dom].appendChild(o);
   }
@@ -344,7 +358,7 @@ function frameValue(view, step, body, field) {
   if (body < 0) return null;
   let off = 0; for (let i = 0; i < body; i++) off += STRIDE[view.ents[i].k] || 0;
   const f = view.frames[step].slice(off, off + 4); if (f.length < 4) return null;
-  return { x: f[0], y: f[1], vx: f[2], vy: f[3], speed: Math.hypot(f[2], f[3]) }[field] ?? null;
+  return { x: f[0], y: f[1], vx: f[2], vy: f[3], speed: Math.hypot(f[2], f[3]), signal: f[0], queue: f[1], wait: f[2], flag: f[3] }[field] ?? null;
 }
 function renderEvidence() {
   const d = S.doc, ev = $("#evidence"); ev.innerHTML = ""; if (!d) return; const r = d.report || {}, view = d.shrunk, chip = $("#statusChip");
@@ -414,7 +428,7 @@ addEventListener("keydown", (e) => {
 });
 
 // seeded bug choices for live demos (the agent never sees them)
-for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09", "o01", "o02", "o03", "c01", "c02", "c03"]) { const o = el("option"); o.value = b; o.textContent = ({ o: "orbit domain: hidden bug ", c: "cart-pole domain: hidden bug " }[b[0]] || "rigid-body domain: hidden bug ") + b; $("#bugSel").appendChild(o); }
+for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09", "o01", "o02", "o03", "c01", "c02", "c03", "t01", "t02", "t03"]) { const o = el("option"); o.value = b; o.textContent = ({ o: "orbit domain: hidden bug ", c: "cart-pole domain: hidden bug ", t: "traffic domain: hidden bug " }[b[0]] || "rigid-body domain: hidden bug ") + b; $("#bugSel").appendChild(o); }
 setMode("recorded"); refreshStatus();
 loadIndex().then(() => {
   const p = new URLSearchParams(location.search), m = p.get("mode");
