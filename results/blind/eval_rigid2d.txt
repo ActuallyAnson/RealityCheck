@@ -1,0 +1,10 @@
+p01: differs from clean on 446/500 scenarios; hand-written rule fires on 45; mined invariant fires on 0
+p02: differs from clean on 500/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p03: differs from clean on 358/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p04: differs from clean on 252/500 scenarios; hand-written rule fires on 4; mined invariant fires on 0
+p05: differs from clean on 497/500 scenarios; hand-written rule fires on 496; mined invariant fires on 0
+p06: differs from clean on 48/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p07: differs from clean on 492/500 scenarios; hand-written rule fires on 25; mined invariant fires on 1
+p08: differs from clean on 358/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p09: differs from clean on 446/500 scenarios; hand-written rule fires on 28; mined invariant fires on 0
+p10: differs from clean on 0/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
