@@ -39,6 +39,11 @@ target_link_libraries(rc_tool rc_core)
 add_executable(rc_agent src/agent/agent_main.cpp)
 target_link_libraries(rc_agent rc_core)
 
+find_path(ODEINT_INC boost/numeric/odeint.hpp HINTS /opt/homebrew/include /usr/local/include)
+if(ODEINT_INC)  # optional: an orbit simulator built on unmodified Boost.odeint (examples/external/odeint_orbit.cpp)
+  add_executable(odeint_orbit examples/external/odeint_orbit.cpp)
+  target_include_directories(odeint_orbit PRIVATE src ${ODEINT_INC})
+endif()
 add_executable(naive_orbit examples/external/naive_orbit.cpp)
 target_include_directories(naive_orbit PRIVATE src)
 

@@ -91,3 +91,17 @@ once, and only the default mode 2 (PRS23, the default since January 2024) hangs;
 What I did not check: other REBOUND versions, why PRS23 loops (I read none of its code), or whether the exact symmetry of the initial condition is the trigger (a 1e-9 shift of one body made
 the full adapter finish but not the standalone file, so I do not claim a trigger). It may be a configuration subtlety on my side, so I call it a reproducible hang found through the corpus,
 not a confirmed REBOUND bug, and I have not reported it upstream. The tool found it because the exec protocol made a non-returning simulator visible; the missing safeguard, a per-request deadline in the exec engine, was added because of it: a simulator that does not answer within `RC_EXEC_TIMEOUT_S` seconds (default 60) is killed and the run stops with an error, never a finding (checked on this hang with a 3 s limit).
+
+## Third engine: Boost.odeint (unmodified library, Boost Software License 1.0)
+
+`examples/external/odeint_orbit.cpp` is an N-body orbit simulator whose time stepping is Boost.odeint 1.92 (`runge_kutta4`, `runge_kutta_dopri5` with step control, `bulirsch_stoer`); only the right-hand side (the orbit domain's softened gravity) and the protocol loop are ours. Same declared orbit rules, 1000 random scenarios each
+(`results/odeint/hunt_*.txt`; `./build/rc_hunt --engine 'exec:build/odeint_orbit rk4 0.02' --domain orbit --scenarios 1000`):
+
+| stepper | rule violations in 1000 scenarios |
+|---|---|
+| rk4, substep 0.004 | 0 |
+| dopri5, tolerance 1e-6 | 0 |
+| bulirsch_stoer, tolerance 1e-6 | 0 |
+| rk4, substep 0.02 | energy_conserved 75, angular_momentum_conserved 7 (first at #19 and #84, shrunk to 12 and 4 steps) |
+
+Reading: the library behaves as documented. A fixed-step RK4 at a coarse substep is not energy-conserving over long orbits, which the rules catch and the shrinker reduces; the adaptive steppers at 1e-6 are clean on this pool. This is evidence the harness works on a third independent codebase, **not** a bug in Boost.odeint: no defect is claimed.

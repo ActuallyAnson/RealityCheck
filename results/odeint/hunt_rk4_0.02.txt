@@ -1,0 +1,3 @@
+stepper rk4 0.02, 1000 scenarios
+angular_momentum_conserved: 7/1000 scenarios, first at #84, shrunk 35 -> 4
+energy_conserved: 75/1000 scenarios, first at #19, shrunk 41 -> 12
