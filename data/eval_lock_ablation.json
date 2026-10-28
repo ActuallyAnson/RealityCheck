@@ -1,0 +1,64 @@
+{
+ "_note": "LOCKED before any held-out agent run. Ablation on the fresh held-out rigid-body bugs b11-b13 (simulator v2): three arms (agent v1 frozen, agent v2, agent v2 without frames in the loop) plus the random baseline, 10 seeds per bug and 3 controls, identical caps. b11-b13 had never been run by any agent. Agent v2 was developed on dev bugs b01-b10 only (4 live runs). The simulator, scenario limits, rules, prompts, tool schemas and agent code are frozen at the commit that adds this file. Seeds label independent nondeterministic runs; the model is not seeded. Order: arms run one after another with a per-arm cap that is large enough for every run, so no arm is cut short by spend.",
+ "version": "ablation-1",
+ "domain": "rigid2d",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  4101,
+  4102,
+  4103,
+  4104,
+  4105,
+  4106,
+  4107,
+  4108,
+  4109,
+  4110
+ ],
+ "control_seeds": [
+  4901,
+  4902,
+  4903
+ ],
+ "bugs": [
+  {
+   "id": "b11",
+   "split": "heldout"
+  },
+  {
+   "id": "b12",
+   "split": "heldout"
+  },
+  {
+   "id": "b13",
+   "split": "heldout"
+  }
+ ],
+ "arms": [
+  {
+   "name": "v1",
+   "agent_version": 1,
+   "vision": 0
+  },
+  {
+   "name": "v2",
+   "agent_version": 2,
+   "vision": 1
+  },
+  {
+   "name": "v2-novision",
+   "agent_version": 2,
+   "vision": 0
+  }
+ ],
+ "run_caps": {
+  "max_turns": 25,
+  "reasoning_effort": "low",
+  "run_budget_usd": 0.25,
+  "arm_budget_usd": 3.5
+ },
+ "model": "muse-spark-1.3"
+}
