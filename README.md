@@ -67,7 +67,7 @@ Costs: about $0.04 to $0.09 per agent run; about $20 of API spend in total, capp
 - Controls on a clean simulator are mostly clean; the exception (rigid-body heavy-light squeeze, 2 of 9 control runs in the ablation) is in `docs/RESULTS.md`.
 - Attribution ("the failure is due to the seeded bug") is checked post hoc by replaying on the clean simulator.
 - Determinism is per platform: a run is bit-for-bit reproducible on the same machine type, but libm differences change simulated traces on Linux compared
-  with macOS. CI found this; pinned trace hashes are checked on macOS only, and I have not re-run the evaluations on Linux.
+  with macOS. CI found this; pinned trace hashes are checked on macOS only. The model-free evaluations (random baselines, red team, corpus) were re-run on Linux and match the macOS tables exactly; the model-dependent ones were not re-run (`docs/ROBUSTNESS.md`).
 - A validated report establishes that its cited numbers and the violated rule are real; it does not establish that the written cause is true (`docs/VALIDATOR.md`).
 - No blind bug set exists yet: `docs/BLIND.md` is the mechanism, and it needs a second person.
 - Differential testing works when two engines are numerically close; for contact dynamics it mostly reports chaos.
