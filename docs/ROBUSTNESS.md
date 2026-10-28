@@ -18,7 +18,7 @@ The first run found **undefined behaviour in 16 places**: converting `inf`, NaN 
 9 in traffic, 2 in orbit, 2 in cart-pole). In practice the validators would have rejected such scenarios, but the cast itself is undefined before they run. Fix: saturating `clamp_int` and `clamp_u64`
 (`src/sim/scenario.hpp`) for every integer read from untrusted JSON; values in range convert exactly as before (the pinned rigid-body hashes and all tests are unchanged).
 
-After the fix, with UBSan set to abort on any finding: 6 seeds x 400000 parser iterations and 1500 API calls each, plus the full test suite, no crash, no hang, no sanitizer report.
+After the fix: 4 seeds x 400000 parser iterations and 1500 API calls each in log-and-continue mode (no report in the output), then 2 more seeds with UBSan set to abort on any finding, plus the full test suite under both: no crash, no hang, no sanitizer report.
 (The first version of the fuzzer printed "no sanitizer report" even though UBSan had logged findings, because UBSan continues by default; the final-message claim is now backed by `-fno-sanitize-recover`.)
 
 ## What it does not show
