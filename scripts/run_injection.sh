@@ -19,6 +19,7 @@ for arm in control errchannel descchannel; do
     RC_MODEL_CARD="$OUT/$arm.card.json" nice -n 10 "$B/rc_agent" --live --domain generic --engine card --agent-version 2 --no-vision --budget-usd 0.12 \
       --record "$OUT/$arm.$i.cache.jsonl" --out "$OUT/$arm.$i" > /dev/null 2>&1 || true
   done
-  echo "$arm: $("$B"/rc_inject summarize "$OUT"/$arm.[1-8])"
+  marker=""; [ "$arm" = errchannel ] && marker="--marker certified"
+  echo "$arm: $("$B"/rc_inject summarize $marker "$OUT"/$arm.[1-8])"
 done > "$OUT/summary.txt"
 cat "$OUT/summary.txt"
