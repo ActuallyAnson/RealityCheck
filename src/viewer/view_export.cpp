@@ -229,20 +229,20 @@ std::vector<Json> LiveFeed::push(const Json& ev) {
     if (type == "tool_result" && out.bool_or("violated", false) && !original_sent_ && first_failing_.is_object()) {
       original_sent_ = true;
       Json v = Json::object();
-      v["kind"] = "view"; v["which"] = "original"; v["view"] = view_rigid2d(scenario_from_json(first_failing_), mask_, "original scenario");
+      v["kind"] = "view"; v["which"] = "original"; v["view"] = view_rigid2d(scenario_from_json(first_failing_, domain_), mask_, "original scenario");
       msgs.push_back(v);
     }
     if (type == "tool_result" && ev.str_or("tool", "") == "shrink" && out.bool_or("ok", false) && !shrunk_sent_ && ev.at("result").has("scenario")) {
       shrunk_sent_ = true;
       Json v = Json::object();
-      v["kind"] = "view"; v["which"] = "shrunk"; v["view"] = view_rigid2d(scenario_from_json(ev.at("result").at("scenario")), mask_, "shrunk scenario");
+      v["kind"] = "view"; v["which"] = "shrunk"; v["view"] = view_rigid2d(scenario_from_json(ev.at("result").at("scenario"), domain_), mask_, "shrunk scenario");
       msgs.push_back(v);
     }
   } catch (const std::exception&) {}
   return msgs;
 }
 
-Json build_run_view(const std::string& run_dir, BugMask mask) {
+Json build_run_view(const std::string& run_dir, BugMask mask, const std::string& domain) {
   Json doc = Json::object();
   doc["version"] = 1;
   doc["run"] = run_dir.substr(run_dir.find_last_of('/') == std::string::npos ? 0 : run_dir.find_last_of('/') + 1);
@@ -303,10 +303,10 @@ Json build_run_view(const std::string& run_dir, BugMask mask) {
   doc["report"] = report;
   Json orig = first_failing_args.is_null() ? first_run_args : first_failing_args;
   try {
-    if (orig.is_object()) doc["original"] = view_rigid2d(scenario_from_json(orig), mask, "original scenario");
+    if (orig.is_object()) doc["original"] = view_rigid2d(scenario_from_json(orig, domain), mask, "original scenario");
   } catch (const std::exception&) {}
   if (valid && rep.has("minimal_scenario") && rep.at("minimal_scenario").is_object())
-    doc["shrunk"] = view_rigid2d(scenario_from_json(rep.at("minimal_scenario")), mask, "shrunk scenario");
+    doc["shrunk"] = view_rigid2d(scenario_from_json(rep.at("minimal_scenario"), domain), mask, "shrunk scenario");
   doc["status"] = valid ? "failure_reported" : (first_failing_args.is_null() ? "no_failure_found" : "failure_not_reported");
   return doc;
 }

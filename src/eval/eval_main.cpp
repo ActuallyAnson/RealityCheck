@@ -287,6 +287,7 @@ int agent_eval(const EvalLock& lock, const AgentEvalOpts& o) {
 int main(int argc, char** argv) {
   std::string mode = argc > 1 ? argv[1] : "";
   std::string lock_path = "data/eval_lock.json", out_dir;
+  bool append = false;
   AgentEvalOpts ao;
   for (int i = 2; i < argc; ++i) {
     std::string a = argv[i];
@@ -301,30 +302,36 @@ int main(int argc, char** argv) {
     else if (a == "--max-turns") ao.max_turns = std::atoi(v.c_str());
     else if (a == "--reasoning-effort") ao.reasoning_effort = v;
     else if (a == "--only-bug") ao.only_bug = v;
+    else if (a == "--append") append = v == "1";  // export: keep index rows from earlier exports
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
-  if (mode == "export") {  // viewer documents for every saved run under --out/runs, written to --viewer-dir
+  if (mode == "export") {  // --append 1 merges into an existing index.json (several locks/domains in one viewer)  // viewer documents for every saved run under --out/runs, written to --viewer-dir
     std::string dir = out_dir.empty() ? "results/agent_hosted" : out_dir;
     EvalLock lock = load_lock(lock_path);
     std::string vdir = ao.config == "configs/hosted.json" ? "web/data" : ao.config;  // --config reused as the target directory
     if (std::system(("mkdir -p '" + vdir + "'").c_str()) != 0) return 1;
     Json index = Json::array();
+    if (append && file_exists(vdir + "/index.json")) index = read_json_file(vdir + "/index.json");
     std::vector<PlannedRun> plan = plan_runs(lock, "");
     for (const auto& pr : plan) {
       std::string key = run_key(pr.bug, pr.seed), rd = dir + "/runs/" + key;
       if (!file_exists(rd + "/events.jsonl")) continue;
       BugMask m = pr.bug == "none" ? 0 : bug_bit(domain_bug_index(lock.domain, pr.bug));
-      Json doc = build_run_view(rd, m);
+      Json doc = build_run_view(rd, m, lock.domain);
       doc["id"] = key;
       std::ofstream(vdir + "/" + key + ".json") << doc.dump() << "\n";
       Json row = Json::object();
+      row["domain"] = lock.domain;
       row["id"] = key; row["bug"] = pr.bug; row["split"] = pr.split; row["seed"] = static_cast<double>(pr.seed);
       row["status"] = doc.str_or("status", "");
       row["usd"] = doc.at("cost").num_or("usd", 0);
-      index.push(row);
+      Json kept = Json::array();
+      for (const auto& old : index.arr()) if (old.str_or("id", "") != key) kept.push(old);
+      kept.push(row);
+      index = kept;
     }
     std::ofstream(vdir + "/index.json") << index.dump() << "\n";
-    if (file_exists(dir + "/summary.json") && file_exists("results/baseline.json")) {  // scoreboard: agent vs random baseline
+    if (lock.domain == "rigid2d" && file_exists(dir + "/summary.json") && file_exists("results/baseline.json")) {  // scoreboard: agent vs random baseline
       Json sum = read_json_file(dir + "/summary.json"), base = read_json_file("results/baseline.json");
       Json rows = Json::array();
       for (const auto& b : sum.at("bugs").arr()) {

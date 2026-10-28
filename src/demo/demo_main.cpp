@@ -29,6 +29,7 @@
 
 #include "model/model.hpp"
 #include "sim/bugs.hpp"
+#include "sim/orbit.hpp"
 #include "util/json.hpp"
 #include "viewer/view_export.hpp"
 
@@ -127,7 +128,12 @@ bool safe_token(const std::string& s) {
 
 // ---- live runs ----
 
-BugMask mask_for(const std::string& bug) { return bug == "none" ? 0 : bug_bit(bug_index(bug)); }
+// Orbit bug ids start with "o"; everything else is the rigid-body domain.
+std::string domain_for(const std::string& bug) { return !bug.empty() && bug[0] == 'o' ? "orbit" : "rigid2d"; }
+BugMask mask_for(const std::string& bug) {
+  if (bug == "none") return 0;
+  return bug_bit(domain_for(bug) == "orbit" ? orbit_bug_index(bug) : bug_index(bug));
+}
 
 Json status_json() {
   Json j = Json::object();
@@ -155,7 +161,7 @@ void reaper(pid_t pid) {
 
 // Returns an error message, or "" and fills id on success.
 std::string start_live(const std::string& bug, std::string* id_out) {
-  if (bug != "none" && bug_index(bug) < 0) return "unknown bug id";
+  if (bug != "none" && (domain_for(bug) == "orbit" ? orbit_bug_index(bug) : bug_index(bug)) < 0) return "unknown bug id";
   Json st = status_json();
   if (!st.at("key_set").boolean()) return "the API key environment variable " + st.at("key_env").str() + " is not set in the shell that started rc_demo";
   if (ledger_total_usd(default_ledger_path()) + g_opt.budget_usd > default_lifetime_cap_usd()) return "lifetime spend cap would be exceeded";
@@ -172,9 +178,9 @@ std::string start_live(const std::string& bug, std::string* id_out) {
     if (!freopen(log.c_str(), "w", stdout)) _exit(126);
     if (!freopen(log.c_str(), "a", stderr)) _exit(126);
     std::string budget = std::to_string(g_opt.budget_usd), cache = dir + "/cache.jsonl";
-    std::vector<std::string> args = {g_opt.agent_path, "--live", "--config", g_opt.config, "--bugs", bug == "none" ? "" : bug, "--budget-usd", budget,
+    std::vector<std::string> args = {g_opt.agent_path, "--live", "--config", g_opt.config, "--domain", domain_for(bug), "--bugs", bug == "none" ? "" : bug, "--budget-usd", budget,
                                      "--reasoning-effort", "low", "--max-turns", "25", "--out", dir, "--record", cache};
-    if (bug == "none") { args.erase(args.begin() + 4, args.begin() + 6); }
+    if (bug == "none") { args.erase(args.begin() + 6, args.begin() + 8); }
     std::vector<char*> av;
     for (auto& a : args) av.push_back(const_cast<char*>(a.c_str()));
     av.push_back(nullptr);
@@ -201,7 +207,7 @@ void stream_live(int fd, const std::string& id) {
   }
   send_all(fd, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n");
   bool ok = true;
-  LiveFeed feed(mask_for(bug));
+  LiveFeed feed(mask_for(bug), domain_for(bug));
   size_t consumed = 0;
   double last_cost_size = -1;
   std::string partial;
@@ -241,7 +247,7 @@ void stream_live(int fd, const std::string& id) {
         Json e = Json::object(); e["kind"] = "error"; e["message"] = err.substr(0, 600);
         sse_send(fd, e, &ok);
       } else {
-        Json f = Json::object(); f["kind"] = "final"; f["doc"] = build_run_view(dir, mask_for(bug));
+        Json f = Json::object(); f["kind"] = "final"; f["doc"] = build_run_view(dir, mask_for(bug), domain_for(bug));
         sse_send(fd, f, &ok);
       }
       Json end = Json::object(); end["kind"] = "end";

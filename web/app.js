@@ -397,7 +397,7 @@ addEventListener("keydown", (e) => {
 });
 
 // seeded bug choices for live demos (the agent never sees them)
-for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09"]) { const o = el("option"); o.value = b; o.textContent = "hidden bug " + b; $("#bugSel").appendChild(o); }
+for (const b of ["b01", "b02", "b03", "b05", "b06", "b08", "b10", "b04", "b07", "b09", "o01", "o02", "o03"]) { const o = el("option"); o.value = b; o.textContent = (b[0] === "o" ? "orbit domain: hidden bug " : "rigid-body domain: hidden bug ") + b; $("#bugSel").appendChild(o); }
 setMode("recorded"); refreshStatus();
 loadIndex().then(() => {
   const p = new URLSearchParams(location.search), m = p.get("mode");
