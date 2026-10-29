@@ -255,6 +255,8 @@ All bugs with a fuzzer failure: agent valid report 81/83 [0.92-0.99], agent caus
 
 Paired comparison (same failures): agent localized and baseline did not 26 times, baseline and not agent 9 times; exact sign test p = 0.0060. Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): 70 runs, agent 46, baseline 30, agent-only 23, baseline-only 7, p = 0.0052.
 
+Stronger no-model baseline (the field that the most different edits fix): cause localized 32/83 [0.29-0.49]. Paired against the agent: agent-only 27, baseline-only 7, exact sign test p = 0.0008.
+
 ## Mutation benchmark: 160 mechanically sampled bugs
 
 40 mutants per domain, 1000-scenario pool; see docs/MUTATION.md.
