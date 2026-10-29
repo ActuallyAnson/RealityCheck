@@ -54,7 +54,7 @@ Costs: about $0.04 to $0.09 per agent run; about $35 of API spend in total, capp
 | Spec to rules | the model proposes invariants from a description; the engine keeps those that hold on clean runs (`docs/SPEC_RULES.md`) |
 | Outside engines | unmodified Box2D and REBOUND, plus any program speaking the JSON-lines protocol, with a per-request deadline (`docs/PROTOCOL.md`) |
 | Differential testing, regression tests | `rc_diff` compares two engines; `rc_repro` turns a failure into `scenario.json` + `test.sh` with JUnit output; a GitHub Action re-runs bundles on pull requests |
-| Viewer and reports | dark web UI with pipeline stepper, playback and checked citations, live runs against the real API, and a single-file offline report per finding (`scripts/share_report.sh`) |
+| Viewer and reports | local web UI (`./build/rc_demo`): **Scan** (random-test a built-in simulator, with or without a hidden bug; each failing rule gets a shrunk reproduction that opens in the replay), **Oracle gap** (which checks see which bugs, from the stored results), replay with checked citations, live agent runs against the real API, a scoreboard, and a single-file offline report per finding (`scripts/share_report.sh`) |
 | Evaluation | locked sets, random baseline, controls, Wilson intervals, paired tests, an ablation, an external scenario corpus (`data/external_scenarios/`), CI on Linux and macOS |
 
 ## Caveats (read these)
