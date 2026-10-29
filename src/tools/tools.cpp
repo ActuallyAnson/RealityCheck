@@ -11,6 +11,7 @@
 #include "shrink/shrink.hpp"
 #include "util/rng.hpp"
 #include "sim/domains.hpp"
+#include "sim/extreme.hpp"
 #include "sim/cartpole.hpp"
 #include "sim/orbit.hpp"
 #include "tools/render.hpp"
@@ -141,11 +142,13 @@ Json ToolSession::run_scenario(const Json& a) {
 Json ToolSession::sample_random(const Json& a) {
   if (domain_ == "generic") return err("sample_random is not available for the generic domain");
   int count = std::max(1, std::min(400, static_cast<int>(a.num_or("count", 20))));
+  const bool boundary = a.bool_or("boundary", false);
   int run = 0;
   for (int i = 0; i < count; ++i) {
     long long left = budget_.max_steps - usage_.steps_used;
     if (left <= 0) break;
     Scenario sc = random_scenario_for(domain_, sampler_.next());  // drawn from the session stream exactly as the random baseline does
+    if (boundary && (i & 1)) { Rng er(sampler_.next()); sc = extreme_scenario(sc, er); }  // v5: every second scenario is pushed to boundary values
     bool truncated = false;
     if (sc.steps > left) { sc.steps = static_cast<int>(left); truncated = true; }
     Trace tr = sim_(sc);
@@ -470,6 +473,7 @@ Json fn(const char* name, const char* desc, Json props, std::vector<std::string>
 Json sample_random_spec(const std::string&, int version) {
   Json p = Json::object();
   p["count"] = prop("integer", version >= 4 ? "How many random scenarios to run (1 to 400, default 20). Stops at the first violation." : "How many random scenarios to run (1 to 100, default 20). Stops at the first violation.");
+  if (version >= 5) p["boundary"] = prop("boolean", "If true, every second scenario is pushed to boundary values (each field, with probability 0.3, to the most extreme value the limits allow). Random scenarios rarely reach those corners.");
   return fn("sample_random", "Run random scenarios from the plain random generator (the same one an ordinary fuzzer uses). Each scenario spends the step budget exactly like run_scenario. Stops at the first violation and returns it like run_scenario does.", p, {});
 }
 

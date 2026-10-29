@@ -12,43 +12,10 @@
 #include "eval/ground_truth.hpp"
 #include "rules/checker.hpp"
 #include "sim/domains.hpp"
+#include "sim/extreme.hpp"
 #include "util/rng.hpp"
 
 using namespace rc;
-
-namespace {
-void leaves(Json& j, std::vector<Json*>& out, const std::string& key) {
-  if (j.is_object()) { std::vector<std::string> ks; for (auto& kv : j.obj()) ks.push_back(kv.first); for (auto& k : ks) leaves(j[k], out, k); }
-  else if (j.is_array()) { for (Json& e : j.arr()) leaves(e, out, key); }
-  else if (j.is_number() && key != "seed") out.push_back(&j);
-}
-
-bool valid(const Json& j, const std::string& domain) {
-  try { return validate(scenario_from_json(j, domain)).empty(); } catch (const std::exception&) { return false; }
-}
-
-Scenario extreme_of(const Scenario& base, Rng& rng) {
-  Json j = to_json(base);
-  std::vector<Json*> ls;
-  leaves(j, ls, "");
-  for (Json* l : ls) {
-    if (rng.uni() >= 0.3) continue;
-    const double x = l->num();
-    const bool integral = x == std::floor(x);
-    double cand[6] = {x * 20, x * 5, x * 0.05, x * 0.2, 0.0, 1.0};
-    std::sort(cand, cand + 6, [&](double a, double b) { return std::fabs(a - x) > std::fabs(b - x); });
-    for (double c : cand) {
-      if (integral) c = std::round(c);
-      if (c == x) continue;
-      Json t = j;  // test the change in a copy of the whole scenario; l points into j, so apply and revert
-      *l = c;
-      if (valid(j, base.domain)) break;
-      *l = x;
-    }
-  }
-  try { return scenario_from_json(j, base.domain); } catch (const std::exception&) { return base; }
-}
-}  // namespace
 
 int main(int argc, char** argv) {
   std::string domain = "rigid2d", bugs_arg;
@@ -78,7 +45,7 @@ int main(int argc, char** argv) {
         int n = 0;
         while (used < budget && !found) {
           Scenario sc = random_scenario_for(domain, rng.next());
-          if (arm == 1 && (n++ & 1)) sc = extreme_of(sc, rng);
+          if (arm == 1 && (n++ & 1)) sc = extreme_scenario(sc, rng);
           long long left = budget - used;
           if (sc.steps > left) sc.steps = static_cast<int>(left);
           Trace tr = simulate(sc, mask);

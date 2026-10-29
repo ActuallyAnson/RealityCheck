@@ -454,6 +454,15 @@ static void test_sample_random() {
   Json big = Json::object(); big["count"] = 200;
   Json rd = d.call("sample_random", big);
   CHECK(rd.bool_or("found_violation", false) == d.has_failure());
+  // boundary mode: deterministic for a seed, differs from plain sampling, and finds the planted tiny-substep rigid-body bug (b12) that plain sampling does not at this size
+  ToolSession p1(0, tb, "."), p2(0, tb, ".");
+  p1.set_domain("rigid2d"); p2.set_domain("rigid2d"); p1.set_sampler_seed(5); p2.set_sampler_seed(5);
+  Json bargs = Json::object(); bargs["count"] = 6; bargs["boundary"] = true;
+  CHECK(p1.call("sample_random", bargs).dump() == p2.call("sample_random", bargs).dump());
+  ToolSession q(bug_bit(domain_bug_index("rigid2d", "b12")), tb, ".");
+  q.set_domain("rigid2d"); q.set_sampler_seed(3);
+  Json qa = Json::object(); qa["count"] = 400; qa["boundary"] = true;
+  CHECK(q.call("sample_random", qa).bool_or("found_violation", false));
 }
 
 static void test_citation_validation() {

@@ -392,6 +392,12 @@ std::string system_prompt(bool native_tools, const std::string& domain, int vers
         "- A rare failure often needs 50 to 200 random scenarios before one hits it, and each sample_random call is a single turn: a batch of 20 is usually too small. Prefer batches of 100 to 400 (the step budget is "
         "the limit, not the turn count). Try a few batches with different seeds before you spend turns on hypotheses.\n";
   }
+  if (version >= 5) {
+    p +=
+        "\nVERSION 5 (hybrid with boundary cases)\n"
+        "- sample_random takes `boundary: true`: every second scenario then has its numeric fields pushed to the extreme values the limits allow (tiny and huge time steps, masses, speeds, radii, counts). "
+        "Many rare failures sit at such corners, which plain random scenarios almost never reach. Use `boundary: true` for your large batches.\n";
+  }
   return p;
 }
 
