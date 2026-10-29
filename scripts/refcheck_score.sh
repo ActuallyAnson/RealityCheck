@@ -8,3 +8,11 @@ for d in orbit cartpole; do
   echo "## $d: model-planted variants (results/blind/eval_$d.txt)"
   "$B/rc_refscore" planted results/blind/eval_$d.txt results/reforacle/$d/planted | sed -n '/^$/,$p'
 done
+for draw in draw2 draw3; do  # traffic: two independent draws of the reference (draw 2 is the pre-declared headline)
+  [ -d results/reforacle/traffic/$draw/mutants ] || continue
+  echo "## traffic $draw: 40 sampled mutants (results/mutation/traffic/mutation.json)"
+  "$B/rc_refscore" mutants results/mutation/traffic/mutation.json results/reforacle/traffic/$draw/mutants | sed -n '/^$/,$p'
+  [ -d results/reforacle/traffic/$draw/planted ] || continue
+  echo "## traffic $draw: model-planted variants (results/blind/eval_traffic.txt)"
+  "$B/rc_refscore" planted results/blind/eval_traffic.txt results/reforacle/traffic/$draw/planted | sed -n '/^$/,$p'
+done

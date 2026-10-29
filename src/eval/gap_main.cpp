@@ -1,4 +1,4 @@
-// rc_gap: the oracle-gap table behind the viewer's "Oracle gap" screen (web/data/gap.json), computed from result files only; no simulation, no model.
+// rc_gap: the oracle-gap table behind the viewer's "Oracle gap" screen (web/gap.json), computed from result files only; no simulation, no model.
 //   rc_gap DOMAIN=REFERENCE_MUTANT_DIR...    (REFERENCE_MUTANT_DIR holds ID.ref.tsv from scripts/refcheck_worker.sh, or "-" if no reference oracle was run for the domain)
 // For each domain, over the 40 sampled mutants of results/mutation/DOMAIN/mutation.json: how many change behavior, how many a hand-written rule catches, how many only a model-written
 // invariant or metamorphic relation adds, how many only the reference oracle adds (a changed mutant that no other oracle fires on and the reference flags), and how many stay silent.

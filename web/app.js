@@ -466,7 +466,7 @@ function openFinding(d, f) {
 
 // ---- oracle gap: from data/gap.json (rc_gap, computed from result files) ----
 async function loadGap() {
-  let g; try { g = await (await fetch("data/gap.json")).json(); } catch (e) { $("#gapNote").textContent = "data/gap.json is missing: run scripts/gap_export.sh."; return; }
+  let g; try { g = await (await fetch("gap.json")).json(); } catch (e) { $("#gapNote").textContent = "gap.json is missing: run scripts/gap_export.sh."; return; }
   $("#gapNote").textContent = g.note;
   const t = $("#gapTable"); t.innerHTML = ""; t.appendChild(el("div", "grow head", "<span>simulator</span><span>bugs that change behavior (sampled): who sees them</span><span>unseen</span>"));
   for (const r of g.domains) {
