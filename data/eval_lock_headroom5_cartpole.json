@@ -1,0 +1,38 @@
+{
+ "_note": "LOCKED 2026-10-29 before any run (docs/PREREG_FINAL.md, addendum 3). AGENT v5 (hybrid with boundary cases), 20 fresh seeds (7001-7020) per bug on the five low-headroom bugs. Compared with the existing RANDOM arm (*_random lock, 60 seeds 6001-6060) and the v4 agent arm.",
+ "version": "headroom-5",
+ "domain": "cartpole",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  7001,
+  7002,
+  7003,
+  7004,
+  7005,
+  7006,
+  7007,
+  7008,
+  7009,
+  7010,
+  7011,
+  7012,
+  7013,
+  7014,
+  7015,
+  7016,
+  7017,
+  7018,
+  7019,
+  7020
+ ],
+ "control_seeds": [],
+ "bugs": [
+  {
+   "id": "c02",
+   "split": "headroom"
+  }
+ ]
+}
