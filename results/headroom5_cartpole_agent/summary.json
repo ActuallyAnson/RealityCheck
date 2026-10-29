@@ -1,0 +1,1 @@
+{"bugs":[{"bug":"c02","cost_usd":0.0332111,"detected":0,"explanation_names_cause":0,"runs":20,"split":"headroom","valid_attributable":0,"valid_reports":0}],"control_detected":0,"control_reports_accepted":0,"control_runs":0,"lock_hash":"50ff739ee289ebed","model":"muse-spark-1.3","tester":"agent","total_cost_usd":0.0332111}

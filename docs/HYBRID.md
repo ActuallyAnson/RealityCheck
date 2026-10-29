@@ -63,3 +63,19 @@ What the agent adds is not detection: it is the validated report and the cause l
 | pooled | 17/200 | 62/200 |
 
 Primary test (pooled, one-sided Fisher): p = 7.9e-9. **Read it carefully:** b12's trigger is a very small substep, which a boundary sampler reaches by construction (0/40 -> 39/40), and b06 improves; b09 gets worse and b02 does not move. Without b12 the pooled counts are 23 against 17 of 160 (p = 0.20). The seeded bugs were planted by me and several sit at parameter boundaries, so this is the favorable test for the method; it says boundary cases are cheap and sometimes decisive, not that every hard bug is a boundary bug. It also does not change the agent: the agent still uses plain random batches. Wiring `sample_extreme` into the agent and re-testing is the next step and has not been done.
+
+## Agent v5 on the five hard bugs: pre-registered result (2026-10-29, `docs/PREREG_FINAL.md` addendum 3)
+
+v5 = v4 plus `sample_random(boundary: true)` and one prompt paragraph. 20 fresh seeds (7001-7020) per bug, muse-spark-1.3, 300000 steps; random arm from the earlier lock (60 seeds per bug). Raw: `results/headroom5_rigid2d_agent`, `results/headroom5_cartpole_agent`, summary `results/headroom/summary_v5.md`; cost $2.26.
+
+| bug | v5 agent | v4 agent (earlier) | random |
+|---|---|---|---|
+| b02 | 7/20 | 0/20 | 0/60 |
+| b06 | 12/20 | 2/20 | 10/60 |
+| b09 | 6/20 | 2/20 | 7/60 |
+| b12 | 20/20 | 0/20 | 0/60 |
+| c02 | 0/20 | 1/20 | 0/60 |
+| pooled | **45/100** | 5/100 | 17/300 |
+
+Primary test, pooled one-sided Fisher, v5 against random: p = 3.3e-18. Without b12: 25/80 against 17/240, p = 2.8e-7. Valid reports: 44 of the 45 detections. By bug, v5 is higher than random on four bugs (b09 only at p = 0.06) and equal on c02.
+**Honest reading.** (1) The first rigid2d run was cut at 35 of 80 runs by a $1.5 budget cap I set too low; I resumed it to the full 80 (a cost setting, not a data decision), and the partial counts pointed the same way. (2) The 5 bugs were chosen *because* random testing is weak on them and were seeded by me; several trigger at parameter boundaries, which the new option reaches by design. (3) The model-free boundary sampler alone gets 62/200 on the same bugs (b12 39/40, b06 15/40, b02 1/40, b09 5/40), so on b12 and b06 the agent does not beat that sampler; on b02 (7/20 against 1/40) it does better, which I did not pre-register and do not claim as proven. (4) c02 is still not found by anything. (5) One model, one run per seed.
