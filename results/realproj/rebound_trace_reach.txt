@@ -1,0 +1,7 @@
+Targeted follow-up on REBOUND 8b0bfb06 (TRACE close-encounter fix), built by scripts/build_rebound_hist.sh, driven over the pipe protocol (scratch Python generated the scenarios and computed energy; no Python is in the repository).
+Attempt 1: star (m=100) + 2-4 light planets (m 0.01-0.5) on near-circular orbits at r 2-6, dt 0.05, 400 steps, 200 scenarios: 0 differ between pre and post.
+Attempt 2: star (m=100) + 3-5 giant planets (m 0.5-3) crowded at r 3-3.6, speed 0.8-1.1 of circular, dt 0.05, 1500 steps, 200 scenarios (seed 11):
+  pre and post differ in 80/200 scenarios (the fix is now reached);
+  max energy drift > 2% in 199/200 scenarios in BOTH builds (violent scattering; the energy rule fires on both);
+  among the 80 that differ, final energy drift is smaller after the fix in 35 and larger in 45 (median 0.118 before, 0.132 after).
+Reading: once a scenario reaches the fixed code, the energy rule neither separates the two builds nor shows an improvement; it fires on both.
