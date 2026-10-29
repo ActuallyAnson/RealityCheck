@@ -1,0 +1,38 @@
+{
+ "_note": "LOCKED 2026-10-29 before any run (docs/PREREG_FINAL.md, section 2). Headroom set: the seeded bugs where random testing found the bug in at most 1 of 5 earlier seeds. This lock is the AGENT arm (hybrid agent v4, 20 fresh seeds); the RANDOM arm is the matching *_random lock (60 fresh seeds). Test: one-sided Fisher exact test per bug, agent detection vs random detection, then a sign test over bugs.",
+ "version": "headroom-1",
+ "domain": "cartpole",
+ "budget": {
+  "max_steps": 300000,
+  "max_wall_ms": 60000
+ },
+ "test_seeds": [
+  5001,
+  5002,
+  5003,
+  5004,
+  5005,
+  5006,
+  5007,
+  5008,
+  5009,
+  5010,
+  5011,
+  5012,
+  5013,
+  5014,
+  5015,
+  5016,
+  5017,
+  5018,
+  5019,
+  5020
+ ],
+ "control_seeds": [],
+ "bugs": [
+  {
+   "id": "c02",
+   "split": "headroom"
+  }
+ ]
+}
