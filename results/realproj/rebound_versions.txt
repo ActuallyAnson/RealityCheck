@@ -1,0 +1,35 @@
+4.0.0 -> 4.1.0  leapfrog  0/300 scenarios where the engines disagree
+4.0.0 -> 4.1.0  ias15  28/300 scenarios where the engines disagree (first at #19, shrunk 41 -> 7)
+4.0.0 -> 4.1.0  whfast  0/300 scenarios where the engines disagree
+4.0.0 -> 4.1.0  mercurius  45/300 scenarios where the engines disagree (first at #19, shrunk 41 -> 4)
+4.0.0 -> 4.1.0  bs  0/300 scenarios where the engines disagree
+4.1.0 -> 4.3.0  leapfrog  0/300 scenarios where the engines disagree
+4.1.0 -> 4.3.0  ias15  0/300 scenarios where the engines disagree
+4.1.0 -> 4.3.0  whfast  0/300 scenarios where the engines disagree
+4.1.0 -> 4.3.0  mercurius  0/300 scenarios where the engines disagree
+4.1.0 -> 4.3.0  bs  0/300 scenarios where the engines disagree
+4.3.0 -> 4.4.0  leapfrog  0/300 scenarios where the engines disagree
+4.3.0 -> 4.4.0  ias15  0/300 scenarios where the engines disagree
+4.3.0 -> 4.4.0  whfast  0/300 scenarios where the engines disagree
+4.3.0 -> 4.4.0  mercurius  0/300 scenarios where the engines disagree
+4.3.0 -> 4.4.0  bs  0/300 scenarios where the engines disagree
+4.4.0 -> 4.4.5  leapfrog  0/300 scenarios where the engines disagree
+4.4.0 -> 4.4.5  ias15  0/300 scenarios where the engines disagree
+4.4.0 -> 4.4.5  whfast  0/300 scenarios where the engines disagree
+4.4.0 -> 4.4.5  mercurius  0/300 scenarios where the engines disagree
+4.4.0 -> 4.4.5  bs  0/300 scenarios where the engines disagree
+4.4.5 -> 4.4.11  leapfrog  0/300 scenarios where the engines disagree
+4.4.5 -> 4.4.11  ias15  0/300 scenarios where the engines disagree
+4.4.5 -> 4.4.11  whfast  0/300 scenarios where the engines disagree
+4.4.5 -> 4.4.11  mercurius  0/300 scenarios where the engines disagree
+4.4.5 -> 4.4.11  bs  0/300 scenarios where the engines disagree
+4.4.11 -> 4.5.1  leapfrog  0/300 scenarios where the engines disagree
+4.4.11 -> 4.5.1  ias15  0/300 scenarios where the engines disagree
+4.4.11 -> 4.5.1  whfast  0/300 scenarios where the engines disagree
+4.4.11 -> 4.5.1  mercurius  0/300 scenarios where the engines disagree
+4.4.11 -> 4.5.1  bs  0/300 scenarios where the engines disagree
+4.5.1 -> 4.6.0  leapfrog  0/300 scenarios where the engines disagree
+4.5.1 -> 4.6.0  ias15  0/300 scenarios where the engines disagree
+4.5.1 -> 4.6.0  whfast  0/300 scenarios where the engines disagree
+4.5.1 -> 4.6.0  mercurius  0/300 scenarios where the engines disagree
+4.5.1 -> 4.6.0  bs  0/300 scenarios where the engines disagree

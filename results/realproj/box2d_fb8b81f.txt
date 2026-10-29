@@ -1,0 +1,5 @@
+Box2D fb8b81f ("Bug fixes", 2025-07-11: improved tunneling prevention, among others) vs its parent d9b5732, 1000 random rigid2d scenarios, solver substeps 4.
+rc_hunt rule counts (scenarios with a violation), pre -> post:
+continuous collision on : in_arena 311 -> 311, no_wall_penetration 63 -> 63
+continuous collision off: in_arena 687 -> 689, no_tunneling 52 -> 53, no_wall_penetration 289 -> 288
+rc_diff (tol 1e-4, horizon 2 s), pre vs post: 254/1000 differ (continuous on), 276/1000 (off)
