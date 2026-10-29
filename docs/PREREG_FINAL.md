@@ -40,3 +40,9 @@ Random testing with the hand-written rules already finds almost every mutant the
 - Agent arm: hybrid agent v4, muse-spark-1.3, 20 fresh seeds (5001-5020) per target (`data/eval_lock_headroom_*.json`). Random arm: 60 fresh seeds (6001-6060) per target at the same step budget (`*_random.json`), so random's rate is measured, not assumed.
 - Test: one-sided Fisher exact test per target (agent detection > random detection, alpha 0.05), then an exact sign test over targets. If the agent does not win, the claim is that on these targets search shows no reliable advantage over random testing, with the counts.
 - "Detected" means the agent's own run produced a rule violation on the seeded-bug simulator (engine-confirmed), as in the earlier tables; report validity is reported alongside.
+
+## Addendum 2026-10-29: boundary-value sampling vs random (declared before the first run)
+
+Why: the agent did not beat random on the five low-headroom bugs because its strategy collapses into random sampling (`docs/HYBRID.md`). A model-free alternative that a tester could use instead: random scenarios plus boundary cases. `rc_extreme` (`src/eval/extreme_main.cpp`): the "extreme" arm alternates untouched random scenarios with scenarios whose numeric fields are each pushed with probability 0.3 to the most extreme value that still validates. Both arms get 300000 steps per run.
+Bugs: rigid2d b02, b06, b09, b12 and cart-pole c02 (the five low-headroom bugs). Seeds 8000..8039 (40 per bug and arm, fresh: earlier runs used other seeds). One setting, no tuning, no second run on the same seeds.
+Primary: pooled detections over the five bugs, exact one-sided Fisher test (extreme > random), alpha 0.05. Secondary: per bug counts. Whatever comes out is reported in `docs/HYBRID.md`.
