@@ -27,3 +27,10 @@ Random testing with the hand-written rules already finds almost every mutant the
 
 ## 5. UI
 - Scan, failure list, oracle-gap matrix in the existing viewer. No demo, no recordings.
+
+## Addendum 2026-10-29 (traffic reference), written before any traffic mutant was scored
+- The traffic reference needs a behavioural specification precise enough to re-implement, so `src/eval/ref_traffic_spec.txt` states the controller in full (like the orbit description, which states the force law). A reference built from it is a **conformance check of the implementation against its specification**, not a discovery of unspecified behavior. The spec was validated with a reference the author wrote from the spec text (0 flags on 94,643 clean steps).
+- Draw 1 (spec v1) **failed the clean gate** (49,583 of 466,898 steps flagged): the model read an ambiguous sentence as allowing two phase changes in one second. The sentence was reworded (spec v2) and two fresh draws were taken that never saw draw 1. This is a post hoc spec change, made after seeing a failed gate; the gate and tolerances were not changed.
+- Draws 2 and 3 passed the gate. Then a rare clean case appeared on the mutant evaluation's seeds: seconds with emergency vehicles active in both directions at once, where the simulator lets the first-listed event decide and the spec is silent. Those seconds are now **not judged** (post hoc harness change; also applied to the author reference). Re-checked on 1000 fresh clean scenarios (seeds 930000+): 0 flags for both draws.
+- **Headline draw: draw 2** (the first draw that passed the gate), declared before any mutant was scored. Draw 3 is reported as a replication, not used to pick the better number.
+- The judge compares the phase, all four queues and all four red-waits each second, trying every combination of "a vehicle arrived" on the approaches that can receive one (arrivals are not recorded), and flags only if even the best-matching combination differs.

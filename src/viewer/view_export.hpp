@@ -14,6 +14,9 @@ namespace rc {
 // Simulates the scenario under `mask` and exports it (domain "rigid2d").
 Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label);
 
+// The same for any of the four built-in domains (rigid2d, orbit, cartpole, traffic).
+Json view_scenario(const std::string& domain, const Scenario& sc, BugMask mask, const std::string& label);
+
 // Builds the full viewer document for one saved run directory (events.jsonl, report.json, cost.jsonl): the first
 // violating scenario the agent ran ("original"), the shrunk scenario from the report, the report, a compact event feed
 // and cost totals. `mask` is only used to re-simulate the saved scenarios.

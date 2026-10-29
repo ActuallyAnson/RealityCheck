@@ -18,3 +18,4 @@ Controller, using the second count `timer + 1` as the time spent in the current 
 Discharge: for each approach showing green with at least one vehicle queued, half a vehicle of credit is gained per second; each full credit removes one vehicle (so one vehicle leaves every two seconds). Credit left over carries over to the next second while the approach stays green; it is lost whenever the approach does not show green. An approach with green and an empty queue keeps its credit.
 Red-wait: after discharge, an approach showing red with at least one vehicle queued has its wait increased by 1; otherwise its wait is 0 (yellow and green reset it).
 Queues never exceed 200 (arrivals beyond 200 are lost; this is already applied to the queue you are given).
+Not specified (not judged): what happens in a second in which emergency vehicles are active in both directions at once.

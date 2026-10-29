@@ -1,0 +1,1 @@
+draw3 (spec v2 + both-direction-emergency seconds unjudged, post hoc): clean gate: 1000 scenarios seeds 910000+ flagged 0 (1534319 steps, before the harness change); 1000 fresh scenarios seeds 930000+ flagged 0 (1559391 steps); 300 scenarios seeds 700000+ flagged 0 after the change (3 flagged before it: simultaneous opposite-direction emergencies, not in the spec).

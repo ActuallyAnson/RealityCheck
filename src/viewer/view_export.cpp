@@ -249,6 +249,12 @@ Json view_rigid2d(const Scenario& sc, BugMask mask, const std::string& label) {
   return v;
 }
 
+Json view_scenario(const std::string& domain, const Scenario& sc, BugMask mask, const std::string& label) {
+  if (domain == "orbit") return view_orbit(sc, mask, label);
+  if (domain == "cartpole") return view_cartpole(sc, mask, label);
+  if (domain == "traffic") return view_traffic(sc, mask, label);
+  return view_rigid2d(sc, mask, label);
+}
 
 // ---------------------------------------------------------------- feed compaction
 

@@ -1,0 +1,2 @@
+draw1 (spec v1): clean gate FAILED: 300 clean scenarios (seeds 910000+), steps checked 466898, flagged 49583, scenarios flagged 84/300. Not scored.
+Cause found by reading the draw: it lets a phase that begins in a second also end in that same second (chained transitions); the v1 spec sentence "the next phase begins in this same second and its timer restarts" allowed that reading.

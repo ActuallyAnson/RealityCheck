@@ -28,7 +28,10 @@
 #include <vector>
 
 #include "model/model.hpp"
+#include "rules/checker.hpp"
+#include "shrink/shrink.hpp"
 #include "sim/bugs.hpp"
+#include "sim/domains.hpp"
 #include "eval/ground_truth.hpp"
 #include "sim/orbit.hpp"
 #include "util/json.hpp"
@@ -266,6 +269,76 @@ void stream_live(int fd, const std::string& id) {
   }
 }
 
+
+// POST /api/scan {domain, bugs:"o02,o03" or "", scenarios, seed}: random testing of a built-in simulator (no model, no key, no cost). Failures are grouped by the rule they break;
+// one example per rule is shrunk and returned with viewer data. A scan that finds nothing says only that, not that the simulator is correct.
+Json run_scan(const Json& a) {
+  using Clock = std::chrono::steady_clock;
+  const auto t0 = Clock::now();
+  Json out = Json::object();
+  const std::string domain = a.str_or("domain", "orbit");
+  if (domain != "rigid2d" && domain != "orbit" && domain != "cartpole" && domain != "traffic") { out["error"] = "unknown domain"; return out; }
+  BugMask mask = 0;
+  std::string bugs = a.str_or("bugs", "");
+  for (size_t p = 0; p < bugs.size();) {
+    size_t e = bugs.find(',', p);
+    std::string id = bugs.substr(p, e == std::string::npos ? std::string::npos : e - p);
+    if (!id.empty()) {
+      int idx = domain_bug_index(domain, id);
+      if (idx < 0) { out["error"] = "unknown bug id for this domain: " + id; return out; }
+      mask |= bug_bit(idx);
+    }
+    if (e == std::string::npos) break;
+    p = e + 1;
+  }
+  const int n = static_cast<int>(std::min(400.0, std::max(1.0, a.num_or("scenarios", 100))));
+  const uint64_t seed = static_cast<uint64_t>(a.num_or("seed", 1));
+  struct Group { std::string rule; int count = 0; int first = -1; Scenario sc; };
+  std::vector<Group> groups;
+  int run = 0, failing = 0;
+  bool timed_out = false;
+  for (int i = 0; i < n; ++i) {
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - t0).count() > 20000) { timed_out = true; break; }
+    Scenario sc = random_scenario_for(domain, seed * 1000003ULL + static_cast<uint64_t>(i));
+    std::vector<Violation> v = check_rules(sc, simulate(sc, mask));
+    ++run;
+    if (v.empty()) continue;
+    ++failing;
+    for (const Violation& x : v) {
+      bool seen = false;
+      for (Group& g : groups) if (g.rule == x.rule) { ++g.count; seen = true; break; }
+      if (!seen) { Group g; g.rule = x.rule; g.count = 1; g.first = i; g.sc = sc; groups.push_back(g); }
+    }
+  }
+  Json fs = Json::array();
+  for (const Group& g : groups) {
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - t0).count() > 26000) break;
+    ShrinkResult sr = shrink(g.sc, mask, g.rule, 300);
+    Json f = Json::object();
+    f["rule"] = g.rule;
+    for (const auto& r : rule_catalog(domain)) if (g.rule == r.id) f["rule_text"] = std::string(r.text);
+    f["scenarios_failing"] = g.count;
+    f["first_scenario_index"] = g.first;
+    f["shrunk"] = sr.ok;
+    const Scenario& show = sr.ok ? sr.scenario : g.sc;
+    f["size_before"] = scenario_size(g.sc);
+    f["size_after"] = scenario_size(show);
+    f["original"] = view_scenario(domain, g.sc, mask, "original");
+    f["shrunk_view"] = view_scenario(domain, show, mask, sr.ok ? "shrunk" : "not shrunk");
+    f["scenario"] = to_json(show);
+    fs.push(f);
+  }
+  out["ok"] = true;
+  out["domain"] = domain;
+  out["bugs"] = bugs;
+  out["scenarios_run"] = run;
+  out["scenarios_failing"] = failing;
+  out["timed_out"] = timed_out;
+  out["findings"] = fs;
+  out["wall_ms"] = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - t0).count());
+  return out;
+}
+
 void handle(int fd) {
   std::string req;
   char buf[8192];
@@ -305,6 +378,17 @@ void handle(int fd) {
       Json j = Json::object();
       if (err.empty()) { j["run"] = id; reply(fd, 200, "application/json", j.dump()); }
       else { j["error"] = err; reply(fd, 409, "application/json", j.dump()); }
+    }
+  } else if (path == "/api/scan" && method == "POST") {
+    std::string origin = header_value(head, "Origin");
+    bool origin_ok = origin.empty() || origin == "http://127.0.0.1:" + std::to_string(g_opt.port) || origin == "http://localhost:" + std::to_string(g_opt.port);
+    if (!origin_ok || header_value(head, "X-RC") != "1") {
+      reply(fd, 403, "application/json", "{\"error\":\"cross-origin or missing X-RC header\"}");
+    } else {
+      Json args = Json::object();
+      try { args = Json::parse(body); } catch (const std::exception&) {}
+      Json r = run_scan(args);
+      reply(fd, r.has("error") ? 409 : 200, "application/json", r.dump());
     }
   } else if (path == "/api/live/stream" && method == "GET") {
     std::string id = query_value(target, "run");
