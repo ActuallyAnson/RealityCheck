@@ -1,0 +1,6 @@
+Declared before scoring (2026-10-29): truth oracle for REBOUND 8b0bfb06 (TRACE close-encounter fix).
+Truth = Boost.odeint bulirsch_stoer, tolerance 1e-12, same softened force law (0.3), same scenarios (200, seed 11, results/realproj/rebound_trace_reach.txt).
+Metric per scenario: RMS position error over all bodies at frame 100 (t=5), pre-fix build and post-fix build against truth. Only scenarios where pre and post frames differ at frame 100 are scored.
+Verdict per scenario: fixed build closer to truth = +. Two-sided paired sign test over scored scenarios; the oracle "distinguishes" the fix if p < 0.05 with post closer in the majority.
+
+Result: scored 10 scenarios (pre and post differ at frame 100); post closer to truth in 3, pre closer in 7, ties 0; sign test p=0.34. Median RMS position error 1.81 (pre) vs 1.84 (post): both builds are far from truth at t=5 on these crowded-planet scenarios (default TRACE settings; whether part of the gap is a mismatch between the truth model and REBOUND's softening handling was not investigated). The truth oracle does not distinguish the fix here.

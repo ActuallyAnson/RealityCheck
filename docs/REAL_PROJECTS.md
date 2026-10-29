@@ -16,6 +16,8 @@ The commits were picked from `git log` by message and touched files **before** t
 
 The generic generator never reached it, so I wrote star-plus-planets scenarios (`results/realproj/rebound_trace_reach.txt`). Light planets on near-circular orbits: still 0 of 200 differ. Crowded giant planets: the fix is reached (80 of 200 scenarios differ), but the energy rule fires in 199 of 200 on **both** builds and the final energy drift is no better after the fix (smaller in 35, larger in 45). So even when the code is reached, a conservation rule cannot say the fixed build is better; it needs a reference for what TRACE should do, which is the oracle gap again.
 
+A second oracle was tried on the same scenarios, declared before scoring (`results/realproj/rebound_trace_truth_prereg.txt`): error against a Bulirsch-Stoer truth at tolerance 1e-12. Only 10 scenarios differ by frame 100; the fixed build is closer in 3 and the buggy one in 7 (p=0.34), and both are far from truth (median error 1.8). It does not distinguish the fix either.
+
 ## What it shows, and what it does not
 
 - **The rule oracle cannot tell a fixed build from a buggy one** on the one real fix it can reach (Box2D tunneling): the counts are within noise. The declared rules are coarse, with tolerances written for the simulators in this repository. For the restitution commits the counts move but not toward "fixed", because those commits redesigned the behavior.
