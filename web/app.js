@@ -166,6 +166,7 @@ async function loadIndex() {
   await loadRun(first.id);
 }
 function resetRunUI() {
+  const mb = document.querySelector(".modebar"); if (mb) mb.hidden = false;
   stopReplay(); S.playing = false; setPlayIcon(false);
   $("#feed").innerHTML = HINT; $("#evidence").innerHTML = EV_HINT; $("#statusChip").textContent = ""; $("#statusChip").className = "chip";
   pipeReset(); meter(0); solo(false);
@@ -264,7 +265,7 @@ function showAll() {
   stOrig.set(d.original || null); stShr.set(d.shrunk || null);
   veil(stOrig, !stOrig.view, "No failing scenario in this run."); veil(stShr, !stShr.view, "The agent did not produce a validated minimal case.");
   $("#feed").innerHTML = ""; (d.events || []).forEach((e) => addCard(e));
-  const done = {}; if (d.original) { done.hunt = "done"; done.violation = "alert"; } if (d.shrunk) done.shrink = "done"; if (d.status === "failure_reported") { done.explain = "done"; if (d.report.vision_done) done.verify = "done"; } else done.explain = "alert";
+  const done = {}; if (d.original) { done.hunt = "done"; done.violation = "alert"; } if (d.shrunk) done.shrink = "done"; if (d.status === "failure_reported") { done.explain = "done"; if (d.report.vision_done) done.verify = "done"; } else if (d.status !== "scan_finding") done.explain = "alert";
   pipeAll(done); renderEvidence(); meter(d.cost.usd); plotStage = stShr.view ? stShr : stOrig; buildSignals(); jumpToViolation(plotStage, false);
 }
 
@@ -364,7 +365,16 @@ function renderEvidence() {
   const d = S.doc, ev = $("#evidence"); ev.innerHTML = ""; if (!d) return; const r = d.report || {}, view = d.shrunk, chip = $("#statusChip");
   if (d.status === "failure_reported") { chip.textContent = "REPORT VALIDATED"; chip.className = "chip good"; }
   else if (d.status === "failure_not_reported") { chip.textContent = "NO VALID REPORT"; chip.className = "chip warn"; }
+  else if (d.status === "scan_finding") { chip.textContent = "RANDOM-TEST FINDING"; chip.className = "chip good"; }
   else { chip.textContent = "NO FAILURE FOUND"; chip.className = "chip bad"; }
+  if (d.status === "scan_finding" && view) {
+    const sc = d.scan, v0 = view.violations.find((x) => x.rule === sc.rule) || view.violations[0];
+    ev.appendChild(el("div", "sec verdict", `<h3>Violated rule</h3><div class="rule">${esc(sc.rule)}</div><div class="sub">${esc(sc.rule_text || "")}</div><div class="sub">${esc(v0 ? v0.detail : "")}</div>
+      <div class="metrics"><div class="metric"><b>${v0 ? v0.step : "-"}</b><span>first step</span></div><div class="metric"><b>${sc.size_before}→${sc.size_after}</b><span>scenario size</span></div><div class="metric"><b>${sc.count}/${sc.run}</b><span>scenarios failing</span></div></div>`));
+    ev.appendChild(el("div", "sec", `<h3>How this was found</h3><p style="margin:0">Random testing of the ${esc(sc.domain)} simulator${sc.bugs ? ` with bug ${esc(sc.bugs)} switched on` : ""}; no model was called. The shrunk scenario is the smallest one the shrinker found that still breaks this rule. A written, evidence-cited explanation needs the agent (Live mode).</p>`));
+    const sj = el("div", "sec", "<h3>Shrunk scenario (JSON)</h3>"), pre = el("pre", "dim small"); pre.style.cssText = "white-space:pre-wrap;word-break:break-all;margin:0;max-height:220px;overflow:auto"; pre.textContent = JSON.stringify(sc.scenario); sj.appendChild(pre); ev.appendChild(sj);
+    return;
+  }
   if (d.status !== "failure_reported" || !view) { ev.appendChild(el("div", "sec", `<h3>Outcome</h3><p style="margin:0">The agent stopped (<code>${esc(r.stop_reason || "n/a")}</code>) without a failure that passed validation. Misses are reported, not hidden.</p>`)); return; }
   const v0 = view.violations[0], ev0 = d.original ? d.original.violations[0] : null;
   const hero = el("div", "sec verdict", `<h3>Violated rule</h3><div class="rule">${esc(r.rule)}</div><div class="sub">${esc(v0 ? v0.detail : "")}</div>
@@ -416,7 +426,59 @@ $("#modeLive").onclick = () => { setMode("live"); emit("click"); refreshStatus()
 $("#startBtn").onclick = () => { emit("click"); startLive(); };
 function vio(dir) { const st = plotStage; if (!st || !st.view) return; const xs = [...new Set(st.view.violations.map((v) => v.step))].sort((a, b) => a - b); if (!xs.length) return; const cur = Math.round(st.step); const t = dir > 0 ? xs.find((x) => x > cur) : [...xs].reverse().find((x) => x < cur); setPlaying(false); st.seek(t === undefined ? xs[dir > 0 ? xs.length - 1 : 0] : t); }
 $("#nextV").onclick = () => vio(1); $("#prevV").onclick = () => vio(-1);
-document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { document.querySelectorAll(".tab").forEach((x) => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); }); const sc = b.dataset.tab === "score"; $("#runView").hidden = sc; $("#pipe").hidden = sc; $("#scoreView").hidden = !sc; emit("click"); if (sc) loadScoreboard(); else resize(); }));
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((x) => { const on = x.dataset.tab === name; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); });
+  const run = name === "run";
+  $("#runView").hidden = !run; $("#pipe").hidden = !run; $("#scoreView").hidden = name !== "score"; $("#scanView").hidden = name !== "scan"; $("#gapView").hidden = name !== "gap";
+  emit("click"); if (name === "score") loadScoreboard(); else if (name === "gap") loadGap(); else if (name === "scan") initScan(); else resize();
+}
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+// ---- scan: random testing of a built-in simulator, findings open in the replay view ----
+const BUGS = { orbit: ["o01", "o02", "o03"], cartpole: ["c01", "c02", "c03"], traffic: ["t01", "t02", "t03"], rigid2d: ["b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10", "b11", "b12", "b13"] };
+let scanReady = false;
+function fillBugs() { const sel = $("#scanBug"); sel.innerHTML = ""; const o0 = el("option"); o0.value = ""; o0.textContent = "none (clean simulator)"; sel.appendChild(o0); for (const b of BUGS[$("#scanDomain").value]) { const o = el("option"); o.value = b; o.textContent = "bug " + b; sel.appendChild(o); } }
+function initScan() {
+  if (scanReady) return; scanReady = true; fillBugs();
+  $("#scanDomain").addEventListener("change", fillBugs);
+  $("#scanForm").addEventListener("submit", async (e) => {
+    e.preventDefault(); const out = $("#scanOut"), go = $("#scanGo"); go.disabled = true; out.innerHTML = '<div class="callout">Running…</div>';
+    let r; try { r = await fetch("/api/scan", { method: "POST", headers: { "Content-Type": "application/json", "X-RC": "1" }, body: JSON.stringify({ domain: $("#scanDomain").value, bugs: $("#scanBug").value, scenarios: +$("#scanN").value, seed: +$("#scanSeed").value }) }); } catch (err) { go.disabled = false; out.innerHTML = '<div class="callout warn">The scan needs the rc_demo server (<code>./build/rc_demo</code>).</div>'; return; }
+    const d = await r.json(); go.disabled = false;
+    if (d.error) { out.innerHTML = `<div class="callout warn">${esc(d.error)}</div>`; return; }
+    out.innerHTML = "";
+    const head = `Ran ${d.scenarios_run} random scenarios in ${(d.wall_ms / 1000).toFixed(1)} s${d.timed_out ? " (stopped at the time limit)" : ""}; ${d.scenarios_failing} broke at least one rule.`;
+    if (!d.findings.length) { out.appendChild(el("div", "callout", `${esc(head)} <b>No declared rule fired.</b> That does not show the simulator is correct: a rule can only catch what it states. See <a href="#" id="toGap">what the checks do not see</a>.`)); const g = out.querySelector("#toGap"); if (g) g.addEventListener("click", (ev) => { ev.preventDefault(); showTab("gap"); }); return; }
+    out.appendChild(el("div", "callout good", esc(head) + ` ${d.findings.length} distinct rule${d.findings.length > 1 ? "s" : ""} broken; one example of each is shrunk below.`));
+    for (const f of d.findings) {
+      const card = el("div", "finding", `<span class="rule">${esc(f.rule)}</span><span class="txt">${esc(f.rule_text || "")}</span><span class="meta">broke in ${f.scenarios_failing} of ${d.scenarios_run} scenarios · shrunk from size ${f.size_before} to ${f.size_after}${f.shrunk ? "" : " (could not shrink)"}</span>`);
+      const b = el("button", "btn primary"); b.textContent = "Open replay"; b.addEventListener("click", () => openFinding(d, f)); card.appendChild(b); out.appendChild(card);
+    }
+  });
+}
+function openFinding(d, f) {
+  S.doc = { id: "scan", run: "scan", status: "scan_finding", original: f.original, shrunk: f.shrunk_view, scan: { domain: d.domain, bugs: d.bugs, rule: f.rule, rule_text: f.rule_text, scenario: f.scenario, size_before: f.size_before, size_after: f.size_after, count: f.scenarios_failing, run: d.scenarios_run },
+    report: { rule: f.rule, explanation: "", citations: [] }, cost: { usd: 0, calls: 0, tokens_in: 0, tokens_out: 0, latency_ms: 0 }, events: [] };
+  showTab("run"); showAll();
+  $("#modelName").textContent = ""; $("#feed").innerHTML = `<div class="empty">Opened from the Scan screen: random testing found this failure, so there is no agent run to replay. Use the timeline below the simulation, or the J and K keys to jump between violations.</div>`;
+  document.querySelector(".modebar").hidden = true;
+}
+
+// ---- oracle gap: from data/gap.json (rc_gap, computed from result files) ----
+async function loadGap() {
+  let g; try { g = await (await fetch("data/gap.json")).json(); } catch (e) { $("#gapNote").textContent = "data/gap.json is missing: run scripts/gap_export.sh."; return; }
+  $("#gapNote").textContent = g.note;
+  const t = $("#gapTable"); t.innerHTML = ""; t.appendChild(el("div", "grow head", "<span>simulator</span><span>bugs that change behavior (sampled): who sees them</span><span>unseen</span>"));
+  for (const r of g.domains) {
+    const seg = (cls, n, label) => n > 0 ? `<i class="${cls}" style="flex:${n}" title="${n} ${label}"><span>${n}</span></i>` : "";
+    const bar = `<div class="stack">${seg("s-rules", r.rules, "caught by a hand-written rule")}${seg("s-other", r.other_existing, "only by a model-written invariant or metamorphic relation")}${seg("s-ref", r.reference_extra, "only by the reference oracle")}${seg("s-silent", r.silent, "unseen by every check")}</div>`;
+    const ref = r.reference_run ? "" : ' <span class="dim small">(reference oracle not run)</span>';
+    t.appendChild(el("div", "grow", `<b>${esc(r.domain)}</b><div>${bar}</div><span class="${r.silent / r.changed > 0.3 ? "miss" : ""}">${r.silent} of ${r.changed}${ref}</span>`));
+  }
+  $("#gapLegend").innerHTML = '<span><b style="background:#2aa5c2"></b>hand-written rule</span><span><b style="background:#7b8cff"></b>model-written invariant or metamorphic</span><span><b style="background:#3ddc97"></b>reference oracle</span><span><b style="background:#5b2a31"></b>unseen by every check</span>';
+  $("#gapFoot").textContent = "Each bar is the simulator's sampled mutants whose behavior changed (results/mutation). The red hatched part is the oracle gap: bugs that change what the simulator does but that no check notices. Random testing cannot find a bug that no oracle can recognize, which is why this, not the search, is the limit.";
+}
+
 addEventListener("keydown", (e) => {
   if (e.target.tagName === "SELECT" || (e.target.tagName === "INPUT" && e.target.type !== "range")) return;
   const st = plotStage;
@@ -433,7 +495,7 @@ setMode("recorded"); refreshStatus();
 loadIndex().then(() => {
   const p = new URLSearchParams(location.search), m = p.get("mode");
   if (m === "replay") startReplay(); else if (m === "live") { if (p.get("bug")) $("#bugSel").value = p.get("bug"); refreshStatus().then(startLive); } else showAll();
-  if (p.get("tab") === "score") document.querySelector('.tab[data-tab="score"]').click();
+  if (["score", "scan", "gap"].includes(p.get("tab"))) showTab(p.get("tab"));
   requestAnimationFrame(tick);
 }).catch((err) => { $("#feed").innerHTML = `<div class="empty">Could not load data/index.json (${esc(err.message)}). Run <code>./build/rc_eval export</code> first.</div>`; });
 window.RC = { bus, emit, S };

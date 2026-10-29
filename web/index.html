@@ -15,6 +15,8 @@
   </a>
   <nav class="seg" role="tablist" aria-label="View">
     <button class="tab on" data-tab="run" role="tab" aria-selected="true">Run</button>
+    <button class="tab" data-tab="scan" role="tab" aria-selected="false">Scan</button>
+    <button class="tab" data-tab="gap" role="tab" aria-selected="false">Oracle gap</button>
     <button class="tab" data-tab="score" role="tab" aria-selected="false">Scoreboard</button>
   </nav>
   <div class="spacer"></div>
@@ -77,6 +79,32 @@
     <p class="dim" id="scoreNote"></p>
     <div id="scoreTable"></div>
     <p class="dim small" id="scoreFoot"></p>
+  </section>
+</main>
+
+<main id="scanView" hidden>
+  <section class="score scan">
+    <h2>Scan a simulator</h2>
+    <p class="dim">Random testing of a built-in simulator against its declared rules. No model is called and nothing is spent. Every failure is shrunk to a small reproduction and opens in the replay view.
+      Choose a clean simulator, or switch on a hidden bug to see what a failure looks like.</p>
+    <form id="scanForm" class="scanform">
+      <label class="field">Simulator<select id="scanDomain"><option value="orbit">orbit (n-body gravity)</option><option value="cartpole">cart-pole controller</option><option value="traffic">traffic signal</option><option value="rigid2d">rigid bodies</option></select></label>
+      <label class="field">Hidden bug<select id="scanBug"></select></label>
+      <label class="field">Scenarios<input id="scanN" type="number" min="1" max="400" value="100"></label>
+      <label class="field">Seed<input id="scanSeed" type="number" min="1" value="1"></label>
+      <button id="scanGo" class="btn primary" type="submit">Run scan</button>
+    </form>
+    <div id="scanOut" class="scanout" aria-live="polite"></div>
+  </section>
+</main>
+
+<main id="gapView" hidden>
+  <section class="score">
+    <h2>What the checks do not see</h2>
+    <p class="dim" id="gapNote"></p>
+    <div id="gapTable"></div>
+    <div class="legend" id="gapLegend"></div>
+    <p class="dim small" id="gapFoot"></p>
   </section>
 </main>
 

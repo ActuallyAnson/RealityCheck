@@ -137,3 +137,6 @@ target_link_libraries(rc_refscore rc_core)
 
 add_executable(rc_randbase src/eval/randbase_main.cpp)
 target_link_libraries(rc_randbase rc_core)
+
+add_executable(rc_gap src/eval/gap_main.cpp)
+target_link_libraries(rc_gap rc_core)
