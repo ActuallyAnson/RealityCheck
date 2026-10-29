@@ -140,3 +140,6 @@ target_link_libraries(rc_randbase rc_core)
 
 add_executable(rc_gap src/eval/gap_main.cpp)
 target_link_libraries(rc_gap rc_core)
+
+add_executable(rc_headroom src/eval/headroom_main.cpp)
+target_link_libraries(rc_headroom rc_core)
