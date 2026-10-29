@@ -134,3 +134,6 @@ add_executable(rc_refgen src/eval/refgen_main.cpp)
 target_link_libraries(rc_refgen rc_core)
 add_executable(rc_refscore src/eval/refscore_main.cpp)
 target_link_libraries(rc_refscore rc_core)
+
+add_executable(rc_randbase src/eval/randbase_main.cpp)
+target_link_libraries(rc_randbase rc_core)
