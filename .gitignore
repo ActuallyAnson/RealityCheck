@@ -30,3 +30,6 @@ results/**/*.png
 # viewer exports of saved runs (regenerable); curated demo recordings live in web/demo/
 web/data/
 build_*/
+
+# compiled reference runners (recompile from ref_*.cpp; see docs/REFERENCE_ORACLE.md)
+results/reforacle/**/refrun_*
