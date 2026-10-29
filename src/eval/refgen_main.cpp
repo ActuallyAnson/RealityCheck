@@ -1,6 +1,6 @@
 // rc_refgen: a model writes an independent one-step reference implementation of a simulator from its plain-language description alone
 // (no source, no declared rules, no bug information), as an oracle for rc_refcheck / scripts/refcheck_worker.sh. docs/REFERENCE_ORACLE.md.
-//   rc_refgen --live --domain orbit|cartpole --out DIR [--conventions] [--config C] [--budget-usd X]
+//   rc_refgen --live --domain orbit|cartpole|traffic --out DIR [--conventions] [--config C] [--budget-usd X]
 // The model may revise only after a compile error. It never sees a clean-simulator counterexample, so the reference stays independent of the system under test.
 #include <cstdlib>
 #include <fstream>
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     if (a == "--domain") domain = val(); else if (a == "--out") out = val(); else if (a == "--config") config = val(); else if (a == "--live") live = true;
     else if (a == "--conventions") conventions = true; else if (a == "--budget-usd") budget = std::atof(val().c_str()); else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
-  if (!live || out.empty() || (domain != "orbit" && domain != "cartpole")) { std::cerr << "usage: rc_refgen --live --domain orbit|cartpole --out DIR [--conventions]\n"; return 2; }
+  if (!live || out.empty() || (domain != "orbit" && domain != "cartpole" && domain != "traffic")) { std::cerr << "usage: rc_refgen --live --domain orbit|cartpole|traffic --out DIR [--conventions]\n"; return 2; }
   if (std::system(("mkdir -p '" + out + "'").c_str()) != 0) return 1;
   ApiConfig api = ApiConfig::from_json(Json::parse(slurp(config)));
   MetaApiBackend backend(api);
@@ -49,17 +49,20 @@ int main(int argc, char** argv) {
   BudgetedModel model(rec, api.pricing, budget, out + "/cost.jsonl");
   model.set_lifetime_ledger(default_ledger_path(), default_lifetime_cap_usd());
 
-  std::string desc = simulation_description(domain);
+  const bool traffic = domain == "traffic";
+  std::string desc = traffic ? slurp("src/eval/ref_traffic_spec.txt") : simulation_description(domain);
   size_t cut = desc.find("DECLARED RULES");
   if (cut != std::string::npos) desc = desc.substr(0, cut);  // the model is not shown the rules
   const std::string decl = slurp("src/eval/ref_" + domain + "_decl.hpp");
   std::ostringstream p;
   p << "You are writing an independent reference implementation of a simulator, to be used as a test oracle, from its plain-language description alone. You cannot see the simulator's source.\n\n"
-    << desc << "\nWrite the body of one function that advances the state by ONE outer step of length `dt`. The declarations below are already provided (do not repeat them):\n```\n" << decl << "```\n"
-    << "Requirements: use the physics exactly as the description states it; be as numerically accurate as you can (use your own sub-stepping or a higher-order method; you do not have to copy the simulator's scheme, a more accurate answer is better). "
-       "Only <cmath>, <algorithm> and <vector> are available; no input or output, no #include or #define lines, no global mutable state, deterministic.\n";
+    << desc << "\nWrite the body of one function that advances the state by " << (traffic ? "ONE second" : "ONE outer step of length `dt`") << ". The declarations below are already provided (do not repeat them):\n```\n" << decl << "```\n";
+  if (traffic) p << "Requirements: follow the specification exactly. Only <cmath>, <algorithm> and <vector> are available; no input or output, no #include or #define lines, no global mutable state, deterministic.\n";
+  else p << "Requirements: use the physics exactly as the description states it; be as numerically accurate as you can (use your own sub-stepping or a higher-order method; you do not have to copy the simulator's scheme, a more accurate answer is better). "
+            "Only <cmath>, <algorithm> and <vector> are available; no input or output, no #include or #define lines, no global mutable state, deterministic.\n";
   if (conventions) p << "Conventions: positive theta tilts the pole toward +x, the direction in which a positive force pushes the cart; x, v, th, w are the cart position, cart velocity, pole angle and pole angular rate.\n";
-  p << "Answer with the complete function definition `void ref_step_" << domain << "(const " << (domain == "orbit" ? "OrbitIn& in, OrbitOut* out" : "CartIn& in, CartOut* out") << ") { ... }` (helper functions allowed) in one fenced code block and nothing else.";
+  p << "Answer with the complete function definition `" << (traffic ? "void ref_traffic_second(const TrafficParams& p, TrafficRefState* st, const TrafficSecond& in, TrafficRefOut* out)" : std::string("void ref_step_") + domain + "(const " + (domain == "orbit" ? "OrbitIn& in, OrbitOut* out" : "CartIn& in, CartOut* out") + ")")
+    << " { ... }` (helper functions allowed) in one fenced code block and nothing else.";
   std::vector<ChatMessage> msgs;
   msgs.push_back({"user", p.str(), {}, "", {}});
   std::string code;
@@ -79,7 +82,7 @@ int main(int argc, char** argv) {
       std::string abs = out;
       char* rp = realpath((out + "/ref_" + domain + ".cpp").c_str(), nullptr);
       if (rp) { abs = rp; free(rp); }
-      std::string cmd = "c++ -std=c++17 -O2 -w -Isrc -DREF_" + std::string(domain == "orbit" ? "ORBIT" : "CARTPOLE") + " -DREF_IMPL='\"" + abs + "\"' src/eval/refrun_main.cpp -o '" + out + "/refrun_" + domain + "' 2> '" + out + "/compile.log'";
+      std::string cmd = "c++ -std=c++17 -O2 -w -Isrc -DREF_" + std::string(domain == "orbit" ? "ORBIT" : traffic ? "TRAFFIC" : "CARTPOLE") + " -DREF_IMPL='\"" + abs + "\"' src/eval/refrun_main.cpp -o '" + out + "/refrun_" + domain + "' 2> '" + out + "/compile.log'";
       if (std::system(cmd.c_str()) == 0) { Json l = Json::object(); l["attempt"] = attempt; l["result"] = "compiled"; log.push(l); break; }
       std::string first; { std::stringstream ss(slurp(out + "/compile.log")); for (std::string ln; std::getline(ss, ln) && first.size() < 600;) if (ln.find("error") != std::string::npos) first += ln + "\n"; }
       feedback = "It did not compile:\n" + first;

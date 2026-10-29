@@ -1,0 +1,20 @@
+SIMULATION UNDER TEST (full behavioural specification)
+A four-approach traffic-signal intersection (N, E, S, W = approaches 0..3). N and S form the NS direction, E and W the EW direction. One step is one second.
+Phase cycle, always in this order: NS green, NS yellow, all-red, EW green, EW yellow, all-red, then NS green again. Signals: the approaches of the direction in green show green (2), in yellow show yellow (1), every other approach, and every approach during all-red, shows red (0).
+
+Each second the controller works in this order: (1) vehicles arrive (already applied to the queue you are given); (2) the controller decides the phase for the end of this second; (3) discharge, using the signals of the phase decided in (2); (4) red-wait update.
+
+Controller, using the second count `timer + 1` as the time spent in the current phase including this second:
+- A pedestrian request made this second (or earlier and not yet served) is pending. When an all-red interval begins, a pending request is served: that all-red lasts all_red + 8 seconds instead of all_red, and the request is cleared.
+- Green of direction D (the other direction is O):
+  * If an emergency vehicle is on any approach of D this second, the green is held: nothing ends it this second, whatever the other rules say.
+  * Otherwise, if an emergency vehicle is on any approach of O, the green ends at once (yellow begins this second), even before its minimum time.
+  * Otherwise, if `actuated` is 0 the green ends once it has lasted at least D's green_seconds (green_ns or green_ew).
+  * Otherwise (actuated): the green ends when it has lasted at least D's green_seconds AND either (a) no vehicles are visible on D and (there are vehicles visible on O, or O is recalled), or (b) O is recalled; and it always ends once it has lasted max_green_seconds, even if the minimum has not been reached. "Visible" counts only approaches whose detector has not failed. O is recalled when some approach of O has a red-wait of at least 100 seconds.
+- Yellow: lasts exactly yellow_seconds; it ends when its time (timer + 1) has reached yellow_seconds, and then the all-red begins. Nothing (no emergency, no pedestrian request) shortens, skips or extends a yellow.
+- All-red: ends when its time (timer + 1) has reached its length (all_red, or all_red + 8 if it started with a pedestrian request pending); the green of the other direction then begins. Emergencies do not change the cycle order or shorten an all-red.
+- When a phase ends, the next phase begins in this same second (the output phase for this second is already the new phase). A phase that begins in a second never also ends in that second: each second changes the phase at most once, and the new phase's own rules first apply in the following second, with its timer counting from that following second.
+
+Discharge: for each approach showing green with at least one vehicle queued, half a vehicle of credit is gained per second; each full credit removes one vehicle (so one vehicle leaves every two seconds). Credit left over carries over to the next second while the approach stays green; it is lost whenever the approach does not show green. An approach with green and an empty queue keeps its credit.
+Red-wait: after discharge, an approach showing red with at least one vehicle queued has its wait increased by 1; otherwise its wait is 0 (yellow and green reset it).
+Queues never exceed 200 (arrivals beyond 200 are lost; this is already applied to the queue you are given).

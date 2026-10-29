@@ -9,6 +9,13 @@ FLAGS="-O3 -DNDEBUG -std=c++17 -fno-fast-math -ffp-contract=off -w"
 if ! c++ $FLAGS -I"$ROOT/src" -c "$W/$ID.cpp" -o "$W/$ID.o" 2> "$W/$ID.ref.cc.log"; then echo compile_failed > "$W/$ID.ref.status"; exit 0; fi
 if ! c++ "$ROOT/build/CMakeFiles/rc_stepdump.dir/src/eval/stepdump_main.cpp.o" "$W/$ID.o" "$ROOT/build/librc_core.a" -o "$W/$ID.stepdump" 2>> "$W/$ID.ref.cc.log"; then echo compile_failed > "$W/$ID.ref.status"; exit 0; fi
 echo compiled > "$W/$ID.ref.status"
+if [ "$DOM" = traffic ]; then
+  # traffic: one line per second is too large to keep, so the dump is piped through the sandboxed reference (which also does the matching) and only the verdicts are kept
+  (ulimit -t 600; nice -n 10 "$W/$ID.stepdump" --domain traffic --scenarios "$N" --base-seed "$BASE" 2> "$W/$ID.ref.err" | nice -n 10 timeout 600 sandbox-exec -f "$ROOT/scripts/repair_sandbox.sb" "$REF" > "$W/$ID.pred" 2>> "$W/$ID.ref.err")
+  "$ROOT/build/rc_refjudge" --domain traffic "$W/$ID.pred" /dev/null > "$W/$ID.ref.tsv" 2>> "$W/$ID.ref.err"
+  rm -f "$W/$ID.o" "$W/$ID.stepdump"
+  exit 0
+fi
 (ulimit -t 300; nice -n 10 timeout 300 "$W/$ID.stepdump" --domain "$DOM" --scenarios "$N" --base-seed "$BASE" > "$W/$ID.dump" 2> "$W/$ID.ref.err")
 (ulimit -t 300; nice -n 10 timeout 300 sandbox-exec -f "$ROOT/scripts/repair_sandbox.sb" "$REF" < "$W/$ID.dump" > "$W/$ID.pred" 2>> "$W/$ID.ref.err")
 "$ROOT/build/rc_refjudge" --domain "$DOM" --rel "${REF_REL:-0.02}" "$W/$ID.dump" "$W/$ID.pred" > "$W/$ID.ref.tsv" 2>> "$W/$ID.ref.err"

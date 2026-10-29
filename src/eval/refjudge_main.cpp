@@ -3,7 +3,7 @@
 //     tol = max( F * |recorded change over the step|,  K * |reference one-step - reference two half-steps|,  1e-9 * (1 + |value|) )
 // F (relative tolerance, default 0.02) and K (default 10) are fixed before any run and are not fitted to the clean simulator. The second term is the reference's own error estimate.
 // For cart-pole the sign of the applied force is not recorded; the sign whose prediction fits better is used.
-//   refjudge --domain orbit|cartpole DUMP PRED   -> TSV: scenario, steps checked, steps flagged, first flagged step, worst error/tolerance
+//   refjudge --domain orbit|cartpole DUMP PRED  (traffic: refjudge --domain traffic PRED)   -> TSV: scenario, steps checked, steps flagged, first flagged step, worst error/tolerance
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -21,6 +21,18 @@ int main(int argc, char** argv) {
     std::string a = argv[i];
     if (a == "--domain" && i + 1 < argc) domain = argv[++i]; else if (a == "--rel" && i + 1 < argc) F = std::atof(argv[++i]);
     else if (a == "--k" && i + 1 < argc) K = std::atof(argv[++i]); else if (dump.empty()) dump = a; else pred = a;
+  }
+  if (domain == "traffic") {
+    // traffic predictions are already judged by refrun (exact match on phase, queues and waits, best arrival pattern); this only aggregates per scenario
+    std::ifstream fq(dump);
+    struct T { int checked = 0, flagged = 0, first = -1; int worst = 0; };
+    std::map<long, T> tb;
+    long a, b; int sc;
+    while (fq >> a >> b >> sc) { T& t = tb[a]; ++t.checked; t.worst = std::max(t.worst, sc); if (sc > 0) { ++t.flagged; if (t.first < 0) t.first = static_cast<int>(b); } }
+    long tot = 0, fl = 0;
+    for (const auto& kv : tb) { std::printf("%ld\t%d\t%d\t%d\t%d\n", kv.first, kv.second.checked, kv.second.flagged, kv.second.first, kv.second.worst); tot += kv.second.checked; fl += kv.second.flagged; }
+    std::fprintf(stderr, "steps checked %ld, flagged %ld\n", tot, fl);
+    return 0;
   }
   std::ifstream fd(dump), fp(pred);
   std::string ld, lp;

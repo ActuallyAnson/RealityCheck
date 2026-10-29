@@ -10,13 +10,59 @@
 #include <string>
 #include <vector>
 
-#ifdef REF_ORBIT
+#if defined(REF_ORBIT)
 #include "eval/ref_orbit_decl.hpp"
+#elif defined(REF_TRAFFIC)
+#include "eval/ref_traffic_decl.hpp"
 #else
 #include "eval/ref_cartpole_decl.hpp"
 #endif
 #include REF_IMPL
 
+#ifdef REF_TRAFFIC
+// Traffic: the reference is called once per second. Arrivals during the second are not recorded, so the reference is called for every combination of "a vehicle arrived" on the
+// approaches that can receive one, and the combination whose prediction differs least from the recording is used (a step is flagged only if even the best one differs).
+// The phase and timer handed to the reference are the recorded ones (teacher forcing); the reference never sees the recorded state after the second.
+// Output per second: scenario, step, number of fields (of phase, 4 queues, 4 waits) in which the best prediction differs from the recording.
+int main() {
+  std::string line;
+  long cur = -1;
+  TrafficRefState st{};
+  while (std::getline(std::cin, line)) {
+    std::istringstream is(line);
+    long scen, k;
+    TrafficParams p{};
+    int mask, phase, timer, sec, q[4], w[4], em[4], fl[4], ped, aph, aq[4], aw[4];
+    is >> scen >> k >> p.green_ns >> p.green_ew >> p.yellow >> p.all_red >> p.max_green >> p.actuated >> mask >> phase >> timer >> sec;
+    for (int& v : q) is >> v;
+    for (int& v : w) is >> v;
+    for (int& v : em) is >> v;
+    for (int& v : fl) is >> v;
+    is >> ped >> aph;
+    for (int& v : aq) is >> v;
+    for (int& v : aw) is >> v;
+    if (scen != cur) { cur = scen; st = TrafficRefState{}; }
+    st.phase = phase; st.timer = timer;
+    int best = 99;
+    TrafficRefState best_state = st;
+    for (int sub = 0; sub < 16; ++sub) {
+      if ((sub & ~mask) != 0) continue;
+      TrafficSecond in{};
+      in.t = sec; in.ped_request = ped;
+      for (int a = 0; a < 4; ++a) { in.queue[a] = std::min(200, q[a] + ((sub >> a) & 1)); in.wait[a] = w[a]; in.emergency[a] = em[a]; in.detector_failed[a] = fl[a]; }
+      TrafficRefState trial = st;
+      TrafficRefOut out{};
+      ref_traffic_second(p, &trial, in, &out);
+      int diff = out.phase != aph;
+      for (int a = 0; a < 4; ++a) diff += (out.queue[a] != aq[a]) + (out.wait[a] != aw[a]);
+      if (diff < best) { best = diff; best_state = trial; }
+    }
+    st = best_state;
+    std::printf("%ld %ld %d\n", scen, k, best);
+  }
+  return 0;
+}
+#else
 int main() {
   std::string line;
   while (std::getline(std::cin, line)) {
@@ -59,3 +105,4 @@ int main() {
   }
   return 0;
 }
+#endif
