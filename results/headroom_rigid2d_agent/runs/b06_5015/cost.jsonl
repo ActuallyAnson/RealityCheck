@@ -1,0 +1,2 @@
+{"cached_tokens":2801,"call":1,"completion_tokens":149,"cost_usd":0.00111465,"label":"hunt","latency_ms":1463.6052920222282,"ok":true,"prompt_tokens":2850,"reasoning_tokens":77,"total_cost_usd":0.00111465}
+{"cached_tokens":2801,"call":2,"completion_tokens":189,"cost_usd":0.0014559,"label":"hunt","latency_ms":1503.6209999918938,"ok":true,"prompt_tokens":2987,"reasoning_tokens":116,"total_cost_usd":0.00257055}
