@@ -27,3 +27,5 @@
 All bugs with a fuzzer failure: agent valid report 79/83 [0.88-0.98], agent cause localized 44/83 [0.42-0.63], no-model localizer cause localized 35/83 [0.32-0.53]. Runs with a fuzzer failure: 83 of 110. Agent cost $1.9087.
 
 Paired comparison (same failures): agent localized and baseline did not 22 times, baseline and not agent 13 times; exact sign test p = 0.1755. Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): 60 runs, agent 36, baseline 25, agent-only 19, baseline-only 8, p = 0.0522.
+
+Stronger no-model baseline (the field that the most different edits fix): cause localized 32/83 [0.29-0.49]. Paired against the agent: agent-only 23, baseline-only 11, exact sign test p = 0.0576.

@@ -39,6 +39,9 @@ struct LocalizerResult {
   bool found = false;
   std::vector<std::string> paths;
   int removing = 0, removing_localized = 0;
+  // stronger baseline (declared in docs/PREREG_FINAL.md before the replication): the field that the most different edits fix (ties: the smaller edit)
+  bool found2 = false;
+  std::vector<std::string> paths2;
 };
 
 // No-model baseline: among single-field edits of the shrunk scenario that make the rule pass (same steps), the smallest relative edit.
@@ -49,7 +52,12 @@ LocalizerResult localize_no_model(const Scenario& shrunk, BugMask mask, const st
   std::vector<Json*> ls;
   leaves(probe, ls, "");
   double best = 1e300;
+  int top_count = 0;
+  double top_rel = 1e300;
   for (size_t li = 0; li < ls.size(); ++li) {
+    int count_here = 0;
+    double rel_here = 1e300;
+    std::vector<std::string> paths_here;
     std::vector<Json> alts;
     if (ls[li]->is_bool()) alts.push_back(!ls[li]->boolean());
     else {
@@ -75,8 +83,11 @@ LocalizerResult localize_no_model(const Scenario& shrunk, BugMask mask, const st
         if (counterfactual_localizes(truth, bug, paths)) ++out.removing_localized;
         double rel = ls[li]->is_bool() ? 1.0 : std::fabs(alt.num() - ls[li]->num()) / std::max(std::fabs(ls[li]->num()), 1e-9);
         if (rel < best) { best = rel; out.found = true; out.paths = paths; }
+        ++count_here;
+        if (rel < rel_here) { rel_here = rel; paths_here = paths; }
       } catch (const std::exception&) {}
     }
+    if (count_here > top_count || (count_here == top_count && count_here > 0 && rel_here < top_rel)) { top_count = count_here; top_rel = rel_here; out.found2 = true; out.paths2 = paths_here; }
   }
   return out;
 }
@@ -94,13 +105,13 @@ bool exists(const std::string& p) { return std::ifstream(p).good(); }
 int main(int argc, char** argv) {
   if (argc < 2) { std::cerr << "usage: rc_triage run|summarize --lock FILE --out DIR [--live] [--no-model-only] [--total-budget-usd N]\n"; return 2; }
   std::string vdirs, mode = argv[1], lock_path = "data/eval_lock_triage.json", out = "results/triage", config = "configs/hosted.json";
-  bool live = false, no_model_only = false;
+  bool live = false, no_model_only = false, annotate = false;
   double total_budget = 6.0, run_budget = 0.25;
   for (int i = 2; i < argc; ++i) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--lock") lock_path = val(); else if (a == "--out") out = val(); else if (a == "--live") live = true;
-    else if (a == "--no-model-only") no_model_only = true; else if (a == "--total-budget-usd") total_budget = std::atof(val().c_str());
+    else if (a == "--no-model-only") no_model_only = true; else if (a == "--annotate") annotate = true; else if (a == "--total-budget-usd") total_budget = std::atof(val().c_str());
     else if (a == "--run-budget-usd") run_budget = std::atof(val().c_str()); else if (a == "--config") config = val(); else if (a == "--dirs") vdirs = val();
     else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
@@ -126,8 +137,25 @@ int main(int argc, char** argv) {
       const std::string& domain = pb.first;
       const std::string& bug = pb.second;
       std::string key = bug + "_" + std::to_string(sd), f = out + "/runs/" + key + ".json", dir = out + "/runs/" + key;
-      if (exists(f)) continue;
+      if (exists(f) && !annotate) continue;
       BugMask mask = bug_bit(domain_bug_index(domain, bug));
+      if (annotate) {  // add the stronger-baseline fields to an existing row (same fuzzer seed and shrinker, so the same failure); recorded agent fields are untouched
+        if (!exists(f)) continue;
+        Json old = Json::parse(read_file(f));
+        if (old.str_or("status", "") != "triaged" || old.has("baseline2_localized")) continue;
+        Budget ab; ab.max_steps = max_steps; ab.max_wall_ms = 1e12; ab.domain = domain;
+        HuntResult ah = random_baseline(mask, 9000 + sd, ab);
+        if (!ah.found) continue;
+        ShrinkResult asr = shrink(ah.first_failure, mask, ah.first_violation.rule);
+        LocalizerResult alr = localize_no_model(asr.scenario, mask, ah.first_violation.rule, truth, bug);
+        Json bp2 = Json::array();
+        for (auto& p2 : alr.paths2) bp2.push(p2);
+        old["baseline2_paths"] = bp2;
+        old["baseline2_localized"] = alr.found2 && counterfactual_localizes(truth, bug, alr.paths2);
+        old["baseline_localized_recheck"] = alr.found && counterfactual_localizes(truth, bug, alr.paths);  // must equal baseline_localized (determinism check)
+        std::ofstream(f) << old.dump() << "\n";
+        continue;
+      }
       Json row = Json::object();
       row["bug"] = bug; row["domain"] = domain; row["seed"] = static_cast<double>(sd);
       Budget bud; bud.max_steps = max_steps; bud.max_wall_ms = 1e12; bud.domain = domain;
@@ -145,6 +173,8 @@ int main(int argc, char** argv) {
         for (auto& p : lr.paths) bp.push(p);
         row["baseline_found"] = lr.found; row["baseline_paths"] = bp;
         row["baseline_localized"] = lr.found && counterfactual_localizes(truth, bug, lr.paths);
+        { Json bp2 = Json::array(); for (auto& p2 : lr.paths2) bp2.push(p2); row["baseline2_paths"] = bp2; }
+        row["baseline2_localized"] = lr.found2 && counterfactual_localizes(truth, bug, lr.paths2);
         row["baseline_removing_edits"] = lr.removing; row["baseline_removing_localized"] = lr.removing_localized;
         row["shrunk_size"] = scenario_size(sr.scenario);
         if (live && !no_model_only) {
@@ -216,6 +246,7 @@ int main(int argc, char** argv) {
     std::string md = "| domain | bug | fuzzer found it | agent valid report | agent cause localized | no-model localizer cause localized | share of single-field removing edits that hit the cause |\n|---|---|---|---|---|---|---|\n";
     int T = 0, A = 0, AL = 0, BL = 0, N = 0;
     double cost = 0;
+    int BL2 = 0, a2_only = 0, b2_only = 0;
     int rem = 0, remloc = 0, a_only = 0, b_only = 0, s_n = 0, s_a = 0, s_b = 0, s_a_only = 0, s_b_only = 0;
     for (auto& pb : plan) {
       int n = 0, tri = 0, av = 0, al = 0, bl = 0, r = 0, rl = 0;
@@ -225,12 +256,13 @@ int main(int argc, char** argv) {
         Json row = Json::parse(read_file(f));
         ++n; cost += row.num_or("cost_usd", 0);
         if (row.str_or("status", "") != "triaged") continue;
-        ++tri; bl += row.bool_or("baseline_localized", false);
+        ++tri; bl += row.bool_or("baseline_localized", false); BL2 += row.bool_or("baseline2_localized", false);
         r += static_cast<int>(row.num_or("baseline_removing_edits", 0)); rl += static_cast<int>(row.num_or("baseline_removing_localized", 0));
         if (row.has("agent_report_valid")) { av += row.bool_or("agent_report_valid", false); al += row.bool_or("agent_localized", false); }
         if (row.has("agent_report_valid")) {
           bool a = row.bool_or("agent_localized", false), b = row.bool_or("baseline_localized", false);
           a_only += a && !b; b_only += b && !a;
+          if (row.has("baseline2_localized")) { bool b2 = row.bool_or("baseline2_localized", false); a2_only += a && !b2; b2_only += b2 && !a; }
           if (row.has("agent_paths") && row.at("agent_paths").arr().size() == 1) { ++s_n; s_a += a; s_b += b; s_a_only += a && !b; s_b_only += b && !a; }
         }
       }
@@ -254,6 +286,11 @@ int main(int argc, char** argv) {
                   "Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): %d runs, agent %d, baseline %d, agent-only %d, baseline-only %d, p = %.4f.\n",
                   a_only, b_only, sign_p(a_only, b_only), s_n, s_a, s_b, s_a_only, s_b_only, sign_p(s_a_only, s_b_only));
     md += ps;
+    if (BL2 > 0 || b2_only > 0 || a2_only > 0) {
+      std::snprintf(ps, sizeof ps, "\nStronger no-model baseline (the field that the most different edits fix): cause localized %s. Paired against the agent: agent-only %d, baseline-only %d, exact sign test p = %.4f.\n",
+                    wilson(BL2, T).c_str(), a2_only, b2_only, sign_p(a2_only, b2_only));
+      md += ps;
+    }
     std::ofstream(out + "/summary.md") << "<!-- generated by rc_triage summarize -->\n" << md;
     std::cout << md;
     return 0;

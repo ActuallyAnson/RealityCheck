@@ -1,0 +1,51 @@
+{
+  "_note": "LOCKED before any run (see docs/PREREG_FINAL.md, 2026-10-29). Replication of the triage evaluation on fresh failures: same bugs, same fuzzer budget, same agent configuration and scoring as data/eval_lock_triage.json, but fuzzer seeds 6-10 (draws 9006-9010), so the failing scenarios are new. Test: one-sided paired sign test of agent vs the no-model localizer (and vs the stronger baseline), alpha 0.05. The bugs themselves are not new.",
+  "version": "triage-2-replication",
+  "seeds": [
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "fuzzer_budget_steps": 300000,
+  "domains": {
+    "rigid2d": [
+      "b01",
+      "b02",
+      "b03",
+      "b04",
+      "b05",
+      "b06",
+      "b07",
+      "b08",
+      "b09",
+      "b10",
+      "b11",
+      "b12",
+      "b13"
+    ],
+    "orbit": [
+      "o01",
+      "o02",
+      "o03"
+    ],
+    "cartpole": [
+      "c01",
+      "c02",
+      "c03"
+    ],
+    "traffic": [
+      "t01",
+      "t02",
+      "t03"
+    ]
+  },
+  "agent": {
+    "version": 2,
+    "vision": true,
+    "max_turns": 25,
+    "reasoning_effort": "low",
+    "run_budget_usd": 0.25
+  }
+}
