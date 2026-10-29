@@ -26,6 +26,34 @@ of those a hand-written rule catches: 2, caught by the reference: 0
 silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 3
 mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
 unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## orbit draw2: 40 sampled mutants
+
+changed variants scored: 25; caught by the reference: 18
+of those a hand-written rule catches: 20, caught by the reference: 16
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 2
+mutants that crashed or timed out in the original evaluation: 6, flagged by the reference: 6
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 1
+## orbit draw2: model-planted variants
+
+changed variants scored: 9; caught by the reference: 4
+of those a hand-written rule catches: 7, caught by the reference: 3
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 2, caught by the reference: 1
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## cartpole draw2: 40 sampled mutants
+
+changed variants scored: 35; caught by the reference: 25
+of those a hand-written rule catches: 15, caught by the reference: 11
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 19, caught by the reference: 13
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## cartpole draw2: model-planted variants
+
+changed variants scored: 7; caught by the reference: 3
+of those a hand-written rule catches: 2, caught by the reference: 0
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 3
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
 ## traffic draw2: 40 sampled mutants (results/mutation/traffic/mutation.json)
 
 changed variants scored: 38; caught by the reference: 30
