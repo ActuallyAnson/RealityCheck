@@ -48,3 +48,18 @@ All targets: agent 5/100 (5.0%), random 17/300 (5.7%); agent rate higher on 1 bu
 
 **Result: negative.** The agent does not beat random testing where random is weak; its rate is the same as random's within noise. 93 of the 100 runs ended by exhausting the tool budget, almost always in one large `sample_random` call, which is the same random stream with the same budget, so equal detection is what the design implies. The earlier c02 results (agent 2 of 5 in two runs, random 0 of 5) were chance: pooled with this run the agent has 5 of 30 against 0 of 65 for random on c02, but the 20 fresh seeds alone show 1 of 20, and the earlier counts were not pre-registered.
 What the agent adds is not detection: it is the validated report and the cause localization (`docs/TRIAGE.md`). No claim in this repository says the agent finds bugs better than random testing.
+
+## Boundary-value sampling (model-free) on the same five bugs (2026-10-29, declared in `docs/PREREG_FINAL.md` before running)
+
+`rc_extreme` alternates plain random scenarios with scenarios whose numeric fields are pushed to the most extreme valid value; same 300000-step budget, 40 fresh seeds per bug and arm (seeds 8000..8039). Raw: `results/headroom/extreme.md`.
+
+| bug | random | extreme-mix |
+|---|---|---|
+| b02 | 1/40 | 1/40 |
+| b06 | 5/40 | 15/40 |
+| b09 | 11/40 | 5/40 |
+| b12 | 0/40 | 39/40 |
+| c02 | 0/40 | 2/40 |
+| pooled | 17/200 | 62/200 |
+
+Primary test (pooled, one-sided Fisher): p = 7.9e-9. **Read it carefully:** b12's trigger is a very small substep, which a boundary sampler reaches by construction (0/40 -> 39/40), and b06 improves; b09 gets worse and b02 does not move. Without b12 the pooled counts are 23 against 17 of 160 (p = 0.20). The seeded bugs were planted by me and several sit at parameter boundaries, so this is the favorable test for the method; it says boundary cases are cheap and sometimes decisive, not that every hard bug is a boundary bug. It also does not change the agent: the agent still uses plain random batches. Wiring `sample_extreme` into the agent and re-testing is the next step and has not been done.
