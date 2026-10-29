@@ -86,3 +86,15 @@ The same locked 83 failures, same prompts and procedure, on the hackathon's open
 **Valid reports 79 of 83; cause localized 44 of 83 against 35 of 83 for the no-model localizer; paired sign test p = 0.18 (one-field restriction: 36 against 25, p = 0.052).**
 Same direction as the hosted models (49 to 52 of 83), but not significant on its own, and the localization count is lower than every hosted model. One run per failure; the model is not seeded. The pricing field is a proxy, so the per-run budget caps are approximate.
 
+
+## Replication on fresh failures (pre-registered, 2026-10-29)
+
+The p = 0.006 above comes from one set of 83 failures; re-runs of the same failures (the other p-values) cannot be pooled with it. To test it properly, the lock `data/eval_lock_triage2.json` (committed before the run, `docs/PREREG_FINAL.md`) repeats the evaluation with fuzzer seeds 6 to 10: same 22 bugs, same fuzzer budget, same agent (muse-spark-1.3, agent v2 triage mode), same scoring and same no-model localizer, but **new failing scenarios** (the bugs are not new). A stronger no-model baseline (the field that the most different single-field edits fix) was declared before the run and also scored; on the original 83 it localizes 32 (worse than the original baseline's 35).
+
+| | failures | valid reports | agent localized | no-model localizer | stronger baseline |
+|---|---|---|---|---|---|
+| original (seeds 1-5) | 83 | 81 | 52 | 35 | 32 |
+| **replication (seeds 6-10)** | 88 | 85 | **53** | 37 | 37 |
+
+Replication, paired on the same failures: agent localized and the baseline did not 29 times, baseline and not agent 13; exact sign test p = 0.0195 two-sided (about 0.01 one-sided, pre-registered alpha 0.05 one-sided: **met**). Against the stronger baseline: 25 against 9, p = 0.009. Restricted to one-field counterfactuals: 44 against 31, p = 0.035. Cost $4.02. Pooling the two sets (independent failures): 171 failures, agent 105 (61%) against 72 (42%), discordant pairs 55 against 22.
+Limits, unchanged: the same 22 seeded bugs (planted by me) as before; localization is scored by hidden trigger fields, not by a human reading the explanation; one model family (the open-weight model gave 44 of 83, p = 0.18, same direction); the agent's rate fell a little (63% to 60%) and the baseline's rose (42% to 42%), so the margin is about 18 points, not 21. Raw: `results/triage_rep/`.

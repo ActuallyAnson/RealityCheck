@@ -22,5 +22,6 @@ sec "Traffic-signal domain: agent v1" results/traffic_agent/summary.md "Bugs t01
 sec "Traffic-signal domain: random baseline" results/traffic/baseline.md ""
 sec "Spec to rules: model-written invariants vs hand-written rules" results/spec_summary.md "One run per domain, 300 scenarios per bug; see docs/SPEC_RULES.md."
 sec "Triage: fuzzer finds, agent explains, against a no-model localizer" results/triage/summary.md "5 seeds x 22 bugs; see docs/TRIAGE.md."
+sec "Triage replication on fresh failures (fuzzer seeds 6-10)" results/triage_rep/summary.md "Locked before the run (data/eval_lock_triage2.json, docs/PREREG_FINAL.md); same bugs, new failing scenarios; see docs/TRIAGE.md."
 sec "Mutation benchmark: 160 mechanically sampled bugs" results/mutation/total.md "40 mutants per domain, 1000-scenario pool; see docs/MUTATION.md."
 echo "wrote $out"

@@ -1,0 +1,9 @@
+{"cached_tokens":0,"call":1,"completion_tokens":130,"cost_usd":0.00367125,"label":"hunt","latency_ms":1248.2078329920769,"ok":true,"prompt_tokens":2495,"reasoning_tokens":33,"total_cost_usd":0.00367125}
+{"cached_tokens":0,"call":2,"completion_tokens":103,"cost_usd":0.0040264999999999997,"label":"hunt","latency_ms":1319.7934579849243,"ok":true,"prompt_tokens":2871,"reasoning_tokens":17,"total_cost_usd":0.0076977499999999997}
+{"cached_tokens":753,"call":3,"completion_tokens":112,"cost_usd":0.0034226999999999999,"label":"hunt","latency_ms":1352.0388330221176,"ok":true,"prompt_tokens":3020,"reasoning_tokens":19,"total_cost_usd":0.01112045}
+{"cached_tokens":2801,"call":4,"completion_tokens":170,"cost_usd":0.0020039000000000003,"label":"hunt","latency_ms":1615.202584028244,"ok":true,"prompt_tokens":3490,"reasoning_tokens":68,"total_cost_usd":0.01312435}
+{"cached_tokens":3441,"call":5,"completion_tokens":116,"cost_usd":0.0016741500000000001,"label":"hunt","latency_ms":1957.5127500295639,"ok":true,"prompt_tokens":3973,"reasoning_tokens":21,"total_cost_usd":0.014798499999999999}
+{"cached_tokens":3953,"call":6,"completion_tokens":129,"cost_usd":0.0017611999999999999,"label":"hunt","latency_ms":1697.6412500143051,"ok":true,"prompt_tokens":4449,"reasoning_tokens":34,"total_cost_usd":0.0165597}
+{"cached_tokens":2929,"call":7,"completion_tokens":562,"cost_usd":0.0052941000000000004,"label":"hunt","latency_ms":2605.4583750367165,"ok":true,"prompt_tokens":4902,"reasoning_tokens":289,"total_cost_usd":0.0218538}
+{"cached_tokens":2417,"call":8,"completion_tokens":615,"cost_usd":0.0065525499999999999,"label":"hunt","latency_ms":3296.3895830512047,"ok":true,"prompt_tokens":5278,"reasoning_tokens":196,"total_cost_usd":0.02840635}
+{"cached_tokens":0,"call":9,"completion_tokens":511,"cost_usd":0.0043204999999999997,"label":"vision","latency_ms":4116.5598750114441,"ok":true,"prompt_tokens":1719,"reasoning_tokens":446,"total_cost_usd":0.032726850000000002}

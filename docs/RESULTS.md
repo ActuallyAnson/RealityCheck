@@ -257,6 +257,43 @@ Paired comparison (same failures): agent localized and baseline did not 26 times
 
 Stronger no-model baseline (the field that the most different edits fix): cause localized 32/83 [0.29-0.49]. Paired against the agent: agent-only 27, baseline-only 7, exact sign test p = 0.0008.
 
+## Triage replication on fresh failures (fuzzer seeds 6-10)
+
+Locked before the run (data/eval_lock_triage2.json, docs/PREREG_FINAL.md); same bugs, new failing scenarios; see docs/TRIAGE.md.
+
+Source: `results/triage_rep/summary.md`
+
+| domain | bug | fuzzer found it | agent valid report | agent cause localized | no-model localizer cause localized | share of single-field removing edits that hit the cause |
+|---|---|---|---|---|---|---|
+| cartpole | c01 | 5/5 | 5/5 | 5/5 | 2/5 | 29% |
+| cartpole | c02 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| cartpole | c03 | 5/5 | 5/5 | 0/5 | 1/5 | 29% |
+| orbit | o01 | 5/5 | 4/5 | 3/5 | 0/5 | 7% |
+| orbit | o02 | 5/5 | 4/5 | 1/5 | 2/5 | 16% |
+| orbit | o03 | 5/5 | 5/5 | 1/5 | 4/5 | 74% |
+| rigid2d | b01 | 5/5 | 5/5 | 4/5 | 2/5 | 32% |
+| rigid2d | b02 | 1/5 | 1/1 | 0/1 | 0/1 | 18% |
+| rigid2d | b03 | 5/5 | 4/5 | 0/5 | 1/5 | 19% |
+| rigid2d | b04 | 5/5 | 5/5 | 3/5 | 3/5 | 75% |
+| rigid2d | b05 | 5/5 | 5/5 | 4/5 | 0/5 | 12% |
+| rigid2d | b06 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| rigid2d | b07 | 5/5 | 5/5 | 1/5 | 0/5 | 0% |
+| rigid2d | b08 | 5/5 | 5/5 | 5/5 | 3/5 | 34% |
+| rigid2d | b09 | 3/5 | 3/3 | 3/3 | 2/3 | 47% |
+| rigid2d | b10 | 5/5 | 5/5 | 0/5 | 3/5 | 29% |
+| rigid2d | b11 | 5/5 | 5/5 | 5/5 | 4/5 | 87% |
+| rigid2d | b12 | 0/5 | 0/0 | 0/0 | 0/0 | - |
+| rigid2d | b13 | 4/5 | 4/4 | 3/4 | 3/4 | 56% |
+| traffic | t01 | 5/5 | 5/5 | 5/5 | 0/5 | 38% |
+| traffic | t02 | 5/5 | 5/5 | 5/5 | 5/5 | 84% |
+| traffic | t03 | 5/5 | 5/5 | 5/5 | 2/5 | 28% |
+
+All bugs with a fuzzer failure: agent valid report 85/88 [0.90-0.99], agent cause localized 53/88 [0.50-0.70], no-model localizer cause localized 37/88 [0.32-0.52]. Runs with a fuzzer failure: 88 of 110. Agent cost $4.0179.
+
+Paired comparison (same failures): agent localized and baseline did not 29 times, baseline and not agent 13 times; exact sign test p = 0.0195. Restricted to runs where the agent's counterfactual changed exactly one field (as the baseline's does): 66 runs, agent 44, baseline 31, agent-only 23, baseline-only 10, p = 0.0351.
+
+Stronger no-model baseline (the field that the most different edits fix): cause localized 37/88 [0.32-0.52]. Paired against the agent: agent-only 25, baseline-only 9, exact sign test p = 0.0090.
+
 ## Mutation benchmark: 160 mechanically sampled bugs
 
 40 mutants per domain, 1000-scenario pool; see docs/MUTATION.md.
