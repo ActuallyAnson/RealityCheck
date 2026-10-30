@@ -1,0 +1,3 @@
+softening 0, frame 100
+gate (IAS15 vs truth): scenarios 556 median 2.41283e-10
+scenarios run by all arms 557, dropped 43; scored (pre and post differ) 47: post closer 37, pre closer 10, ties 0; two-sided sign test p = 9.8e-05

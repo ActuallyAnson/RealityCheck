@@ -25,5 +25,5 @@ paste "$W/e_pre.txt" "$W/e_post.txt" "$W/e_pp.txt" | awk '
     m = (w < l ? w : l); t = w + l; c = 1; s = 0
     for (k = 0; k <= m; k++) { s += c; c = c * (t - k) / (k + 1) }
     p = (t ? 2 * s / 2 ^ t : 1); if (p > 1) p = 1
-    printf "scenarios run by all arms %d, dropped %d; scored (pre and post differ) %d: post closer %d, pre closer %d, ties %d; two-sided sign test p = %.3f\n", ok, dropped, n, w, l, n - w - l, p
+    printf "scenarios run by all arms %d, dropped %d; scored (pre and post differ) %d: post closer %d, pre closer %d, ties %d; two-sided sign test p = %.2g\n", ok, dropped, n, w, l, n - w - l, p
   }'
