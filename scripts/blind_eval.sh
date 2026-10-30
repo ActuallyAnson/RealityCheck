@@ -5,12 +5,12 @@
 set -e
 cd "$(dirname "$0")/.."
 DIR="$1"; DOM="$2"; N="${3:-500}"
-MAN=data/blind/manifest_$DOM.json
+MAN="${MANIFEST:-data/blind/manifest_$DOM.json}"
 [ -f "$MAN" ] || { echo "no manifest: run scripts/blind_lock.sh and commit it first"; exit 2; }
 set -- $(grep "^$DOM " results/mutation/mine_factors.tsv)
 MINE="--mine 300 --mine-seed 900000 --mine-bound $2 --mine-drift $3 --mine-step $4"
 INV=results/spec_$DOM/spec.json; [ -f "$INV" ] || INV=""
-W=/tmp/blind/$DOM; mkdir -p "$W"
+W="${BLIND_WORK:-/tmp/blind/$DOM}"; mkdir -p "$W"
 for f in "$DIR"/*.cpp; do
   b=$(basename "$f"); h=$(shasum -a 256 "$f" | cut -d' ' -f1)
   grep -q "\"name\":\"$b\",\"sha256\":\"$h\"" "$MAN" || { echo "REFUSED $b: not in the locked manifest (or changed since locking)"; exit 3; }

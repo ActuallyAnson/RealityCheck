@@ -5,7 +5,7 @@
 # usage: scripts/blind_lock.sh DIR DOMAIN
 set -e
 cd "$(dirname "$0")/.."
-DIR="$1"; DOM="$2"; OUT=data/blind/manifest_$DOM.json
+DIR="$1"; DOM="$2"; OUT="${MANIFEST:-data/blind/manifest_$DOM.json}"
 mkdir -p data/blind
 {
   printf '{"domain":"%s","locked_utc":"%s","repo_commit":"%s","files":[' "$DOM" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse --short HEAD)"
