@@ -1,0 +1,2 @@
+{"cached_tokens":128,"call":1,"completion_tokens":2714,"cost_usd":0.015689950000000001,"label":"plant","latency_ms":8357.5314589738846,"ok":true,"prompt_tokens":3437,"reasoning_tokens":26,"total_cost_usd":0.015689950000000001}
+{"cached_tokens":3328,"call":1,"completion_tokens":2999,"cost_usd":0.013381200000000001,"label":"plant","latency_ms":9129.3006250858307,"ok":true,"prompt_tokens":3437,"reasoning_tokens":440,"total_cost_usd":0.013381200000000001}

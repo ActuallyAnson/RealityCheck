@@ -28,3 +28,19 @@ Protocol as above: the 39 variants (one refused edit set in cart-pole) were hash
 - **Limits, plainly.** The planter is a model of the same family as the tester, not an independent person. The hand-written rules and the miner were written or tuned by me, so this set is blind to the author's choice of bugs, not to the author's choice of oracles. A model planter favours simple edits (a flipped sign, a swapped argument, a constant) and some of its "bugs" are in serialization or validation code that does not change the physics.
   Five variants showed no behavior change in 500 scenarios (equivalent or too rare to see here); they are counted in the first column only. This run evaluates the hand-written rules and the mined invariants; model-written invariants and metamorphic relations were not run on this set.
 - Raw rows: `results/blind/eval_*.txt`.
+
+## A second model-planted set (planter: the open-weight model)
+
+Declared in `docs/PREREG_FINAL.md` before planting. Planter `meta-models/muse-spark-open-1026` (Baseten), which is neither the tester model nor the first set's planter; 30 bugs requested per simulator, shown only the source; cost $0.06 in total. 119 variants were applied (one rigid2d edit refused; the orbit planting call failed to parse once and was repeated, a procedure retry, not a selection by outcome). Manifests (`data/blind/manifest2_*.json`, commit `7788291`) were committed before any oracle ran; the planter's descriptions (`data/blind/planted2/*/planted.json`) were opened only after the results. `scripts/blind_eval.sh` (500 scenarios, seeds 700000+), `R=results/blind2 scripts/blind_summary.sh`:
+
+| domain | variants | changed behavior | a hand-written rule fires | a mined invariant fires | changed, no hand-written rule fires | of those, mined invariant fires |
+|---|---|---|---|---|---|---|
+| orbit | 30 | 17 | 12 | 2 | 5 | 1 |
+| cartpole | 30 | 22 | 6 | 0 | 16 | 0 |
+| traffic | 30 | 18 | 3 | 0 | 15 | 0 |
+| rigid2d | 26 | 20 | 11 | 3 | 9 | 0 |
+| total | 116 | 77 | 32 | 5 | 45 | 1 |
+
+- **Same finding with a different planter and three times the bugs.** The hand-written rules fire on 32 of the 77 variants that change behavior (42%; 41% on the first set, 43% on the author-sampled benchmark); 45 changed behavior and no rule fires (58%); mined invariants add one. The oracle gap is not an artifact of who chose the bugs.
+- **Counts.** 116 of the 119 variants have a result: three rigid2d variants produced no evaluation line (I did not investigate them; they are not counted as caught or missed). 39 changed nothing in 500 scenarios (equivalent, or too rare to see here).
+- **Not run on this set:** the reference oracle, model-written invariants and metamorphic relations. So this table measures the rules and the miner only, as the first one did. The planter is a model of the same family as the tester, not an independent person; a human-planted set still does not exist.
