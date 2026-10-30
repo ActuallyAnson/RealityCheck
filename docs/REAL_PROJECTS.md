@@ -22,6 +22,18 @@ A second oracle was tried on the same scenarios, declared before scoring (`resul
 
 **Confirmation on 600 new scenarios (declared first, `docs/PREREG_FINAL.md`; `results/realproj/rebound_trace_truth_seed12.txt`).** Seed 12, same generator, softening 0. Gate passed (IAS15 vs truth median 2.4e-10). 43 of 600 scenarios were dropped (a run failed or exceeded 120 s); of the 557 left, 47 differ between pre and post at frame 100, and the fixed build is closer to truth in 37 and the buggy one in 10 (two-sided exact sign test p = 9.8e-5). This meets the declared success rule. Pooled with seed 11 (secondary): 48 against 15. **So a truth oracle can tell this fixed build from the buggy one, once the truth uses the same physics the integrator solves.** Disclosed: the first run of the confirmation hung (an IAS15 run on an unsoftened close encounter, about 6 hours) because `scripts/rebound_truth.sh` did not yet enforce the 120 s limit I had declared; I stopped it, made the script enforce the limit, and reran from scratch; the TRACE outputs were unaffected. Limits: one fix, one scenario family (crowded giant planets), softening 0, and the scenarios are ones I designed so that the fix is reached. It shows that a reference oracle can work on a real engine fix, not that RealityCheck finds such bugs on its own: the reference here is a high-precision integrator I supplied, not something the tool built.
 
+## Box2D restitution commits against an analytic truth (declared first, `docs/PREREG_FINAL.md`)
+
+For a ball dropped on the floor the right answer is known: free fall, then a bounce with restitution e (only above Box2D's 1 m/s restitution threshold). `examples/external/ball_truth.cpp` computes it; `scripts/box2d_ball_truth.sh` runs two builds on 1000 scenarios (seed 21) and scores the RMS error of the ball's height (`results/realproj/box2d_ball_truth.txt`). Gate passed (median error 0.07 to 0.09 m, limit 0.2). Results, parent build A vs commit build B:
+
+| commit | B closer to truth | A closer | median error A to B | against the declared rule (p < 0.025, post closer) |
+|---|---|---|---|---|
+| 0217969 "Deferred restitution" | 68 | 932 | 0.0741 to 0.0934 | not met: the commit moved **away** from the truth (p = 8e-195) |
+| 25b971d "Restitution again" (reverted to the post-solve solver) | 969 | 31 | 0.0934 to 0.0718 | met (p = 2e-242) |
+| fb8b81f tunneling fix (sanity run, before declaration) | identical output in all 1000 | | 0.0741 | not reached by this scenario family |
+
+Reading: on this one property, a truth oracle sees what the rule counts could not (the rule counts rose and fell with no direction). The September commit undid the August one's loss and ended slightly better than before it (0.0718 vs 0.0741). Caveats: the truth is a frictionless single-ball bounce I wrote, so "closer" means closer to the idealized bounce, not to what the Box2D authors intended; deferred restitution may trade this accuracy for something else (for example stacking behavior) that this test does not measure. The 25b971d commit message says it reverted to the post-solve restitution solver, which is consistent with the reading, but I did not check the authors' reasons. One property and one scenario family; it does not generalize to Box2D as a whole.
+
 ## What it shows, and what it does not
 
 - **The rule oracle cannot tell a fixed build from a buggy one** on the one real fix it can reach (Box2D tunneling): the counts are within noise. The declared rules are coarse, with tolerances written for the simulators in this repository. For the restitution commits the counts move but not toward "fixed", because those commits redesigned the behavior.

@@ -1,0 +1,3 @@
+Box2D ball-drop truth oracle (scripts/box2d_ball_truth.sh, seed 21, 1000 scenarios, substeps 4, continuous on). A = parent build, B = commit build.
+0217969 ("Deferred restitution (#1094)"): scenarios run by both builds 1000 (dropped 0); builds differ in 1000; B closer to truth 68, A closer 932, ties 0; two-sided sign test p = 7.9e-195; median RMS height error A 0.0741, B 0.0934
+25b971d ("Restitution again (#1113)"): scenarios run by both builds 1000 (dropped 0); builds differ in 1000; B closer to truth 969, A closer 31, ties 0; two-sided sign test p = 1.5e-242; median RMS height error A 0.0934, B 0.0718
