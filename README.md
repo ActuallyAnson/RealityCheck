@@ -1,14 +1,18 @@
 # RealityCheck
 
-**A verification harness for simulations, where a model proposes and a program decides.** A model hunts for scenarios in which a
-simulation breaks its own declared rules and explains the ones it finds. A deterministic engine, not the model, decides what counts
-as a violation, shrinks each failure to a minimal scenario, checks every cited step and value against the recording, and exports a
-regression test. Built solo for the Meta Global AI Developer Hackathon (Indie Developer track, "Push the Frontier") on the Meta
-Model API (Muse Spark).
+**A C++ verification harness for simulations: a model proposes scenarios and code decides whether they violate declared rules.**
+The engine checks every reported step and value against the recorded run, minimizes failures, and exports regression tests.
+Built for the Meta Global AI Developer Hackathon (Indie Developer track) using Muse Spark.
 
-Simulations fail silently: a robot controller that exceeds its force limit once in a million runs, an integrator that drifts only
-with five bodies and a coarse step. Nobody writes that test. The design rule here is simple: **the model never gets to be the
-judge**. It proposes; code verifies; and every claim in this README is backed by a locked evaluation, with the negative results kept.
+## Strongest evidence
+
+The replicated triage result is the clearest positive finding: on new failing scenarios from the same author-planted bugs, the
+agent localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02). On five author-selected bugs where random testing
+struggles, the boundary-enabled agent found 45/100 versus 17/300 random runs; without the dominant b12 bug, the comparison is
+25/80 versus 17/240 (p=3e-7). Limits: these are planted bugs, one model family, and the sampler-only baseline found 62/200.
+Real-engine historical fixes remain a negative result: the oracles do not distinguish fixed from buggy builds.
+
+Full methods, caveats, negative findings, and generated tables follow below. `scripts/gen_results.sh` writes `docs/RESULTS.md`.
 
 ```
         model (Muse Spark, tool calls, vision)             deterministic, no model
