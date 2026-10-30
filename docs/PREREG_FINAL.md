@@ -2,6 +2,12 @@
 
 Everything below is fixed before the corresponding run. Anything decided after seeing results is labelled "post hoc" in the doc that reports it.
 
+## REBOUND TRACE truth oracle, rerun without softening (declared before running)
+
+Diagnostic already run (no model, `examples/external/frame_rms.cpp`, 200 scenarios of `results/realproj/rebound_trace_seed11_req.jsonl`, frame 100): against the Boost.odeint Bulirsch-Stoer truth, REBOUND IAS15 has median RMS position error 6e-12 and REBOUND BS 3e-10, so the truth model is right; leapfrog (which applies the softened force) 0.30; WHFast 1.52; TRACE pre-fix and post-fix 1.14. WHFast and TRACE take Kepler steps that do not include the softening, so with softening 0.3 they solve a different problem than the truth. The earlier "3 vs 7, p=0.34" result therefore compared both builds against a reference they cannot match; it stays reported, but it was not a fair test of the fix.
+
+Rerun: same 200 scenarios, softening 0 for the truth and for both builds (`RC_SOFTENING=0`). Gate first: REBOUND IAS15 must agree with the truth at frame 100 with median RMS error below 1e-6, otherwise the truth is invalid and the rerun is void. Truth runs that do not finish within 120 s per scenario are dropped for all arms and counted. Same metric, same scoring rule, same verdict as the earlier oracle (scored where pre and post differ at frame 100; two-sided paired sign test; the oracle distinguishes the fix if p < 0.05 with post closer in the majority). Report the counts whatever they are.
+
 ## Finding that shapes the plan (computed, no model: `results/randbase/table.md`)
 Random testing with the hand-written rules already finds almost every mutant the rules can see: at a budget of 30 scenarios only 4 of 160 sampled mutants have a random-testing hit probability below 0.5. So the mutation benchmark has no room for a search agent to beat random testing. The unsolved part is the oracle gap (behavior changes that no rule sees), not search.
 

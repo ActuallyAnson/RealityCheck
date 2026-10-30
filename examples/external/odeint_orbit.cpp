@@ -17,7 +17,7 @@ using state_t = std::vector<double>;  // x0,y0,... then vx0,vy0,...
 int main(int argc, char** argv) {
   const std::string stepper = argc > 1 ? argv[1] : "rk4";
   const double param = argc > 2 ? std::atof(argv[2]) : (stepper == "dopri5" || stepper == "bs" ? 1e-6 : 0.004);
-  const double eps2 = 0.3 * 0.3;
+  const double soft = std::getenv("RC_SOFTENING") ? std::atof(std::getenv("RC_SOFTENING")) : 0.3, eps2 = soft * soft;
   std::string line;
   while (std::getline(std::cin, line)) {
     Json out = Json::object();

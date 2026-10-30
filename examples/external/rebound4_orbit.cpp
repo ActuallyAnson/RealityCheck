@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 #endif
       else throw std::runtime_error("unknown integrator " + integ);
       r->G = G;
-      r->softening = 0.3;
+      r->softening = std::getenv("RC_SOFTENING") ? std::atof(std::getenv("RC_SOFTENING")) : 0.3;
       r->dt = dt / sub;
       r->exact_finish_time = 1;
       for (const auto& o : sc.at("bodies").arr()) {
