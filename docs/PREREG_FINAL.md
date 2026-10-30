@@ -8,6 +8,10 @@ Diagnostic already run (no model, `examples/external/frame_rms.cpp`, 200 scenari
 
 Rerun: same 200 scenarios, softening 0 for the truth and for both builds (`RC_SOFTENING=0`). Gate first: REBOUND IAS15 must agree with the truth at frame 100 with median RMS error below 1e-6, otherwise the truth is invalid and the rerun is void. Truth runs that do not finish within 120 s per scenario are dropped for all arms and counted. Same metric, same scoring rule, same verdict as the earlier oracle (scored where pre and post differ at frame 100; two-sided paired sign test; the oracle distinguishes the fix if p < 0.05 with post closer in the majority). Report the counts whatever they are.
 
+## REBOUND TRACE truth oracle, confirmation on new scenarios (declared before running)
+
+The unsoftened rerun on seed 11 gave 11 vs 5 of 16 (p=0.21), which suggests but does not show an effect. Confirmation: 600 new scenarios from `examples/external/gen_crowded.cpp` (seed 12, same distribution as seed 11), softening 0, same builds, same gate (IAS15 vs truth median RMS error below 1e-6 at frame 100), same dropping rule, same metric. Primary test: two-sided exact sign test on the scored scenarios of this new set only, alpha 0.05; the fix is "distinguished" if p < 0.05 with the fixed build closer in the majority. The seed-11 result is not pooled into the primary test; a pooled count is reported as secondary. No other scenario set will be tried.
+
 ## Finding that shapes the plan (computed, no model: `results/randbase/table.md`)
 Random testing with the hand-written rules already finds almost every mutant the rules can see: at a budget of 30 scenarios only 4 of 160 sampled mutants have a random-testing hit probability below 0.5. So the mutation benchmark has no room for a search agent to beat random testing. The unsolved part is the oracle gap (behavior changes that no rule sees), not search.
 
