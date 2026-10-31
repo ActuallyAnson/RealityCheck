@@ -66,3 +66,16 @@ The one planted variant not caught (p09) stops the run after a few hundred secon
 **Totals across the three covered domains** (`scripts/refcheck_score.sh`, `results/reforacle/summary.txt`): the reference catches **38 of the 55 sampled mutants that nothing else sees** (orbit 2 of 5, cart-pole 13 of 19, traffic 23 of 31), so the share of changed mutants caught by some oracle goes from 58 of 122 (48%) to **96 of 122 (79%)** (pre-registered success bar: 70%). On the model-planted held-out sets it catches 12 of the 16 silent variants (orbit 1 of 2, cart-pole 3 of 5, traffic 8 of 9). Rigid bodies are not covered, so 9 of the 122 changed mutants there stay silent, plus 8 in traffic, 6 in cart-pole and 3 in orbit.
 
 **How much to believe it.** The 70% bar was met, but read the number correctly: (1) traffic's catch rate depends on a specification I wrote and made precise; an unspecified behavior cannot be checked this way, and a real project has to supply that specification. (2) The changed-mutant count includes some harmless numeric changes nobody has triaged, so 79% is "caught by some oracle", not "79% of real bugs". (3) Three of the four domains' references come from one or two draws of one model. (4) I wrote the spec after reading the simulator, so the specification is faithful to the code by construction; what the oracle tests is whether the *implementation of a given spec* deviates from it, which is the situation of a team with a written spec and a second implementation, not of a team with neither.
+
+## Second blind set (planter: the open-weight model; declared in `docs/PREREG_FINAL.md` before running)
+
+The stored reference programs (orbit and cart-pole draw 1, traffic draw 2; none regenerated) and the unchanged judge, on the 90 orbit, cart-pole and traffic variants of the second blind set (`docs/BLIND.md`, `results/blind2`); per-variant outputs `results/reforacle/blind2`, scores `results/reforacle/blind2/score.txt`. rigid2d has no reference and is not scored.
+
+| domain | changed behavior | caught by the reference | silent to rules and mined invariants | of those, caught by the reference | false alarms |
+|---|---|---|---|---|---|
+| orbit | 17 | 9 | 5 | 1 | 0 |
+| cart-pole | 22 | 8 | 16 | 7 | 0 |
+| traffic | 18 | 16 | 15 | 13 | 0 |
+| **three domains** | 57 | 33 | 36 | **21** | 0 |
+
+The reference recovers 21 of the 36 variants no rule or mined invariant sees (58%; 69% on the author-sampled mutants, so a little lower here). Counting a hand-written rule or the reference, 42 of the 57 changed variants (74%) are caught, against 79% on the mutant benchmark. Limits: the traffic reference needs a precise written spec (the same caveat as before), model-written invariants and metamorphic relations were not run on this set, and the planter is a model of the same family as the tester, not a person.

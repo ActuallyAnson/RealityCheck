@@ -1,0 +1,21 @@
+## orbit: second blind set (results/blind2/eval_orbit.txt)
+
+changed variants scored: 17; caught by the reference: 9
+of those a hand-written rule catches: 12, caught by the reference: 8
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 5, caught by the reference: 1
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## cartpole: second blind set (results/blind2/eval_cartpole.txt)
+
+changed variants scored: 22; caught by the reference: 8
+of those a hand-written rule catches: 6, caught by the reference: 1
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 16, caught by the reference: 7
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
+## traffic: second blind set (results/blind2/eval_traffic.txt)
+
+changed variants scored: 18; caught by the reference: 16
+of those a hand-written rule catches: 3, caught by the reference: 3
+silent to every existing oracle (rules; for mutants also invariants and metamorphic): 15, caught by the reference: 13
+mutants that crashed or timed out in the original evaluation: 0, flagged by the reference: 0
+unchanged variants flagged (false alarms): 0; variants not scored (build failed, timeout or no output): 0
