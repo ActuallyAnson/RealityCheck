@@ -61,12 +61,12 @@ struct Finding {
   Scenario example;
 };
 
-std::string describe(const GenericModel& m, const Scenario& sc) {
+std::string describe(const GenericModel& m, const Scenario& sc, bool all = false) {
   std::ostringstream o;
   o << "steps=" << sc.steps;
   for (const GenericParam& g : m.params) {
     const double v = sc.gen.params.count(g.name) ? sc.gen.params.at(g.name) : g.def;
-    if (std::fabs(v - g.def) < 1e-12 * (1 + std::fabs(g.def))) continue;
+    if (!all && std::fabs(v - g.def) < 1e-12 * (1 + std::fabs(g.def))) continue;
     if (g.type == "choice") o << ", " << g.name << "=" << g.choices[static_cast<size_t>(v)];
     else o << ", " << g.name << "=" << v;
   }
@@ -146,10 +146,9 @@ int main(int argc, char** argv) {
     };
 
     std::vector<Signals> pool;
-    int pool_failed = 0;
     for (int i = 0; i < pool_n; ++i) {
       Signals sg; std::string err;
-      if (run(scenario(900000 + static_cast<uint64_t>(i), false), &sg, &err)) pool.push_back(sg); else ++pool_failed;
+      if (run(scenario(900000 + static_cast<uint64_t>(i), false), &sg, &err)) pool.push_back(sg);
     }
     if (pool.empty()) throw std::runtime_error("every probe run failed; check the program on a default scenario");
     std::vector<Invariant> inv = mine_invariants(pool);
@@ -192,8 +191,12 @@ int main(int argc, char** argv) {
     std::ostringstream rep;
     rep << "# Scan of " << name << "\n\n" << n << " scenarios (half pushed to parameter boundaries), " << pool.size() << " normal runs mined, " << inv.size() << " candidate invariants.\n\n";
     if (found.empty()) rep << "No finding. This is not a certificate: a bug present in every run looks normal to learned invariants (docs/MINING.md). Add your own rules to `card.json` (docs/GENERIC_DOMAIN.md) or review the learned invariants.\n";
-    else rep << "| finding | scenarios | smallest example (non-default values) |\n|---|---|---|\n";
+    else rep << "| finding | scenarios | smallest example (values left at their default are omitted) |\n|---|---|---|\n";
     for (const auto& kv : found) rep << "| " << kv.first << " | " << kv.second.count << " of " << n << " | " << describe(m, kv.second.example) << " |\n";
+    if (!found.empty()) {
+      rep << "\nFull parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):\n\n";
+      for (const auto& kv : found) rep << "- " << kv.first << ": " << describe(m, kv.second.example, true) << "\n";
+    }
     rep << "\nRe-run with the saved card: `RC_MODEL_CARD=" << out << "/card.json rc_hunt --engine card --domain generic --scenarios 1000`; add `rc_agent --live` for a model-driven hunt or `rc_spec --live` for model-written rules.\n"
         << "Learned invariants are candidates, not specifications: one that fires may be a bug or an unusual but valid input; only you can tell.\n";
     std::ofstream(out + "/report.md") << rep.str();
