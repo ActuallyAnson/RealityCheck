@@ -4,18 +4,22 @@
 The engine checks every reported step and value against the recorded run, minimizes failures, and exports regression tests.
 Built for the Meta Global AI Developer Hackathon (Indie Developer track) using Muse Spark.
 
-## Strongest evidence
+## Try it in one minute (no key, no model)
 
-The replicated triage result is the clearest positive finding: on new failing scenarios from the same author-planted bugs, the
-agent localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02). On five author-selected bugs where random testing
-struggles, the boundary-enabled agent found 45/100 versus 17/300 random runs; without the dominant b12 bug, the comparison is
-25/80 versus 17/240 (p=3e-7). Limits: these are planted bugs, one model family, and the sampler-only baseline found 62/200.
-The oracle gap is the central finding: across two model-planted blind sets (39 and 116 variants, locked by hash before any check ran) the hand-written
-rules fire on only 41-42% of the variants that change behavior, and a reference written by a model from the description alone recovers 58-69%
-of the rest (0 false alarms; weakest where the description is vague). On real engines the declared rules cannot tell a fixed build from a buggy one;
-a precise truth can, for the cases tried (REBOUND TRACE: closer to truth in 37 of 47 differing scenarios; two Box2D restitution commits), with the
-caveats below. The tool also surfaced a reproducible hang in current REBOUND (IAS15 timestep collapse on a symmetric figure-eight), not yet reported upstream.
-No person has planted bugs or used the tool yet.
+    cmake -S . -B build && cmake --build build -j
+    ./build/rc_scan --cmd ./your_simulator --param gain:0.1:8:log --param count:1:30:int --choice mode:fast,safe --out scan_out
+
+Point `rc_scan` at any program that reads one JSON line and prints one JSON line (`docs/PROTOCOL.md`). It learns what normal looks like from the program's own runs, hunts ordinary and boundary scenarios, shrinks each finding, says what the finding depends on, and writes `report.md` and a plot page `report.html` (`docs/SCAN.md`).
+
+## What it found, and what it did not
+
+- **Real, reproducible findings on code we did not write** (standalone repros, none reported upstream yet, either may already be known): a hang in REBOUND's default IAS15 integrator on a near-symmetric three-body start (`docs/EXTERNAL_ENGINE.md`), and a hang in Chipmunk2D's stock Release build, which adds `-ffast-math` (`docs/SCAN.md`).
+- **No bug** in Box2D v3, Box2D 2.4.1 or SUNDIALS CVODE; a handful of false alarms; and the REBOUND hang itself was *missed* by the generic scanner (it needs an exactly symmetric start).
+- **The oracle gap:** across two model-planted blind sets (39 and 116 variants, locked by hash before any check ran) the hand-written rules fire on only 41-42% of the variants that change behavior; a reference written by a model from the description alone recovers 58-69% of the rest, with 0 false alarms (`docs/BLIND.md`, `docs/REFERENCE_ORACLE.md`).
+- **Model-driven hunting beats random on planted bugs:** triage localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02); on five hard seeded bugs the boundary-enabled agent found 45/100 versus 17/300 random runs (without the dominant bug, 25/80 versus 17/240), while a model-free boundary sampler alone found 62/200.
+- **Real-engine truth checks:** against a precise truth, a REBOUND TRACE fix is closer in 37 of 47 differing scenarios; two Box2D restitution commits move in opposite directions (`docs/REAL_PROJECTS.md`).
+
+**Limits, plainly:** every planted bug was written by me or by a model of the same family; one model family; small samples; no person has planted bugs or used the tool yet.
 
 Full methods, caveats, negative findings, and generated tables follow below. `scripts/gen_results.sh` writes `docs/RESULTS.md`.
 
@@ -83,13 +87,6 @@ Costs: about $0.04 to $0.09 per agent run; about $35 of API spend in total, capp
 - No human-planted blind bug set exists yet (`docs/BLIND.md` is the mechanism and needs a second person). A model-planted set of 39 variants, locked by hash before any oracle ran, gives the same picture as the author-sampled mutants: hand-written rules fire on 14 of the 34 that change behavior, the miner on none of the other 20.
 - Differential testing works when two engines are numerically close; for contact dynamics it mostly reports chaos.
 - The wall-clock budget of the random baseline is not applied to the agent; the step budgets are identical.
-
-## Try it on your own simulator (no key, no model)
-
-    cmake -S . -B build && cmake --build build -j
-    ./build/rc_scan --cmd ./mysim --param gain:0.1:8:log --param capacity:5:60:int --choice mode:fast,safe --out scan_out
-
-Give the range of each parameter; the tool probes your program for its signals, learns what normal looks like from its own runs, hunts ordinary and boundary scenarios, and writes a minimized report with a "what it depends on" line and an HTML page with plots (`docs/SCAN.md`). Tried on real Box2D and REBOUND, it found no bug in either, gave one false positive, and missed the known IAS15 hang (`results/scan/`; reported in full in `docs/SCAN.md`). Your program reads one JSON line per request and prints one back (`docs/PROTOCOL.md`).
 
 ## Build and run
 
