@@ -8,6 +8,7 @@ O=$(mktemp -d)
 rc=$?
 [ $rc -eq 1 ] || { echo "FAIL: expected exit 1 (findings), got $rc"; cat "$O/log.txt"; exit 1; }
 grep -q "| finding |" "$O/report.md" || { echo "FAIL: no findings table"; exit 1; }
+grep -q "It depends on" "$O/report.md" && grep -q "<svg" "$O/report.html" || { echo "FAIL: no reason line or no HTML plot"; exit 1; }
 "$B/rc_scan" --cmd "true" --param x:0:1 --out "$O/none" > "$O/none.txt" 2>&1
 [ $? -eq 2 ] && grep -q "printed nothing" "$O/none.txt" || { echo "FAIL: the empty program was not rejected clearly"; cat "$O/none.txt"; exit 1; }
 echo "scan selftest ok"

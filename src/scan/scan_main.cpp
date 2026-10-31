@@ -59,7 +59,48 @@ struct Finding {
   std::string kind, detail;
   int count = 0;
   Scenario example;
+  std::string why;                // plain-language reason computed for the smallest example
+  Signals sig;                    // signals of the smallest example (for the HTML plot)
+  std::string plot_signal;        // signal the finding is about, when it is about one
+  bool has_limit = false;
+  double limit = 0;
+  int at_step = -1;
 };
+
+std::string num(double v) { std::ostringstream o; o << v; return o.str(); }
+
+std::string html_escape(const std::string& t) {
+  std::string o;
+  for (char c : t) { if (c == '&') o += "&amp;"; else if (c == '<') o += "&lt;"; else if (c == '>') o += "&gt;"; else if (c == '"') o += "&quot;"; else o += c; }
+  return o;
+}
+
+// One small SVG line chart of a signal; the limit (when given) is a dashed line and the step where a finding starts is a vertical mark.
+std::string svg_plot(const std::string& name, const std::vector<double>& y, bool hot, bool has_limit, double limit, int at_step) {
+  const double W = 360, H = 120, L = 8, R = 8, T = 18, B = 8;
+  double lo = 1e300, hi = -1e300;
+  for (double v : y) if (std::isfinite(v)) { lo = std::min(lo, v); hi = std::max(hi, v); }
+  if (has_limit && std::isfinite(limit)) { lo = std::min(lo, limit); hi = std::max(hi, limit); }
+  if (!(lo <= hi)) { lo = 0; hi = 1; }
+  if (hi - lo < 1e-12) { lo -= 0.5; hi += 0.5; }
+  const size_t n = y.size();
+  auto X = [&](size_t i) { return L + (W - L - R) * (n > 1 ? static_cast<double>(i) / static_cast<double>(n - 1) : 0.0); };
+  auto Y = [&](double v) { return T + (H - T - B) * (1.0 - (v - lo) / (hi - lo)); };
+  std::ostringstream o;
+  o << "<svg viewBox=\"0 0 " << W << " " << H << "\" role=\"img\" aria-label=\"" << html_escape(name) << "\"><text x=\"" << L << "\" y=\"12\" class=\"lab" << (hot ? " hot" : "") << "\">" << html_escape(name)
+    << "  [" << num(lo) << " .. " << num(hi) << "]</text>";
+  if (has_limit && std::isfinite(limit)) o << "<line x1=\"" << L << "\" x2=\"" << W - R << "\" y1=\"" << Y(limit) << "\" y2=\"" << Y(limit) << "\" class=\"lim\"/>";
+  if (at_step >= 0 && hot) o << "<line x1=\"" << X(static_cast<size_t>(at_step)) << "\" x2=\"" << X(static_cast<size_t>(at_step)) << "\" y1=\"" << T << "\" y2=\"" << H - B << "\" class=\"mark\"/>";
+  std::string pts;
+  bool open = false;
+  for (size_t i = 0; i < n; ++i) {
+    if (!std::isfinite(y[i])) { if (open) { o << "<polyline class=\"ln" << (hot ? " hot" : "") << "\" points=\"" << pts << "\"/>"; pts.clear(); open = false; } continue; }
+    pts += num(X(i)) + "," + num(Y(y[i])) + " "; open = true;
+  }
+  if (open) o << "<polyline class=\"ln" << (hot ? " hot" : "") << "\" points=\"" << pts << "\"/>";
+  o << "</svg>";
+  return o.str();
+}
 
 std::string describe(const GenericModel& m, const Scenario& sc, bool all = false) {
   std::ostringstream o;
@@ -186,6 +227,32 @@ int main(int argc, char** argv) {
       for (const GenericParam& g : m.params) { Scenario t = sc; t.gen.params[g.name] = g.def; if (still(t)) sc = t; }
       { Scenario t = sc; t.steps = std::max(m.steps_min, sc.steps / 2); if (t.steps != sc.steps && still(t)) sc = t; }
       kv.second.example = sc;
+      // Why: which parameters this finding depends on (tried at the range ends, the default, a choice's every option and the current value), and the final detail.
+      std::vector<std::string> dep;
+      for (const GenericParam& g : m.params) {
+        std::vector<double> cands;
+        if (g.type == "choice") for (size_t c = 0; c < g.choices.size(); ++c) cands.push_back(static_cast<double>(c));
+        else cands = {g.min, g.def, g.max, sc.gen.params.count(g.name) ? sc.gen.params.at(g.name) : g.def};
+        std::vector<double> uniq;
+        for (double c : cands) { bool seen = false; for (double u : uniq) if (std::fabs(u - c) < 1e-12 * (1 + std::fabs(c))) seen = true; if (!seen) uniq.push_back(c); }
+        std::string holds, gone;
+        for (double c : uniq) {
+          Scenario t = sc; t.gen.params[g.name] = c;
+          const std::string label = g.type == "choice" ? g.choices[static_cast<size_t>(c)] : num(c);
+          if (still(t)) holds += (holds.empty() ? "" : " or ") + label; else gone += (gone.empty() ? "" : ", ") + label;
+        }
+        if (!gone.empty()) dep.push_back(g.name + " = " + holds + " (it disappears at " + gone + ")");
+      }
+      kv.second.why = dep.empty() ? "No single parameter change among the values tried (range ends, default, every choice) makes it disappear, so it does not hinge on one parameter."
+                                  : "It depends on: " + [&] { std::string j; for (size_t i = 0; i < dep.size(); ++i) j += (i ? "; " : "") + dep[i]; return j; }() + ".";
+      std::vector<std::pair<std::string, std::string>> h2; classify(sc, &h2);
+      for (const auto& x : h2) if (x.first == kv.first) kv.second.detail = x.second;
+      std::string err2; run(sc, &kv.second.sig, &err2);
+      for (const Invariant& v : inv)
+        if (kv.first == "breaks learned invariant: " + v.text && kv.second.sig.count(v.signal)) {
+          InvFail f = check_invariant(v, kv.second.sig);
+          kv.second.plot_signal = v.signal; kv.second.has_limit = true; kv.second.limit = f.limit; kv.second.at_step = f.step;
+        }
     }
 
     std::ostringstream rep;
@@ -196,11 +263,34 @@ int main(int argc, char** argv) {
     if (!found.empty()) {
       rep << "\nFull parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):\n\n";
       for (const auto& kv : found) rep << "- " << kv.first << ": " << describe(m, kv.second.example, true) << "\n";
+      rep << "\nWhy, per finding:\n\n";
+      for (const auto& kv : found) rep << "- " << kv.first << ": " << kv.second.detail << ". " << kv.second.why << "\n";
     }
     rep << "\nRe-run with the saved card: `RC_MODEL_CARD=" << out << "/card.json rc_hunt --engine card --domain generic --scenarios 1000`; add `rc_agent --live` for a model-driven hunt or `rc_spec --live` for model-written rules.\n"
         << "Learned invariants are candidates, not specifications: one that fires may be a bug or an unusual but valid input; only you can tell.\n";
     std::ofstream(out + "/report.md") << rep.str();
-    std::printf("\n%s\nreport: %s/report.md   card: %s/card.json\n", rep.str().c_str(), out.c_str(), out.c_str());
+    {
+      std::ostringstream h;
+      h << "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Scan of " << html_escape(name) << "</title><style>"
+        << ":root{--bg:#fff;--fg:#1d2129;--mut:#5b6472;--card:#f5f6f8;--line:#2f6feb;--hot:#d92d20;--lim:#b54708;--bd:#d9dde3}"
+        << "@media(prefers-color-scheme:dark){:root{--bg:#14171c;--fg:#e6e8ec;--mut:#9aa3b0;--card:#1d222a;--line:#6ea0ff;--hot:#ff6b5e;--lim:#f0a050;--bd:#2d3440}}"
+        << "body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:24px 16px}"
+        << "h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:0 0 6px}.mut{color:var(--mut)}.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;margin:16px 0}"
+        << "code{font:13px ui-monospace,monospace;word-break:break-word}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-top:10px}"
+        << "svg{width:100%;height:auto;background:var(--bg);border:1px solid var(--bd);border-radius:6px}.lab{font:11px ui-monospace,monospace;fill:var(--mut)}.lab.hot{fill:var(--hot)}"
+        << ".ln{fill:none;stroke:var(--line);stroke-width:1.5}.ln.hot{stroke:var(--hot)}.lim{stroke:var(--lim);stroke-dasharray:4 3}.mark{stroke:var(--hot);stroke-dasharray:2 3;opacity:.7}"
+        << "</style></head><body><main><h1>Scan of " << html_escape(name) << "</h1><p class=\"mut\">" << n << " scenarios (half pushed to parameter boundaries), " << pool.size() << " normal runs mined, " << inv.size() << " candidate invariants.</p>";
+      if (found.empty()) h << "<div class=\"card\"><h2>No finding</h2><p class=\"mut\">This is not a certificate: a bug present in every run looks normal to learned invariants.</p></div>";
+      for (const auto& kv : found) {
+        h << "<section class=\"card\"><h2>" << html_escape(kv.first) << "</h2><p class=\"mut\">" << kv.second.count << " of " << n << " scenarios. " << html_escape(kv.second.detail) << ". " << html_escape(kv.second.why)
+          << "</p><p><code>" << html_escape(describe(m, kv.second.example, true)) << "</code></p><div class=\"grid\">";
+        for (const auto& sk : kv.second.sig) h << svg_plot(sk.first, sk.second, sk.first == kv.second.plot_signal, sk.first == kv.second.plot_signal && kv.second.has_limit, kv.second.limit, kv.second.at_step);
+        h << "</div></section>";
+      }
+      h << "<p class=\"mut\">Learned invariants are candidates, not specifications: one that fires may be a bug or an unusual but valid input; only you can tell. Dashed orange line: the learned limit. Red: the signal that broke it.</p></main></body></html>";
+      std::ofstream(out + "/report.html") << h.str();
+    }
+    std::printf("\n%s\nreport: %s/report.md (and report.html)   card: %s/card.json\n", rep.str().c_str(), out.c_str(), out.c_str());
     return found.empty() ? 0 : 1;
   } catch (const std::exception& e) {
     std::cerr << "rc_scan: " << e.what() << "\n";

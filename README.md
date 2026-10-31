@@ -89,7 +89,7 @@ Costs: about $0.04 to $0.09 per agent run; about $35 of API spend in total, capp
     cmake -S . -B build && cmake --build build -j
     ./build/rc_scan --cmd ./mysim --param gain:0.1:8:log --param capacity:5:60:int --choice mode:fast,safe --out scan_out
 
-Give the range of each parameter; the tool probes your program for its signals, learns what normal looks like from its own runs, hunts ordinary and boundary scenarios, and writes a minimized report (`docs/SCAN.md`). Your program reads one JSON line per request and prints one back (`docs/PROTOCOL.md`).
+Give the range of each parameter; the tool probes your program for its signals, learns what normal looks like from its own runs, hunts ordinary and boundary scenarios, and writes a minimized report with a "what it depends on" line and an HTML page with plots (`docs/SCAN.md`). Tried on real Box2D and REBOUND, it found no bug in either, gave one false positive, and missed the known IAS15 hang (`results/scan/`; reported in full in `docs/SCAN.md`). Your program reads one JSON line per request and prints one back (`docs/PROTOCOL.md`).
 
 ## Build and run
 
