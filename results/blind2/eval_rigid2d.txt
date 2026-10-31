@@ -21,6 +21,9 @@ p21: differs from clean on 500/500 scenarios; hand-written rule fires on 0; mine
 p22: differs from clean on 252/500 scenarios; hand-written rule fires on 9; mined invariant fires on 0
 p23: differs from clean on 0/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
 p24: differs from clean on 495/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
-awk: can't open file /private/tmp/trk/blind2_rigid2d/p25.tsv
- input record number 500, file /private/tmp/trk/blind2_rigid2d/p25.tsv
- source line number 1
+p25: did not compile (excluded)
+p26: differs from clean on 372/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p27: differs from clean on 358/500 scenarios; hand-written rule fires on 71; mined invariant fires on 1
+p28: differs from clean on 252/500 scenarios; hand-written rule fires on 6; mined invariant fires on 0
+p29: differs from clean on 227/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0
+p30: differs from clean on 252/500 scenarios; hand-written rule fires on 0; mined invariant fires on 0

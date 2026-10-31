@@ -9,13 +9,13 @@ Built for the Meta Global AI Developer Hackathon (Indie Developer track) using M
     cmake -S . -B build && cmake --build build -j
     ./build/rc_scan --cmd ./your_simulator --param gain:0.1:8:log --param count:1:30:int --choice mode:fast,safe --out scan_out
 
-Point `rc_scan` at any program that reads one JSON line and prints one JSON line (`docs/PROTOCOL.md`). It learns what normal looks like from the program's own runs, hunts ordinary and boundary scenarios, shrinks each finding, says what the finding depends on, and writes `report.md` and a plot page `report.html` (`docs/SCAN.md`).
+Point `rc_scan` at any program that reads one JSON line and prints one JSON line (`docs/PROTOCOL.md`). It learns what normal looks like from the program's own runs, hunts ordinary and boundary scenarios, shrinks each finding, says what the finding depends on, and writes `report.md` and a plot page `report.html` (`docs/SCAN.md`; how to read a report: `docs/SCAN_GUIDE.md`).
 
 ## What it found, and what it did not
 
 - **Real, reproducible findings on code we did not write** (standalone repros, none reported upstream yet, either may already be known): a hang in REBOUND's default IAS15 integrator on a near-symmetric three-body start (`docs/EXTERNAL_ENGINE.md`), and a hang in Chipmunk2D's stock Release build, which adds `-ffast-math` (`docs/SCAN.md`).
 - **No bug** in Box2D v3, Box2D 2.4.1 or SUNDIALS CVODE; a handful of false alarms; and the REBOUND hang itself was *missed* by the generic scanner (it needs an exactly symmetric start).
-- **The oracle gap:** across two model-planted blind sets (39 and 116 variants, locked by hash before any check ran) the hand-written rules fire on only 41-42% of the variants that change behavior; a reference written by a model from the description alone recovers 58-69% of the rest, with 0 false alarms (`docs/BLIND.md`, `docs/REFERENCE_ORACLE.md`).
+- **The oracle gap:** across two model-planted blind sets (39 and 118 variants, locked by hash before any check ran) the hand-written rules fire on only 41% of the variants that change behavior; a reference written by a model from the description alone recovers 58-69% of the rest, with 0 false alarms (`docs/BLIND.md`, `docs/REFERENCE_ORACLE.md`).
 - **Model-driven hunting beats random on planted bugs:** triage localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02); on five hard seeded bugs the boundary-enabled agent found 45/100 versus 17/300 random runs (without the dominant bug, 25/80 versus 17/240), while a model-free boundary sampler alone found 62/200.
 - **Real-engine truth checks:** against a precise truth, a REBOUND TRACE fix is closer in 37 of 47 differing scenarios; two Box2D restitution commits move in opposite directions (`docs/REAL_PROJECTS.md`).
 

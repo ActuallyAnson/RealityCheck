@@ -38,9 +38,9 @@ Declared in `docs/PREREG_FINAL.md` before planting. Planter `meta-models/muse-sp
 | orbit | 30 | 17 | 12 | 2 | 5 | 1 |
 | cartpole | 30 | 22 | 6 | 0 | 16 | 0 |
 | traffic | 30 | 18 | 3 | 0 | 15 | 0 |
-| rigid2d | 26 | 20 | 11 | 3 | 9 | 0 |
-| total | 116 | 77 | 32 | 5 | 45 | 1 |
+| rigid2d | 28 | 25 | 13 | 4 | 12 | 0 |
+| total | 118 | 82 | 34 | 6 | 48 | 1 |
 
-- **Same finding with a different planter and three times the bugs.** The hand-written rules fire on 32 of the 77 variants that change behavior (42%; 41% on the first set, 43% on the author-sampled benchmark); 45 changed behavior and no rule fires (58%); mined invariants add one. The oracle gap is not an artifact of who chose the bugs.
-- **Counts.** 116 of the 119 variants have a result: three rigid2d variants produced no evaluation line (I did not investigate them; they are not counted as caught or missed). 39 changed nothing in 500 scenarios (equivalent, or too rare to see here).
+- **Same finding with a different planter and three times the bugs.** The hand-written rules fire on 34 of the 82 variants that change behavior (41%; 41% on the first set, 43% on the author-sampled benchmark); 48 changed behavior and no rule fires (59%); mined invariants add one. The oracle gap is not an artifact of who chose the bugs.
+- **Counts and a correction (2026-11-01).** 118 of the 119 applied variants have a result. The first version of this table said 116 variants (77 changed, rules on 32 = 42%, 45 silent): it was wrong in two ways. `p25` never compiled (the planter wrote an integer literal that is too large, `0xA5A5A5A5DEADBEEF0ULL`) and the evaluation script stopped there, so `p26` to `p30` were never run, while two error lines of the script were counted as variants. I found this while looking at the three rigid2d variants without results, fixed the script (it now reports non-compiling variants as excluded and skips them), ran the five missing variants and recounted. The old partial output is kept as `results/blind2/eval_rigid2d_incomplete.txt`; the percentages barely move (42% to 41%). `p25` is excluded, neither caught nor missed. 36 changed nothing in 500 scenarios (equivalent, or too rare to see here).
 - **Not run on this set:** the reference oracle, model-written invariants and metamorphic relations. So this table measures the rules and the miner only, as the first one did. The planter is a model of the same family as the tester, not an independent person; a human-planted set still does not exist.

@@ -20,5 +20,6 @@ done
 for f in "$W"/*.cpp; do
   id=$(basename "$f" .cpp)
   MR_N=0 MINE_ARGS="$MINE" sh scripts/mutation_worker.sh "$W" "$id" "$DOM" "${INV:-/dev/null}" "$N" 700000
+  if [ "$(cat "$W/$id.status" 2>/dev/null)" = compile_failed ]; then echo "$id: did not compile (excluded)"; continue; fi
   awk -F'\t' -v id="$id" 'NR==FNR{ch[$1]=$3; cr[$1]=$4; cm[$1]=$7; next} {d+=($3!=ch[$1]); h+=($4!="-"&&cr[$1]=="-"); m+=($7!="-"&&cm[$1]=="-"); n++} END{printf "%s: differs from clean on %d/%d scenarios; hand-written rule fires on %d; mined invariant fires on %d\n", id, d, n, h, m}' "$W/clean.tsv" "$W/$id.tsv"
 done
