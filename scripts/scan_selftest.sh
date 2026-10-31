@@ -13,5 +13,7 @@ grep -q "It depends on" "$O/report.md" && grep -q "<svg" "$O/report.html" || { e
 [ $? -eq 2 ] && grep -q "printed nothing" "$O/none.txt" || { echo "FAIL: the empty program was not rejected clearly"; cat "$O/none.txt"; exit 1; }
 RC_EXEC_TIMEOUT_S=2 "$B/rc_scan" --cmd "sleep 30" --param x:0:1 --out "$O/hang" > "$O/hang.txt" 2>&1
 [ $? -eq 2 ] && grep -q "did not answer the probe" "$O/hang.txt" || { echo "FAIL: a hanging program was not stopped with a message"; cat "$O/hang.txt"; exit 1; }
+"$B/rc_scan" --cmd "$B/generic_tank_cli --inflow {inflow} --demand {demand} --capacity {capacity} --frac {setpoint_fraction} --gain {gain} --mode {mode} --steps {steps} --seed {seed}" --param inflow:0:8 --param demand:0:4 --param capacity:5:60:int --param setpoint_fraction:0.1:0.9 --param gain:0.1:8:log --choice mode:proportional,bang_bang --out "$O/tpl" > "$O/tpl.txt" 2>&1
+[ $? -eq 1 ] && grep -q "| finding |" "$O/tpl/report.md" || { echo "FAIL: the adapter-free command-template mode found nothing on the tank"; cat "$O/tpl.txt"; exit 1; }
 echo "scan selftest ok"
 rm -rf "$O"

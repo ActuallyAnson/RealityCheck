@@ -4,13 +4,15 @@ No model card to write, no API key, no model. One command:
 
     rc_scan --cmd ./mysim --param gain:0.1:8:log --param capacity:5:60:int --param inflow:0:8 --choice mode:fast,safe --steps 200 --out scan_out
 
-Your program only has to read one JSON line per request on stdin and answer with one JSON line `{"ok":true,"signals":{"name":[... steps+1 numbers ...]}}` (`docs/PROTOCOL.md`, `docs/GENERIC_DOMAIN.md`; a 40-line example is `examples/generic/tank.cpp`). You give each parameter's range once.
+**No adapter needed for a command-line program:** put `{name}` placeholders in the command and print a table, a header line of signal names and one numeric row per step (steps + 1 rows), for example `rc_scan --cmd "./mysim --gain {gain} --mode {mode} --steps {steps} --seed {seed}" --param gain:0.1:8:log --choice mode:fast,safe --out scan_out` (`examples/generic/tank_cli.cpp` is a 40-line example; `{steps}` and `{seed}` are filled in by the tool; values may be separated by spaces, commas or tabs; `nan` and `inf` are accepted). Anything the program prints to stderr is ignored, a non-zero exit status or a run over `RC_EXEC_TIMEOUT_S` seconds is reported.
+
+Otherwise your program has to read one JSON line per request on stdin and answer with one JSON line `{"ok":true,"signals":{"name":[... steps+1 numbers ...]}}` (`docs/PROTOCOL.md`, `docs/GENERIC_DOMAIN.md`; a 40-line example is `examples/generic/tank.cpp`). You give each parameter's range once.
 
 What it does:
 1. Probes the program once to learn its signal names, and builds a model card from your ranges (saved as `scan_out/card.json`, so every other tool works on it afterwards).
 2. Runs 200 ordinary scenarios and mines candidate invariants from them (bounds, conserved quantities, monotone signals, step limits; `docs/MINING.md`).
 3. Runs N scenarios (default 400, half of them with parameters pushed to the edge of their range, which is where seeded bugs tended to trigger in `docs/HYBRID.md`) and looks for: a failed run, a non-finite signal, nondeterminism (the same scenario twice), and a run that breaks a mined invariant.
-4. Minimizes each finding by resetting parameters to their defaults while it still happens, then says what the finding depends on (every parameter is tried at its range ends, its default and every choice: "gain = 8 (it disappears at 0.1, 0.89)"), and writes `scan_out/report.md` and a self-contained `scan_out/report.html` (a plot of every signal of the smallest example, the learned limit dashed, no JavaScript, light and dark). Exit code 1 if anything was found, 0 if not, 2 for a usage or program error.
+4. Minimizes each finding by resetting parameters to their defaults while it still happens, then says what the finding depends on (every parameter is tried at its range ends, its default and every choice: "gain = 8 (it disappears at 0.1, 0.89)"), and writes `scan_out/report.md`, findings ordered hard failures first, then your own rules, then learned guesses, each with a type label, and a self-contained `scan_out/report.html` (a plot of every signal of the smallest example, the learned limit dashed, no JavaScript, light and dark). Exit code 1 if anything was found, 0 if not, 2 for a usage or program error.
 
 On the water-tank example (`scripts/scan_selftest.sh`) it takes well under a second and flags the run whose level goes far beyond anything seen in normal runs, with a one-line minimal case.
 

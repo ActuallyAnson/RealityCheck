@@ -7,9 +7,9 @@ Built for the Meta Global AI Developer Hackathon (Indie Developer track) using M
 ## Try it in one minute (no key, no model)
 
     cmake -S . -B build && cmake --build build -j
-    ./build/rc_scan --cmd ./your_simulator --param gain:0.1:8:log --param count:1:30:int --choice mode:fast,safe --out scan_out
+    ./build/rc_scan --cmd "./your_simulator --gain {gain} --count {count} --mode {mode} --steps {steps}" --param gain:0.1:8:log --param count:1:30:int --choice mode:fast,safe --out scan_out
 
-Point `rc_scan` at any program that reads one JSON line and prints one JSON line (`docs/PROTOCOL.md`). It learns what normal looks like from the program's own runs, hunts ordinary and boundary scenarios, shrinks each finding, says what the finding depends on, and writes `report.md` and a plot page `report.html` (`docs/SCAN.md`; how to read a report: `docs/SCAN_GUIDE.md`).
+Point `rc_scan` at any command-line program that prints a table (a header of signal names, one numeric row per step; no adapter to write), or at a program that speaks the JSON-lines protocol (`docs/PROTOCOL.md`). It learns what normal looks like from the program's own runs, hunts ordinary and boundary scenarios, shrinks each finding, says what the finding depends on, and writes `report.md` and a plot page `report.html` (`docs/SCAN.md`; how to read a report: `docs/SCAN_GUIDE.md`).
 
 ## What it found, and what it did not
 

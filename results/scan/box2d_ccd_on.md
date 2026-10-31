@@ -2,9 +2,9 @@
 
 1000 scenarios (half pushed to parameter boundaries), 200 normal runs mined, 8 candidate invariants.
 
-| finding | scenarios | smallest example (values left at their default are omitted) |
-|---|---|---|
-| breaks learned invariant: max_abs_x stays within 4.86269 x (|its start| + 0.496511) of its own start (mined, relative) | 11 of 1000 | steps=59, balls=1 |
+| type | finding | scenarios | smallest example (values left at their default are omitted) |
+|---|---|---|---|
+| learned guess | breaks learned invariant: max_abs_x stays within 4.86269 x (|its start| + 0.496511) of its own start (mined, relative) | 11 of 1000 | steps=59, balls=1 |
 
 Full parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):
 

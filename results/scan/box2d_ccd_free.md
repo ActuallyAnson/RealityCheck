@@ -2,10 +2,10 @@
 
 400 scenarios (half pushed to parameter boundaries), 200 normal runs mined, 10 candidate invariants.
 
-| finding | scenarios | smallest example (values left at their default are omitted) |
-|---|---|---|
-| breaks learned invariant: kinetic stays within 5.52714 x (|its start| + 3941.28) of its own start (mined, relative) | 2 of 400 | steps=200, radius=0.272223, gravity=30, dt=0.05, substeps=1 |
-| breaks learned invariant: min_clearance >= -1567.84 (mined) | 1 of 400 | steps=200, gravity=30, speed=51.3902, dt=0.05 |
+| type | finding | scenarios | smallest example (values left at their default are omitted) |
+|---|---|---|---|
+| learned guess | breaks learned invariant: kinetic stays within 5.52714 x (|its start| + 3941.28) of its own start (mined, relative) | 2 of 400 | steps=200, radius=0.272223, gravity=30, dt=0.05, substeps=1 |
+| learned guess | breaks learned invariant: min_clearance >= -1567.84 (mined) | 1 of 400 | steps=200, gravity=30, speed=51.3902, dt=0.05 |
 
 Full parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):
 

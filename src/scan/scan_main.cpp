@@ -7,6 +7,7 @@
 //
 // The program speaks the JSON-lines protocol of docs/PROTOCOL.md (generic domain: docs/GENERIC_DOMAIN.md). Mined invariants are candidates learned
 // from the program itself: a bug present in every run looks normal to them, so a clean scan is not a certificate (docs/MINING.md).
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -16,6 +17,7 @@
 #include <map>
 #include <sstream>
 
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -38,6 +40,109 @@ std::vector<std::string> split(const std::string& s, char c) {
 }
 
 // One probe request with default parameters; returns the signal names the program reports.
+std::string shell_quote(const std::string& t) {
+  std::string o = "'";
+  for (char c : t) { if (c == '\'') o += "'\\''"; else o += c; }
+  return o + "'";
+}
+
+// Runs a shell command with stdin from /dev/null, collects stdout (stderr discarded) and kills its process group after `limit` seconds.
+std::string run_capture(const std::string& command, double limit, bool* timed_out, int* exit_code) {
+  *timed_out = false; *exit_code = -1;
+  int fd[2];
+  if (pipe(fd) != 0) return "";
+  const pid_t pid = fork();
+  if (pid == 0) {
+    setpgid(0, 0);
+    dup2(fd[1], 1);
+    const int dn = open("/dev/null", O_RDWR);
+    if (dn >= 0) { dup2(dn, 0); dup2(dn, 2); }
+    close(fd[0]); close(fd[1]);
+    execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char*>(nullptr));
+    _exit(127);
+  }
+  close(fd[1]);
+  std::string out;
+  const auto t0 = std::chrono::steady_clock::now();
+  char buf[65536];
+  for (;;) {
+    const double left = limit - std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    if (left <= 0) { *timed_out = true; break; }
+    pollfd pf = {fd[0], POLLIN, 0};
+    const int r = poll(&pf, 1, static_cast<int>(left * 1000) + 1);
+    if (r == 0) continue;
+    if (r < 0) break;
+    const ssize_t n = read(fd[0], buf, sizeof buf);
+    if (n <= 0) break;
+    out.append(buf, static_cast<size_t>(n));
+  }
+  if (*timed_out) { kill(-pid, SIGKILL); kill(pid, SIGKILL); }
+  int st = 0;
+  waitpid(pid, &st, 0);
+  if (WIFEXITED(st)) *exit_code = WEXITSTATUS(st);
+  close(fd[0]);
+  return out;
+}
+
+// Adapter-free mode (`--cmd "./sim --gain {gain} --steps {steps}"`): rc_scan runs itself as `rc_scan --shim TEMPLATE`, which speaks the JSON-lines protocol
+// and, per request, fills the {name} placeholders (parameters, {steps}, {seed}), runs the command, and reads a table from its stdout: a header line with
+// the signal names (separated by commas, tabs or spaces) and one numeric row per step (steps + 1 rows, step 0 first).
+int shim_main(const std::string& tmpl) {
+  const char* env = std::getenv("RC_EXEC_TIMEOUT_S");
+  const double limit = env && std::atof(env) > 0 ? std::atof(env) : 60.0;
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    Json out = Json::object();
+    try {
+      const Json req = Json::parse(line);
+      const Json& sc = req.at("scenario");
+      std::map<std::string, std::string> val;
+      if (sc.has("params"))
+        for (const auto& kv : sc.at("params").obj()) {
+          if (kv.second.is_number()) { char b[64]; std::snprintf(b, sizeof b, "%.17g", kv.second.num()); val[kv.first] = b; }
+          else val[kv.first] = kv.second.str();
+        }
+      { char b[64]; std::snprintf(b, sizeof b, "%d", static_cast<int>(sc.num_or("steps", 200))); val["steps"] = b; std::snprintf(b, sizeof b, "%.0f", sc.num_or("seed", 1)); val["seed"] = b; }
+      std::string cmd;
+      for (size_t i = 0; i < tmpl.size(); ++i) {
+        if (tmpl[i] == '{') {
+          const size_t e = tmpl.find('}', i);
+          if (e != std::string::npos) {
+            const std::string k = tmpl.substr(i + 1, e - i - 1);
+            if (!val.count(k)) throw std::runtime_error("the command template uses {" + k + "} but there is no parameter, choice, {steps} or {seed} of that name");
+            cmd += val[k]; i = e; continue;
+          }
+        }
+        cmd += tmpl[i];
+      }
+      bool to = false; int ec = 0;
+      const std::string text = run_capture(cmd, limit, &to, &ec);
+      if (to) throw std::runtime_error("the command did not finish within " + std::to_string(static_cast<int>(limit)) + " s and was killed (a hang, not a finding)");
+      if (ec != 0) throw std::runtime_error("the command exited with status " + std::to_string(ec) + ": " + cmd.substr(0, 160));
+      std::vector<std::string> rows = split(text, '\n');
+      while (!rows.empty() && rows.back().find_first_not_of(" \t\r") == std::string::npos) rows.pop_back();
+      if (rows.size() < 2) throw std::runtime_error("the command printed fewer than 2 lines; expected a header of signal names and one numeric row per step");
+      auto cells = [](std::string r) { for (char& c : r) if (c == ',' || c == '\t' || c == '\r') c = ' '; std::vector<std::string> v; std::stringstream ss(r); for (std::string t; ss >> t;) v.push_back(t); return v; };
+      const std::vector<std::string> names = cells(rows[0]);
+      std::vector<Json> cols(names.size(), Json::array());
+      for (size_t r = 1; r < rows.size(); ++r) {
+        const std::vector<std::string> c = cells(rows[r]);
+        if (c.size() != names.size()) throw std::runtime_error("row " + std::to_string(r) + " has " + std::to_string(c.size()) + " values, the header has " + std::to_string(names.size()) + " names");
+        for (size_t k = 0; k < c.size(); ++k) {
+          char* endp = nullptr; const double v = std::strtod(c[k].c_str(), &endp);
+          if (endp == c[k].c_str() || *endp) { if (c[k] == "nan" || c[k] == "NaN" || c[k] == "inf" || c[k] == "-inf" || c[k] == "Infinity") cols[k].push(std::nan("")); else throw std::runtime_error("row " + std::to_string(r) + ": '" + c[k] + "' is not a number"); }
+          else cols[k].push(v);
+        }
+      }
+      Json sig = Json::object();
+      for (size_t k = 0; k < names.size(); ++k) sig[names[k]] = cols[k];
+      out["ok"] = true; out["signals"] = sig;
+    } catch (const std::exception& e) { out["ok"] = false; out["error"] = e.what(); }
+    std::cout << out.dump() << "\n" << std::flush;
+  }
+  return 0;
+}
+
 std::vector<std::string> probe_signals(const std::string& cmd, const Json& params, int steps) {
   Json sc = Json::object();
   sc["domain"] = "generic"; sc["seed"] = 1; sc["steps"] = steps; sc["params"] = params;
@@ -146,6 +251,7 @@ std::string describe(const GenericModel& m, const Scenario& sc, bool all = false
 }  // namespace
 
 int main(int argc, char** argv) {
+  if (argc >= 3 && std::string(argv[1]) == "--shim") return shim_main(argv[2]);
   std::string cmd, out = "scan_out", name = "my simulator";
   int steps = 200, n = 400, pool_n = 200;
   std::vector<std::string> requires_;  // --require "signal<=value" / "signal>=value": rules you state yourself
@@ -178,8 +284,14 @@ int main(int argc, char** argv) {
     } else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   if (cmd.empty() || params.arr().empty()) {
-    std::cerr << "usage: rc_scan --cmd PROGRAM --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds] [--require signal<=value]\n";
+    std::cerr << "usage: rc_scan --cmd PROGRAM|COMMAND-WITH-{param}-PLACEHOLDERS --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds] [--require signal<=value]\n";
     return 2;
+  }
+  const std::string shown_cmd = cmd;
+  if (cmd.find('{') != std::string::npos) {  // command template: no adapter needed (see shim_main)
+    char self[4096];
+    const std::string me = realpath(argv[0], self) ? std::string(self) : std::string(argv[0]);
+    cmd = shell_quote(me) + " --shim " + shell_quote(cmd);
   }
   try {
     Json defaults = Json::object();
@@ -199,7 +311,7 @@ int main(int argc, char** argv) {
     const GenericModel& m = generic_model();
     std::system(("mkdir -p '" + out + "'").c_str());
     std::ofstream(out + "/card.json") << card.dump() << "\n";
-    std::printf("probed %s: %zu signals (%s), %zu parameters\n", cmd.c_str(), sigs.size(), card.at("description").str().substr(card.at("description").str().find("Signals: ") + 9).c_str(), m.params.size());
+    std::printf("probed %s: %zu signals (%s), %zu parameters\n", shown_cmd.c_str(), sigs.size(), card.at("description").str().substr(card.at("description").str().find("Signals: ") + 9).c_str(), m.params.size());
 
     SimFn sim = make_engine("card", "generic");
     auto run = [&](const Scenario& sc, Signals* sg, std::string* err) {
@@ -400,16 +512,21 @@ int main(int argc, char** argv) {
       for (const Scaled& sd : scaled) if (kv.first == "breaks learned invariant: " + sd.text) kv.second.plot_signal = sd.sig;
     }
 
+    // Order: hard failures first (hang or error, non-finite, nondeterminism), then rules you stated, then learned guesses; ties by how many scenarios hit.
+    auto rank = [](const std::string& key) { return key.rfind("breaks learned invariant: required by you", 0) == 0 ? 1 : key.rfind("breaks learned invariant", 0) == 0 ? 2 : 0; };
+    auto label = [&](const std::string& key) { const int r = rank(key); return r == 0 ? "HARD FAILURE" : r == 1 ? "your rule" : "learned guess"; };
+    std::vector<std::pair<std::string, Finding>> ordered(found.begin(), found.end());
+    std::stable_sort(ordered.begin(), ordered.end(), [&](const auto& a, const auto& b) { return rank(a.first) != rank(b.first) ? rank(a.first) < rank(b.first) : a.second.count > b.second.count; });
     std::ostringstream rep;
     rep << "# Scan of " << name << "\n\n" << n << " scenarios (half pushed to parameter boundaries), " << pool.size() << " normal runs mined, " << inv.size() << " candidate invariants.\n\n";
     if (found.empty()) rep << "No finding. This is not a certificate: a bug present in every run looks normal to learned invariants (docs/MINING.md). Add your own rules to `card.json` (docs/GENERIC_DOMAIN.md) or review the learned invariants.\n";
-    else rep << "| finding | scenarios | smallest example (values left at their default are omitted) |\n|---|---|---|\n";
-    for (const auto& kv : found) rep << "| " << kv.first << " | " << kv.second.count << " of " << n << " | " << describe(m, kv.second.example) << " |\n";
+    else rep << "| type | finding | scenarios | smallest example (values left at their default are omitted) |\n|---|---|---|---|\n";
+    for (const auto& kv : ordered) rep << "| " << label(kv.first) << " | " << kv.first << " | " << kv.second.count << " of " << n << " | " << describe(m, kv.second.example) << " |\n";
     if (!found.empty()) {
       rep << "\nFull parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):\n\n";
-      for (const auto& kv : found) rep << "- " << kv.first << ": " << describe(m, kv.second.example, true) << "\n";
+      for (const auto& kv : ordered) rep << "- " << kv.first << ": " << describe(m, kv.second.example, true) << "\n";
       rep << "\nWhy, per finding:\n\n";
-      for (const auto& kv : found) rep << "- " << kv.first << ": " << kv.second.detail << ". " << kv.second.why << "\n";
+      for (const auto& kv : ordered) rep << "- " << kv.first << ": " << kv.second.detail << ". " << kv.second.why << "\n";
     }
     rep << "\nRe-run with the saved card: `RC_MODEL_CARD=" << out << "/card.json rc_hunt --engine card --domain generic --scenarios 1000`; add `rc_agent --live` for a model-driven hunt or `rc_spec --live` for model-written rules.\n"
         << "Learned invariants are candidates, not specifications: one that fires may be a bug or an unusual but valid input; only you can tell.\n";
@@ -426,8 +543,8 @@ int main(int argc, char** argv) {
         << ".ln{fill:none;stroke:var(--line);stroke-width:1.5}.ln.hot{stroke:var(--hot)}.lim{stroke:var(--lim);stroke-dasharray:4 3}.mark{stroke:var(--hot);stroke-dasharray:2 3;opacity:.7}"
         << "</style></head><body><main><h1>Scan of " << html_escape(name) << "</h1><p class=\"mut\">" << n << " scenarios (half pushed to parameter boundaries), " << pool.size() << " normal runs mined, " << inv.size() << " candidate invariants.</p>";
       if (found.empty()) h << "<div class=\"card\"><h2>No finding</h2><p class=\"mut\">This is not a certificate: a bug present in every run looks normal to learned invariants.</p></div>";
-      for (const auto& kv : found) {
-        h << "<section class=\"card\"><h2>" << html_escape(kv.first) << "</h2><p class=\"mut\">" << kv.second.count << " of " << n << " scenarios. " << html_escape(kv.second.detail) << ". " << html_escape(kv.second.why)
+      for (const auto& kv : ordered) {
+        h << "<section class=\"card\"><h2>" << label(kv.first) << ": " << html_escape(kv.first) << "</h2><p class=\"mut\">" << kv.second.count << " of " << n << " scenarios. " << html_escape(kv.second.detail) << ". " << html_escape(kv.second.why)
           << "</p><p><code>" << html_escape(describe(m, kv.second.example, true)) << "</code></p><div class=\"grid\">";
         for (const auto& sk : kv.second.sig) h << svg_plot(sk.first, sk.second, sk.first == kv.second.plot_signal, sk.first == kv.second.plot_signal && kv.second.has_limit, kv.second.limit, kv.second.at_step);
         h << "</div></section>";
