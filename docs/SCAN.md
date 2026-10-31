@@ -77,6 +77,12 @@ Across all five physics engines the pattern is the same: the scan finds the regi
 
 Fix found on the way: the exec engine never restarted the simulator after killing a hung one, so every later request failed ("600 of 600 run failed"). It now starts a fresh process after a hang or crash (the failing request still fails); tests 798/0.
 
+## Unaided-bug campaign (rules in `docs/PREREG_FINAL.md`, addendum 2026-11-02)
+Frozen binary, adapter-free table mode where possible, one agent per target, all scans finished before any finding was investigated. Reports as given by the agents; I have not re-run these.
+- **Open Dynamics Engine** `0e0e94b` (2 scans, 1600 scenarios): no finding meets conditions 1 to 3. Escapes and the rule I stated (`n_outside<=0`, 251 of 800 and 77 of 800) came from transient one-step penetration with discrete collision (ODE has no continuous collision detection) and an over-strict test in the wrapper; tunneling at 1 m per step is dt dependent (dt 0.0125 gives no escape); the rest were rules learned too tight.
+- **GSL 2.8 odeiv2** (2 scans, 1600 scenarios, ten steppers, five systems): no finding meets conditions 1 to 3; the stated rule `status<=0` never fired, so GSL returned no error code in any scenario. One family is worth a sentence: a Van der Pol run with rk4, standard control and epsrel 0.01 takes a step to y=(-4, 246) with a large error estimate and `GSL_SUCCESS`, and later steps blow up to 1e145 and NaN, still with status 0. The agent traced it to the documented step-acceptance formula (`D = eps_abs + eps_rel (a_y |y| + a_dydt h |y'|)`, step reduced only if the error exceeds D by more than 10%): the library accepts it as documented, on a loose tolerance with an explicit stepper. Documented behavior, surprising as it is; not claimed as a bug. Wrapper mistake found: implicit and multistep steppers need a driver object.
+- LAMMPS: pending.
+
 Honest summary of the real-engine tests (before the relative rules): no bug in either engine, one false positive, one documented behavior reported, and one known bug missed.
 
 How to read a report and fix an adapter: `docs/SCAN_GUIDE.md`.
