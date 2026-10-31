@@ -148,6 +148,7 @@ std::string describe(const GenericModel& m, const Scenario& sc, bool all = false
 int main(int argc, char** argv) {
   std::string cmd, out = "scan_out", name = "my simulator";
   int steps = 200, n = 400, pool_n = 200;
+  std::vector<std::string> requires_;  // --require "signal<=value" / "signal>=value": rules you state yourself
   bool absolute = false;  // --absolute-bounds: keep mined absolute bounds on signals that follow the start (the older, noisier behavior)
   Json params = Json::array();
   std::vector<std::pair<std::string, Json>> defs;
@@ -156,6 +157,7 @@ int main(int argc, char** argv) {
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--cmd") cmd = val(); else if (a == "--out") out = val(); else if (a == "--name") name = val();
     else if (a == "--absolute-bounds") absolute = true;
+    else if (a == "--require") requires_.push_back(val());
     else if (a == "--steps") steps = std::atoi(val().c_str()); else if (a == "--scenarios") n = std::atoi(val().c_str());
     else if (a == "--param" || a == "--choice") {
       const std::vector<std::string> f = split(val(), a == "--param" ? ':' : ':');
@@ -176,7 +178,7 @@ int main(int argc, char** argv) {
     } else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   if (cmd.empty() || params.arr().empty()) {
-    std::cerr << "usage: rc_scan --cmd PROGRAM --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds]\n";
+    std::cerr << "usage: rc_scan --cmd PROGRAM --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds] [--require signal<=value]\n";
     return 2;
   }
   try {
@@ -219,9 +221,11 @@ int main(int argc, char** argv) {
     };
 
     std::vector<Signals> pool;
+    std::vector<std::map<std::string, double>> pool_params;
     for (int i = 0; i < pool_n; ++i) {
       Signals sg; std::string err;
-      if (run(scenario(900000 + static_cast<uint64_t>(i), false), &sg, &err)) pool.push_back(sg);
+      const Scenario psc = scenario(900000 + static_cast<uint64_t>(i), false);
+      if (run(psc, &sg, &err)) { pool.push_back(sg); pool_params.push_back(psc.gen.params); }
     }
     if (pool.empty()) throw std::runtime_error("every probe run failed; check the program on a default scenario");
     std::vector<Invariant> inv = mine_invariants(pool);
@@ -249,6 +253,82 @@ int main(int argc, char** argv) {
     }
     std::printf("learned %zu candidate invariants from %zu normal runs\n", inv.size(), pool.size());
 
+    // Scale-aware limits: when the largest |value| of a signal grows or shrinks with a positive numeric parameter (gravity, launch speed, frequency) the
+    // normal runs show it, and a fixed bound only restates the biggest parameter seen. For such a signal the bounds are replaced by a log-log fit
+    // log max|S| = a + b log P with a margin of twice the largest residual (at least a factor 3). The fit is tried on all runs and on the runs of each
+    // value of each choice parameter (a dependence that only holds inside one model or mode, with at least 25 runs and correlation 0.8).
+    struct Scaled { std::string sig, param, text, cond; double condv = -1; bool has_cond = false; double a = 0, b = 0, margin = 0; };
+    std::vector<Scaled> scaled;
+    if (!absolute && pool.size() >= 30) {
+      auto fit = [&](const std::string& sn, const std::vector<size_t>& idx, std::string* bp, double* ba, double* bb, double* bres) {
+        std::vector<double> y;
+        for (size_t i : idx) { double mx = 0; auto it = pool[i].find(sn); if (it != pool[i].end()) for (double v : it->second) if (std::isfinite(v)) mx = std::max(mx, std::fabs(v)); y.push_back(mx); }
+        for (double v : y) if (!(v > 0)) return false;
+        double best = 0;
+        for (const GenericParam& g : m.params) {
+          if (g.type == "choice" || !(g.min > 0) || g.max < 4 * g.min) continue;
+          std::vector<double> x, ly;
+          for (size_t k = 0; k < idx.size(); ++k) { const auto& pp = pool_params[idx[k]]; x.push_back(std::log(pp.count(g.name) ? pp.at(g.name) : g.def)); ly.push_back(std::log(y[k])); }
+          const double n_ = static_cast<double>(x.size());
+          double mx = 0, my = 0; for (size_t i = 0; i < x.size(); ++i) { mx += x[i]; my += ly[i]; } mx /= n_; my /= n_;
+          double sxx = 0, syy = 0, sxy = 0; for (size_t i = 0; i < x.size(); ++i) { sxx += (x[i] - mx) * (x[i] - mx); syy += (ly[i] - my) * (ly[i] - my); sxy += (x[i] - mx) * (ly[i] - my); }
+          if (sxx <= 0 || syy <= 0) continue;
+          const double rho = sxy / std::sqrt(sxx * syy), b = sxy / sxx, a = my - b * mx;
+          if (std::fabs(rho) < 0.8 || std::fabs(rho) <= std::fabs(best)) continue;
+          double res = 0; for (size_t i = 0; i < x.size(); ++i) res = std::max(res, std::fabs(ly[i] - (a + b * x[i])));
+          best = rho; *bp = g.name; *ba = a; *bb = b; *bres = res;
+        }
+        return best != 0;
+      };
+      std::vector<size_t> all(pool.size());
+      for (size_t i = 0; i < all.size(); ++i) all[i] = i;
+      for (const auto& kv : pool[0]) {
+        const std::string& sn = kv.first;
+        std::string bp; double ba = 0, bb = 0, bres = 0;
+        if (fit(sn, all, &bp, &ba, &bb, &bres)) {
+          std::vector<Invariant> keep;
+          for (const Invariant& v : inv) if (!(v.kind == "bound" && v.signal == sn)) keep.push_back(v);
+          inv = keep;
+          Scaled sd; sd.sig = sn; sd.param = bp; sd.a = ba; sd.b = bb; sd.margin = std::max(std::log(3.0), 2 * bres);
+          sd.text = "max |" + sn + "| follows " + bp + "^" + num(bb) + " within a factor " + num(std::exp(sd.margin)) + " (mined, scaled)";
+          scaled.push_back(sd);
+          continue;
+        }
+        for (const GenericParam& c : m.params) {
+          if (c.type != "choice") continue;
+          for (size_t cv = 0; cv < c.choices.size(); ++cv) {
+            std::vector<size_t> sub;
+            for (size_t i = 0; i < pool.size(); ++i) { auto f = pool_params[i].find(c.name); if (f != pool_params[i].end() && static_cast<size_t>(f->second + 0.5) == cv) sub.push_back(i); }
+            if (sub.size() < 25 || !fit(sn, sub, &bp, &ba, &bb, &bres)) continue;
+            Scaled sd; sd.sig = sn; sd.param = bp; sd.a = ba; sd.b = bb; sd.margin = std::max(std::log(3.0), 2 * bres); sd.cond = c.name; sd.condv = static_cast<double>(cv); sd.has_cond = true;
+            sd.text = "when " + c.name + " = " + c.choices[cv] + ", max |" + sn + "| follows " + bp + "^" + num(bb) + " within a factor " + num(std::exp(sd.margin)) + " (mined, scaled)";
+            scaled.push_back(sd);
+          }
+        }
+      }
+    }
+    // Signals that never changed in any normal run: any change is worth a look.
+    if (!absolute)
+      for (const auto& kv : pool[0]) {
+        const std::string& sn = kv.first;
+        double lo = 1e300, hi = -1e300;
+        for (const Signals& sg : pool) { auto it = sg.find(sn); if (it != sg.end()) for (double v : it->second) if (std::isfinite(v)) { lo = std::min(lo, v); hi = std::max(hi, v); } }
+        if (!(hi == lo) || pool.size() < 20) continue;
+        for (const char* op : {"<=", ">="}) {
+          Invariant c; c.id = std::string("const_") + sn + op; c.kind = "bound"; c.signal = sn; c.op = op; c.has_value = true; c.value = lo;
+          c.text = sn + " " + op + " " + num(lo) + " (it was exactly " + num(lo) + " in every normal run; mined, constant)";
+          inv.push_back(c);
+        }
+      }
+    for (const std::string& r : requires_) {
+      const size_t at = r.find("<=") != std::string::npos ? r.find("<=") : r.find(">=");
+      if (at == std::string::npos) { std::cerr << "rc_scan: --require needs signal<=value or signal>=value, got '" << r << "'\n"; return 2; }
+      Invariant c; c.id = "require" + std::to_string(inv.size()); c.kind = "bound"; c.signal = r.substr(0, at); c.op = r.substr(at, 2); c.has_value = true; c.value = std::atof(r.substr(at + 2).c_str());
+      if (!pool[0].count(c.signal)) { std::cerr << "rc_scan: --require: the program has no signal '" << c.signal << "'\n"; return 2; }
+      c.text = "required by you: " + c.signal + " " + c.op + " " + num(c.value);
+      inv.push_back(c);
+    }
+
     std::map<std::string, Finding> found;
     auto record = [&](const std::string& key, const std::string& kind, const std::string& detail, const Scenario& sc) {
       Finding& f = found[key];
@@ -266,7 +346,17 @@ int main(int argc, char** argv) {
         for (const auto& kv : sg) { const auto& o = sg2.at(kv.first); for (size_t k = 0; k < kv.second.size() && same; ++k) if (!(kv.second[k] == o[k] || (std::isnan(kv.second[k]) && std::isnan(o[k])))) same = false; }
         if (!same) hits->push_back({"nondeterministic", "the same scenario gives different signals on a second run"});
       }
-      for (const Invariant& v : inv) { InvFail f = check_invariant(v, sg); if (f.failed) hits->push_back({"breaks learned invariant: " + v.text, v.text + " (observed " + std::to_string(f.observed) + " vs limit " + std::to_string(f.limit) + " at step " + std::to_string(f.step) + ")"}); }
+      auto covered = [&](const Scaled& sd) { return !sd.has_cond || (sc.gen.params.count(sd.cond) && static_cast<int>(sc.gen.params.at(sd.cond) + 0.5) == static_cast<int>(sd.condv)); };
+      for (const Scaled& sd : scaled) {
+        if (!covered(sd)) continue;
+        auto it = sg.find(sd.sig); if (it == sg.end()) continue;
+        double mxv = 0; for (double v : it->second) if (std::isfinite(v)) mxv = std::max(mxv, std::fabs(v));
+        const double pv = sc.gen.params.count(sd.param) ? sc.gen.params.at(sd.param) : 1.0;
+        if (!(pv > 0) || !(mxv > 0)) continue;
+        const double pred = sd.a + sd.b * std::log(pv);
+        if (std::log(mxv) > pred + sd.margin) hits->push_back({"breaks learned invariant: " + sd.text, sd.text + " (observed " + num(mxv) + " vs about " + num(std::exp(pred)) + " expected from " + sd.param + "=" + num(pv) + ")"});
+      }
+      for (const Invariant& v : inv) { bool skip = false; for (const Scaled& sd : scaled) if (sd.has_cond && sd.sig == v.signal && covered(sd)) skip = true; if (skip) continue; InvFail f = check_invariant(v, sg); if (f.failed) hits->push_back({"breaks learned invariant: " + v.text, v.text + " (observed " + std::to_string(f.observed) + " vs limit " + std::to_string(f.limit) + " at step " + std::to_string(f.step) + ")"}); }
     };
     for (int i = 0; i < n; ++i) {
       Scenario sc = scenario(700000 + static_cast<uint64_t>(i), i % 2 == 1);
@@ -307,6 +397,7 @@ int main(int argc, char** argv) {
           InvFail f = check_invariant(v, kv.second.sig);
           kv.second.plot_signal = v.signal; kv.second.has_limit = true; kv.second.limit = f.limit; kv.second.at_step = f.step;
         }
+      for (const Scaled& sd : scaled) if (kv.first == "breaks learned invariant: " + sd.text) kv.second.plot_signal = sd.sig;
     }
 
     std::ostringstream rep;
