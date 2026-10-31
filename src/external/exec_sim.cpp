@@ -165,16 +165,23 @@ Trace to_trace(const Scenario& sc, const Json& reply) {
 }  // namespace
 
 SimFn exec_sim(const std::string& command, const std::string& domain) {
-  auto child = std::make_shared<Child>(command);
+  auto child = std::make_shared<std::shared_ptr<Child>>(std::make_shared<Child>(command));  // shared by every copy of the returned function
   auto lock = std::make_shared<std::mutex>();
-  return [child, lock, domain](const Scenario& sc) {
+  return [child, lock, domain, command](const Scenario& sc) {
     std::lock_guard<std::mutex> g(*lock);
     Json req = Json::object();
     req["op"] = "simulate";
     Json scen = to_json(sc);
     if (!scen.has("domain")) scen["domain"] = domain;
     req["scenario"] = scen;
-    return to_trace(sc, Json::parse(child->ask(req.dump())));
+    std::string reply;
+    try {
+      reply = (*child)->ask(req.dump());
+    } catch (...) {  // hang (killed), crash or closed pipe: this request fails, the next one gets a fresh process
+      *child = std::make_shared<Child>(command);
+      throw;
+    }
+    return to_trace(sc, Json::parse(reply));
   };
 }
 
