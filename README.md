@@ -10,7 +10,12 @@ The replicated triage result is the clearest positive finding: on new failing sc
 agent localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02). On five author-selected bugs where random testing
 struggles, the boundary-enabled agent found 45/100 versus 17/300 random runs; without the dominant b12 bug, the comparison is
 25/80 versus 17/240 (p=3e-7). Limits: these are planted bugs, one model family, and the sampler-only baseline found 62/200.
-Real-engine historical fixes remain a negative result: the oracles do not distinguish fixed from buggy builds.
+The oracle gap is the central finding: across two model-planted blind sets (39 and 116 variants, locked by hash before any check ran) the hand-written
+rules fire on only 41-42% of the variants that change behavior, and a reference written by a model from the description alone recovers 58-69%
+of the rest (0 false alarms; weakest where the description is vague). On real engines the declared rules cannot tell a fixed build from a buggy one;
+a precise truth can, for the cases tried (REBOUND TRACE: closer to truth in 37 of 47 differing scenarios; two Box2D restitution commits), with the
+caveats below. The tool also surfaced a reproducible hang in current REBOUND (IAS15 timestep collapse on a symmetric figure-eight), not yet reported upstream.
+No person has planted bugs or used the tool yet.
 
 Full methods, caveats, negative findings, and generated tables follow below. `scripts/gen_results.sh` writes `docs/RESULTS.md`.
 
