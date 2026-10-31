@@ -79,3 +79,5 @@ The stored reference programs (orbit and cart-pole draw 1, traffic draw 2; none 
 | **three domains** | 57 | 33 | 36 | **21** | 0 |
 
 The reference recovers 21 of the 36 variants no rule or mined invariant sees (58%; 69% on the author-sampled mutants, so a little lower here). Counting a hand-written rule or the reference, 42 of the 57 changed variants (74%) are caught, against 79% on the mutant benchmark. Limits: the traffic reference needs a precise written spec (the same caveat as before), model-written invariants and metamorphic relations were not run on this set, and the planter is a model of the same family as the tester, not a person.
+
+**Would more reference draws help? No (post hoc, from the stored outputs).** The two independent draws of the orbit and cart-pole references catch the same silent mutants: orbit 2 and 2 with a union of 2 (of 5), cart-pole 13 and 13 with a union of 13 (of 19). So the misses are not bad luck in one draw; they are behavior the description does not pin down, and drawing again does not recover them. More precise descriptions, not more draws, are what would.
