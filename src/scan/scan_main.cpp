@@ -240,6 +240,7 @@ std::string svg_plot(const std::string& name, const std::vector<double>& y, bool
 std::string describe(const GenericModel& m, const Scenario& sc, bool all = false) {
   std::ostringstream o;
   o << "steps=" << sc.steps;
+  if (all) o << ", seed=" << sc.seed;
   for (const GenericParam& g : m.params) {
     const double v = sc.gen.params.count(g.name) ? sc.gen.params.at(g.name) : g.def;
     if (!all && std::fabs(v - g.def) < 1e-12 * (1 + std::fabs(g.def))) continue;
