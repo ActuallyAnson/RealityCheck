@@ -12,6 +12,8 @@ jobs:
         run: cmake -S . -B build && cmake --build build -j 4
       - name: Unit and end-to-end tests
         run: ./build/rc_tests
+      - name: rc_scan smoke test (a stranger's first command)
+        run: sh scripts/scan_selftest.sh build
       - name: Regenerate every results table from the saved runs (no API calls) and compare with the committed tables
         if: runner.os == 'macOS'   # the tables were produced on macOS; Linux libm differences can change replayed attribution
         run: sh scripts/reproduce.sh build

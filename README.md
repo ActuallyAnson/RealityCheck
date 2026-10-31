@@ -84,6 +84,13 @@ Costs: about $0.04 to $0.09 per agent run; about $35 of API spend in total, capp
 - Differential testing works when two engines are numerically close; for contact dynamics it mostly reports chaos.
 - The wall-clock budget of the random baseline is not applied to the agent; the step budgets are identical.
 
+## Try it on your own simulator (no key, no model)
+
+    cmake -S . -B build && cmake --build build -j
+    ./build/rc_scan --cmd ./mysim --param gain:0.1:8:log --param capacity:5:60:int --choice mode:fast,safe --out scan_out
+
+Give the range of each parameter; the tool probes your program for its signals, learns what normal looks like from its own runs, hunts ordinary and boundary scenarios, and writes a minimized report (`docs/SCAN.md`). Your program reads one JSON line per request and prints one back (`docs/PROTOCOL.md`).
+
 ## Build and run
 
     cmake -S . -B build && cmake --build build -j && ./build/rc_tests
