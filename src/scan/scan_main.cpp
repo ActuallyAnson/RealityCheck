@@ -118,12 +118,14 @@ std::string describe(const GenericModel& m, const Scenario& sc, bool all = false
 int main(int argc, char** argv) {
   std::string cmd, out = "scan_out", name = "my simulator";
   int steps = 200, n = 400, pool_n = 200;
+  bool absolute = false;  // --absolute-bounds: keep mined absolute bounds on signals that follow the start (the older, noisier behavior)
   Json params = Json::array();
   std::vector<std::pair<std::string, Json>> defs;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     auto val = [&]() -> std::string { if (i + 1 >= argc) { std::cerr << "missing value for " << a << "\n"; std::exit(2); } return argv[++i]; };
     if (a == "--cmd") cmd = val(); else if (a == "--out") out = val(); else if (a == "--name") name = val();
+    else if (a == "--absolute-bounds") absolute = true;
     else if (a == "--steps") steps = std::atoi(val().c_str()); else if (a == "--scenarios") n = std::atoi(val().c_str());
     else if (a == "--param" || a == "--choice") {
       const std::vector<std::string> f = split(val(), a == "--param" ? ':' : ':');
@@ -144,7 +146,7 @@ int main(int argc, char** argv) {
     } else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   if (cmd.empty() || params.arr().empty()) {
-    std::cerr << "usage: rc_scan --cmd PROGRAM --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT]\n";
+    std::cerr << "usage: rc_scan --cmd PROGRAM --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds]\n";
     return 2;
   }
   try {
@@ -193,6 +195,28 @@ int main(int argc, char** argv) {
     }
     if (pool.empty()) throw std::runtime_error("every probe run failed; check the program on a default scenario");
     std::vector<Invariant> inv = mine_invariants(pool);
+    if (!absolute) {
+      // A signal whose value at step 0 already varies a lot between runs follows the starting conditions (momentum of a random start, energy of a random
+      // layout); an absolute bound on it only restates the largest start seen, and fires on any valid input with a bigger start. Replace such bounds by one
+      // relative to the run's own start: |x(k) - x(0)| <= R * (|x(0)| + 5% of the signal's scale), R = twice the largest ratio seen in the normal runs, at least 1e-6.
+      for (const auto& kv : pool[0]) {
+        const std::string& sn = kv.first;
+        double x0lo = 1e300, x0hi = -1e300, lo = 1e300, hi = -1e300, scale = 0;
+        for (const Signals& sg : pool) { auto it = sg.find(sn); if (it == sg.end() || it->second.empty()) continue; x0lo = std::min(x0lo, it->second[0]); x0hi = std::max(x0hi, it->second[0]);
+          for (double v : it->second) if (std::isfinite(v)) { lo = std::min(lo, v); hi = std::max(hi, v); scale = std::max(scale, std::fabs(v)); } }
+        if (!(hi > lo) || !(x0hi - x0lo > 0.25 * (hi - lo))) continue;
+        double ratio = 0;
+        for (const Signals& sg : pool) { auto it = sg.find(sn); if (it == sg.end() || it->second.empty()) continue;
+          for (double v : it->second) if (std::isfinite(v)) ratio = std::max(ratio, std::fabs(v - it->second[0]) / (std::fabs(it->second[0]) + 0.05 * scale)); }
+        std::vector<Invariant> keep;
+        for (const Invariant& v : inv) if (!(v.kind == "bound" && v.signal == sn)) keep.push_back(v);
+        inv = keep;
+        Invariant c; c.id = "rel_" + sn; c.kind = "conserved"; c.signal = sn; const double R = std::max(2 * ratio, 1e-6);  // below 1e-6 relative a change is floating-point noise, not behavior
+        c.rel_tol = R; c.abs_tol = R * 0.05 * scale;
+        c.text = sn + " stays within " + num(c.rel_tol) + " x (|its start| + " + num(0.05 * scale) + ") of its own start (mined, relative)";
+        inv.push_back(c);
+      }
+    }
     std::printf("learned %zu candidate invariants from %zu normal runs\n", inv.size(), pool.size());
 
     std::map<std::string, Finding> found;
