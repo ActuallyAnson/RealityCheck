@@ -7,6 +7,7 @@
 //
 // The program speaks the JSON-lines protocol of docs/PROTOCOL.md (generic domain: docs/GENERIC_DOMAIN.md). Mined invariants are candidates learned
 // from the program itself: a bug present in every run looks normal to them, so a clean scan is not a certificate (docs/MINING.md).
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -15,6 +16,9 @@
 #include <map>
 #include <sstream>
 
+#include <poll.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "external/engine.hpp"
@@ -41,10 +45,36 @@ std::vector<std::string> probe_signals(const std::string& cmd, const Json& param
   req["op"] = "simulate"; req["scenario"] = sc;
   const std::string in = "/tmp/rc_scan_probe_" + std::to_string(::getpid()) + ".json";
   std::ofstream(in) << req.dump() << "\n";
-  FILE* p = popen(("( " + cmd + " ) < '" + in + "' 2>&1 | head -n 1").c_str(), "r");
+  // Run the program in its own process group and wait for its first output line for at most RC_EXEC_TIMEOUT_S seconds (default 60, as the exec engine does),
+  // so a program that never answers on the default parameters ends the scan with a message instead of stalling it.
+  const char* env = std::getenv("RC_EXEC_TIMEOUT_S");
+  const double limit = env && std::atof(env) > 0 ? std::atof(env) : 60.0;
   std::string line;
-  if (p) { char buf[1 << 16]; if (fgets(buf, sizeof buf, p)) line = buf; pclose(p); }
+  bool timed_out = false;
+  int fd[2];
+  if (pipe(fd) == 0) {
+    const std::string sh = "( " + cmd + " ) < '" + in + "'";
+    const pid_t pid = fork();
+    if (pid == 0) { setpgid(0, 0); dup2(fd[1], 1); dup2(fd[1], 2); close(fd[0]); close(fd[1]); execl("/bin/sh", "sh", "-c", sh.c_str(), static_cast<char*>(nullptr)); _exit(127); }
+    close(fd[1]);
+    const auto t0 = std::chrono::steady_clock::now();
+    char c;
+    for (;;) {
+      const double left = limit - std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+      if (left <= 0) { timed_out = true; break; }
+      pollfd pf = {fd[0], POLLIN, 0};
+      const int r = poll(&pf, 1, static_cast<int>(left * 1000) + 1);
+      if (r == 0) continue;
+      if (r < 0) break;
+      if (read(fd[0], &c, 1) <= 0) break;
+      if (c == '\n') break;
+      line += c;
+    }
+    if (pid > 0) { kill(-pid, SIGKILL); kill(pid, SIGKILL); waitpid(pid, nullptr, 0); }
+    close(fd[0]);
+  }
   std::remove(in.c_str());
+  if (timed_out) throw std::runtime_error("the program did not answer the probe request within " + std::to_string(static_cast<int>(limit)) + " s (RC_EXEC_TIMEOUT_S); it hangs on the default parameters, which is itself worth a look");
   if (line.empty()) throw std::runtime_error("the program printed nothing for the probe request; it must read one JSON line from stdin and answer with one (docs/PROTOCOL.md)");
   Json r;
   try { r = Json::parse(line); } catch (const std::exception&) { throw std::runtime_error("the program's first output line is not JSON: " + line.substr(0, 160)); }

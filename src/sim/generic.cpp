@@ -39,7 +39,7 @@ GenericModel parse_generic_model(const Json& c) {
     g.text = p.str_or("text", "");
     if (g.name.empty()) throw std::runtime_error("model card: a parameter has no name");
     if (g.type == "choice") {
-      if (!p.has("choices") || !p.at("choices").is_array() || p.at("choices").arr().size() < 2) throw std::runtime_error("model card: parameter " + g.name + ": choices needs at least 2 strings");
+      if (!p.has("choices") || !p.at("choices").is_array() || p.at("choices").arr().size() < 1) throw std::runtime_error("model card: parameter " + g.name + ": choices needs at least 1 string");
       for (const Json& x : p.at("choices").arr()) g.choices.push_back(x.str());
       g.min = 0; g.max = static_cast<double>(g.choices.size() - 1);
       std::string d = p.str_or("default", g.choices[0]);

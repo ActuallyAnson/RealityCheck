@@ -11,5 +11,7 @@ grep -q "| finding |" "$O/report.md" || { echo "FAIL: no findings table"; exit 1
 grep -q "It depends on" "$O/report.md" && grep -q "<svg" "$O/report.html" || { echo "FAIL: no reason line or no HTML plot"; exit 1; }
 "$B/rc_scan" --cmd "true" --param x:0:1 --out "$O/none" > "$O/none.txt" 2>&1
 [ $? -eq 2 ] && grep -q "printed nothing" "$O/none.txt" || { echo "FAIL: the empty program was not rejected clearly"; cat "$O/none.txt"; exit 1; }
+RC_EXEC_TIMEOUT_S=2 "$B/rc_scan" --cmd "sleep 30" --param x:0:1 --out "$O/hang" > "$O/hang.txt" 2>&1
+[ $? -eq 2 ] && grep -q "did not answer the probe" "$O/hang.txt" || { echo "FAIL: a hanging program was not stopped with a message"; cat "$O/hang.txt"; exit 1; }
 echo "scan selftest ok"
 rm -rf "$O"
