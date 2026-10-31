@@ -1,6 +1,6 @@
 // Generic-domain adapter (docs/GENERIC_DOMAIN.md) around an UNMODIFIED REBOUND 5.x checkout, to try rc_scan on a real N-body engine. A few bodies are placed
 // at random from the scenario seed; REBOUND integrates them to the output times. It encodes no expected answer and no known bug.
-// Parameters: bodies (int), mass_ratio, spread, speed, softening, dt, integrator (choice), layout (choice: random | equal_masses_zero_momentum).
+// Parameters: bodies (int), mass_ratio, spread, speed, softening, dt, integrator (choice), layout (choice: random | equal_masses_zero_momentum | mirror_pairs).
 // Signals per output step: energy, momentum, max_radius. REBOUND is GPLv3 and built outside this repository (scripts/build_rebound_example.sh objects).
 #include <cmath>
 #include <cstdlib>
@@ -29,6 +29,7 @@ int main() {
       const double ratio = p.at("mass_ratio").num(), spread = p.at("spread").num(), speed = p.at("speed").num(), soft = p.at("softening").num(), dt = p.at("dt").num();
       const std::string integ = p.at("integrator").str();
       const bool sym = p.at("layout").str() == "equal_masses_zero_momentum";
+      const bool mirror = p.at("layout").str() == "mirror_pairs";
       unsigned long long rng = static_cast<unsigned long long>(sc.num_or("seed", 1)) * 6364136223846793005ULL + 1442695040888963407ULL;
       auto u = [&] { rng = rng * 6364136223846793005ULL + 1442695040888963407ULL; return ((rng >> 33) % 100000) / 100000.0; };
       reb_simulation* r = reb_simulation_create();
@@ -38,7 +39,16 @@ int main() {
       r->dt = dt;
       r->exact_finish_time = 1;
       double px = 0, py = 0, pvx = 0, pvy = 0;
-      for (int i = 0; i < n; ++i) {
+      if (mirror) {  // equal masses; pairs point-symmetric about (10,6) with identical velocity in a pair; an odd count gets a central body that zeroes the momentum
+        double svx = 0, svy = 0;
+        for (int i = 0; i + 1 < n; i += 2) {
+          const double dx = spread * (u() - 0.5), dy = spread * (u() - 0.5), vx = speed * (u() - 0.5), vy = speed * (u() - 0.5);
+          for (int sgn : {1, -1}) { reb_particle q = {}; q.m = 1.0; q.x = 10 + sgn * dx; q.y = 6 + sgn * dy; q.vx = vx; q.vy = vy; reb_simulation_add(r, q); }
+          svx += 2 * vx; svy += 2 * vy;
+        }
+        if (n % 2) { reb_particle q = {}; q.m = 1.0; q.x = 10; q.y = 6; q.vx = -svx; q.vy = -svy; reb_simulation_add(r, q); }
+      }
+      for (int i = 0; i < (mirror ? 0 : n); ++i) {
         reb_particle q = {};
         q.m = sym ? 1.0 : 1.0 + (ratio - 1.0) * u();
         q.x = 10 + spread * (u() - 0.5); q.y = 6 + spread * (u() - 0.5);
