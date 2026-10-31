@@ -36,6 +36,14 @@ The false positive above came from absolute bounds on a signal whose value at st
 - Water tank: the planted flaw is still found.
 Net: one false positive removed, one added. The choices (factor 2, floor 1e-6, quarter-of-range) were made after looking at these same scans, so this is not an independent test, and the rule is not shown to be better. It is kept because it removes the false positives that depend on the starting conditions, at the price of a looser rule on signals that move a lot in valid runs.
 
+## Third engine: classic Box2D v2.4.1 (`9ebbbcd`), tested by a delegated agent and re-checked by me
+An agent wrote the adapter (circles, boxes, revolute joints; bullet, continuous and sleeping flags; `n_outside` signal) and ran about 4700 scenarios in six scans. Results as it reported them, with my check:
+- Continuous physics off: bodies leave the closed box at high speed. Documented behavior, not a bug.
+- Continuous on: a single fast body crossing the box trips the relative rule (false positive, several scans); one probable adapter artifact (55 to 80 boxes placed overlapping at step 0, depenetration energy; not separately checked).
+- No crash, hang, NaN or nondeterminism.
+- **One real behavior found by hand from a scan report:** with the bullet flag on for every body of a dense pile (no joints, no initial overlap), boxes are pushed into the 2 m thick static floor and fall out of the world. `examples/external/box2d24_bullet_pile.cpp` is a standalone program using only Box2D's public API; I ran it myself: `./repro 400 1 0.0167 10 0.2 8 3 1500` gives 8 bodies leaving the box (first at step 93), the same with `bullet=0` gives 0. The agent also reports 3 of 60 leave at low iteration counts and that raising the iterations to 20/10 cured it (I did not rerun those). The Box2D manual says bullets run continuous collision against dynamic bodies and to choose bullets with care; it does not mention piles of bullets. I could not check the upstream tracker or a newer release, so this is **not claimed as a bug**: it may be a known limit of the time-of-impact solver.
+- What the tool did: its report for the jointed-bullet scan flagged `min_clearance` but did not say bodies left the arena; the hand investigation found that. The scan helped find the region; the diagnosis was manual.
+
 Honest summary of the real-engine tests (before the relative rules): no bug in either engine, one false positive, one documented behavior reported, and one known bug missed.
 
 Limits, stated plainly: the learned invariants are candidates from the program's own behavior, so a bug that is in every run looks normal to them and a clean scan is not a certificate; a finding may be an unusual but valid input rather than a bug, and only you can tell. Add your own rules to `card.json`, run `rc_agent --live` for a model-driven hunt, or `rc_spec --live` for model-written rules. It has not yet been tried by anyone but me.
