@@ -268,8 +268,16 @@ int main(int argc, char** argv) {
     else if (a == "--param" || a == "--choice") {
       const std::vector<std::string> f = split(val(), a == "--param" ? ':' : ':');
       Json p = Json::object();
-      p["name"] = f.at(0);
-      if (a == "--choice") {
+      const size_t tilde = f.at(0).find('~');
+      p["name"] = tilde == std::string::npos ? f.at(0) : f.at(0).substr(0, tilde);
+      if (a == "--param" && tilde != std::string::npos) {  // NAME~TYPICAL[:int]: scan from a tenth to ten times the typical value (or +-1 around 0), typical = default
+        const double t = std::atof(f.at(0).substr(tilde + 1).c_str());
+        const bool is_int = f.size() > 1 && f[1] == "int";
+        double lo = t > 0 ? t / 10 : t < 0 ? t * 10 : -1, hi = t > 0 ? t * 10 : t < 0 ? t / 10 : 1;
+        if (is_int) { lo = std::floor(lo); hi = std::ceil(hi); }
+        p["type"] = is_int ? "int" : "float"; p["min"] = lo; p["max"] = hi; p["default"] = t;
+        if (t > 0 && !is_int) p["scale"] = "log";
+      } else if (a == "--choice") {
         Json ch = Json::array();
         for (const std::string& c : split(f.at(1), ',')) ch.push(c);
         p["type"] = "choice"; p["choices"] = ch; p["default"] = split(f.at(1), ',').at(0);
@@ -284,7 +292,7 @@ int main(int argc, char** argv) {
     } else { std::cerr << "unknown option " << a << "\n"; return 2; }
   }
   if (cmd.empty() || params.arr().empty()) {
-    std::cerr << "usage: rc_scan --cmd PROGRAM|COMMAND-WITH-{param}-PLACEHOLDERS --param NAME:MIN:MAX[:int|log] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds] [--require signal<=value]\n";
+    std::cerr << "usage: rc_scan --cmd PROGRAM|COMMAND-WITH-{param}-PLACEHOLDERS --param NAME:MIN:MAX[:int|log] | NAME~TYPICAL[:int] [--param ...] [--choice NAME:a,b,c] [--steps N] [--scenarios N] [--out DIR] [--name TEXT] [--absolute-bounds] [--require signal<=value]\n";
     return 2;
   }
   const std::string shown_cmd = cmd;
@@ -432,12 +440,53 @@ int main(int argc, char** argv) {
           inv.push_back(c);
         }
       }
+    // Relations between two signals: A <= B at every step of every normal run, and the two came (nearly) together at least once, so it is not a vacuous
+    // relation like "a 0-to-1 valve is below a 5-to-60 capacity". Checked with the existing signal-versus-signal bound.
+    if (!absolute && pool.size() >= 20 && pool[0].size() <= 24) {
+      std::vector<std::string> names;
+      for (const auto& kv : pool[0]) names.push_back(kv.first);
+      for (const std::string& a : names)
+        for (const std::string& b : names) {
+          if (a == b) continue;
+          double worst = 1e300, scale = 0, mingap = 1e300;
+          bool ok = true;
+          int violating = 0, meeting = 0;
+          for (const Signals& sg : pool) {
+            auto ia = sg.find(a), ib = sg.find(b);
+            if (ia == sg.end() || ib == sg.end() || ia->second.size() != ib->second.size()) { ok = false; break; }
+            bool bad = false, met = false;
+            for (size_t k = 0; k < ia->second.size(); ++k) {
+              const double x = ia->second[k], y = ib->second[k];
+              if (!std::isfinite(x) || !std::isfinite(y)) continue;
+              scale = std::max(scale, std::max(std::fabs(x), std::fabs(y)));
+              if (y - x < -1e-9 * std::max(1.0, std::fabs(y))) bad = true;
+              if (std::fabs(y - x) <= 1e-9 * std::max(1.0, std::fabs(y)) && std::fabs(y) > 1e-6) met = true;
+              worst = std::min(worst, y - x);
+              mingap = std::min(mingap, y - x);
+            }
+            if (bad) ++violating;
+            if (met) ++meeting;
+          }
+          if (!ok || scale <= 0) continue;
+          const double eps = 1e-9 * scale;
+          // Held in at least 90% of the normal runs (a relation a bug breaks in a few practice runs is exactly the one to learn) and the two were exactly
+          // equal at a non-zero value in at least 5% of them (a clamp, a conservation, a limit that is reached), so it is not a vacuous or accidental ordering.
+          if (violating > static_cast<int>(0.10 * static_cast<double>(pool.size()))) continue;
+          if (meeting < static_cast<int>(0.05 * static_cast<double>(pool.size()))) continue;
+          (void)worst; (void)mingap;
+          Invariant c; c.id = "rel_" + a + "_le_" + b; c.kind = "bound"; c.signal = a; c.op = "<="; c.rhs_signal = b; c.add = eps;
+          c.text = a + " <= " + b + " at every step (it held in at least 90% of the normal runs and the two were equal at a non-zero value in at least 5% of them; mined, relation)";
+          inv.push_back(c);
+        }
+    }
     for (const std::string& r : requires_) {
       const size_t at = r.find("<=") != std::string::npos ? r.find("<=") : r.find(">=");
       if (at == std::string::npos) { std::cerr << "rc_scan: --require needs signal<=value or signal>=value, got '" << r << "'\n"; return 2; }
-      Invariant c; c.id = "require" + std::to_string(inv.size()); c.kind = "bound"; c.signal = r.substr(0, at); c.op = r.substr(at, 2); c.has_value = true; c.value = std::atof(r.substr(at + 2).c_str());
+      Invariant c; c.id = "require" + std::to_string(inv.size()); c.kind = "bound"; c.signal = r.substr(0, at); c.op = r.substr(at, 2);
+      const std::string rhs = r.substr(at + 2);
       if (!pool[0].count(c.signal)) { std::cerr << "rc_scan: --require: the program has no signal '" << c.signal << "'\n"; return 2; }
-      c.text = "required by you: " + c.signal + " " + c.op + " " + num(c.value);
+      if (pool[0].count(rhs)) { c.rhs_signal = rhs; c.text = "required by you: " + c.signal + " " + c.op + " " + rhs + " at every step"; }
+      else { c.has_value = true; c.value = std::atof(rhs.c_str()); c.text = "required by you: " + c.signal + " " + c.op + " " + num(c.value); }
       inv.push_back(c);
     }
 
