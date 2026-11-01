@@ -1,0 +1,6 @@
+# Line ranges for rc_mutgen, decided before generating anything (Box2D v2.4.1 files under tree/src). Excluded: b2Assert lines, B2_DEBUG_SOLVER blocks, "#if 0" blocks, profiling counters/timers (b2_toi* stats), constructors/destructors of b2Island, b2Island::Report, comments.
+dynamics/b2_contact_solver.cpp 51-77,79-136,146-176,178-254,257-294,297-319,321-417,419-468,481-511,521-553,563-606,609-621,629-672,676-751,755-842
+dynamics/b2_island.cpp 189-386,393-422,455-518
+collision/b2_collide_circle.cpp 27-157
+collision/b2_collide_polygon.cpp 27-65,68-77,79-110,120-242
+collision/b2_time_of_impact.cpp 37-55,57-189,191-242,244-253,263-331,357-428,430-457,459-468,470-484

@@ -1,0 +1,41 @@
+id	class	armA_literal	armA_strict	armB_literal	armB_strict	armA_first_new	armB_first_new
+M01	unchanged	-	-	-	-	-	-
+M02	changed	4	3	4	3	learned guess:breaks learned invariant: max_speed <= 360.061 (mined)	learned guess:breaks learned invariant: max_speed <= 360.061 (mined)
+M03	changed	1	1	1	1	learned guess:breaks learned invariant: max_speed stays within 9.32377 x (|its start| + 5.07439) of its own st	learned guess:breaks learned invariant: max_speed stays within 9.32377 x (|its start| + 5.07439) of its own st
+M04	changed	5	5	6	5	HARD FAILURE:nondeterministic	HARD FAILURE:nondeterministic
+M05	changed	1	0	1	0	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)
+M06	changed	0	0	0	0		
+M07	changed	0	0	0	0		
+M08	changed	0	0	0	0		
+M09	changed	1	1	1	1	learned guess:breaks learned invariant: kinetic stays within 1.89669 x (|its start| + 58117) of its own start 	learned guess:breaks learned invariant: kinetic stays within 1.89669 x (|its start| + 58117) of its own start 
+M10	changed	5	4	5	4	HARD FAILURE:non-finite signal kinetic	HARD FAILURE:non-finite signal kinetic
+M11	crashed/hung	0	0	0	0		
+M12	changed	3	2	3	2	learned guess:breaks learned invariant: n_outside <= 10.5 (mined)	learned guess:breaks learned invariant: n_outside <= 10.5 (mined)
+M13	crashed/hung	10	10	6	6	HARD FAILURE:nondeterministic	HARD FAILURE:nondeterministic
+M14	changed	0	0	0	0		
+M15	unchanged	-	-	-	-	-	-
+M16	changed	3	3	3	3	learned guess:breaks learned invariant: kinetic stays within 1.89671 x (|its start| + 58117) of its own start 	learned guess:breaks learned invariant: kinetic stays within 1.89671 x (|its start| + 58117) of its own start 
+M17	changed	9	9	9	9	HARD FAILURE:non-finite signal kinetic	HARD FAILURE:non-finite signal kinetic
+M18	changed	0	0	0	0		
+M19	unchanged	-	-	-	-	-	-
+M20	changed	1	1	1	1	learned guess:breaks learned invariant: max_abs_x <= 203.623 (mined)	learned guess:breaks learned invariant: max_abs_x <= 203.623 (mined)
+M21	changed	0	0	0	0		
+M22	changed	0	0	0	0		
+M23	changed	0	0	0	0		
+M24	changed	1	0	1	0	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)
+M25	unchanged	-	-	-	-	-	-
+M26	unchanged	-	-	-	-	-	-
+M27	changed	5	5	5	5	HARD FAILURE:non-finite signal kinetic	HARD FAILURE:non-finite signal kinetic
+M28	changed	0	0	0	0		
+M29	changed	0	0	0	0		
+M30	changed	0	0	0	0		
+M31	changed	11	10	7	6	HARD FAILURE:nondeterministic	HARD FAILURE:nondeterministic
+M32	unchanged	-	-	-	-	-	-
+M33	changed	0	0	0	0		
+M34	changed	3	2	3	2	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)	learned guess:breaks learned invariant: n_outside <= 13.5 (mined)
+M35	unchanged	-	-	-	-	-	-
+M36	changed	7	6	7	6	HARD FAILURE:non-finite signal kinetic	HARD FAILURE:non-finite signal kinetic
+M37	unchanged	-	-	-	-	-	-
+M38	changed	0	0	0	0		
+M39	unchanged	-	-	-	-	-	-
+M40	changed	1	1	1	1	learned guess:breaks learned invariant: max_abs_x <= 206.561 (mined)	learned guess:breaks learned invariant: max_abs_x <= 206.561 (mined)

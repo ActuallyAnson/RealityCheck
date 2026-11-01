@@ -1,0 +1,40 @@
+M01	1	b2_time_of_impact	m018	286	constant 20 -> 21	\tconst int32 k_maxIterations = 20;\t// TODO_ERIN b2Settings
+M02	2	b2_contact_solver	m165	348	operator '+=' -> '-='	\t\t\twB += iB * b2Cross(vcp->rB, P);
+M03	3	b2_contact_solver	m006	236	operator '+' -> '-'	\t\t\tfloat k12 = mA + mB + iA * rn1A * rn2A + iB * rn1B * rn2B;
+M04	4	b2_collide_polygon	m006	124	constant 0 -> 1	\tmanifold->pointCount = 0;
+M05	5	b2_contact_solver	m009	240	operator '*' -> '/'	\t\t\tif (k11 * k11 < k_maxConditionNumber * (k11 * k22 - k12 * k12))
+M06	6	b2_collide_polygon	m009	204	constant 2 -> 3	\tif (np < 2)
+M07	7	b2_island	m063	380	constant 0 -> 1	\t\t\tfor (int32 i = 0; i < m_bodyCount; ++i)
+M08	8	b2_contact_solver	m003	216	operator '-' -> '+'	\t\t\tfloat vRel = b2Dot(vc->normal, vB + b2Cross(wB, vcp->rB) - vA - b2Cross(wA, vcp->rA));
+M09	9	b2_contact_solver	m118	751	operator '*' -> '/'	\treturn minSeparation >= -3.0f * b2_linearSlop;
+M10	10	b2_contact_solver	m126	736	operator '*' -> '/'	\t\t\taA -= iA * b2Cross(rA, P);
+M11	11	b2_contact_solver	m241	193	operator '+' -> '-'	\t\t\tb2VelocityConstraintPoint* vcp = vc->points + j;
+M12	12	b2_contact_solver	m029	422	operator '+' -> '-'	\t\t\tb2Vec2 dv2 = vB + b2Cross(wB, cp2->rB) - vA - b2Cross(wA, cp2->rA);
+M13	13	b2_island	m014	478	operator '<' -> '<='	\tfor (int32 i = 0; i < m_bodyCount; ++i)
+M14	14	b2_contact_solver	m007	224	constant 2 -> 3	\t\tif (vc->pointCount == 2 && g_blockSolve)
+M15	15	b2_contact_solver	m205	536	operator '>=' -> '>'	\t\t\t\tif (x.y >= 0.0f && vn1 >= 0.0f)
+M16	16	b2_contact_solver	m320	544	operator '-=' -> '+='	\t\t\t\t\tvA -= mA * (P1 + P2);
+M17	17	b2_contact_solver	m018	822	operator '/' -> '*'	\t\t\tfloat impulse = K > 0.0f ? - C / K : 0.0f;
+M18	18	b2_time_of_impact	m060	281	operator '*' -> '/'	\tfloat target = b2Max(b2_linearSlop, totalRadius - 3.0f * b2_linearSlop);
+M19	19	b2_collide_circle	m009	112	operator '<=' -> '<'	\tif (u1 <= 0.0f)
+M20	20	b2_contact_solver	m235	210	operator '+' -> '-'	\t\t\tfloat kTangent = mA + mB + iA * rtA * rtA + iB * rtB * rtB;
+M21	21	b2_contact_solver	m194	414	constant 0 -> 1	\t\t\tb2VelocityConstraintPoint* cp1 = vc->points + 0;
+M22	22	b2_contact_solver	m043	201	operator '*' -> '/'	\t\t\tfloat kNormal = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+M23	23	b2_contact_solver	m163	819	operator '*' -> '/'	\t\t\tfloat K = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+M24	25	b2_collide_polygon	m005	194	operator '+' -> '-'	\tfloat sideOffset2 = b2Dot(tangent, v12) + totalRadius;
+M25	26	b2_collide_polygon	m013	129	operator '>' -> '>='	\tif (separationA > totalRadius)
+M26	27	b2_collide_polygon	m024	86	operator '<' -> '<='	\tfor (int32 i = 0; i < count2; ++i)
+M27	29	b2_island	m020	502	operator '*' -> '/'	\t\ta += h * w;
+M28	30	b2_island	m036	467	operator '<' -> '<='	\tfor (int32 i = 0; i < subStep.velocityIterations; ++i)
+M29	31	b2_contact_solver	m187	779	operator '==' -> '!='	\t\tif (indexB == toiIndexA || indexB == toiIndexB)
+M30	32	b2_contact_solver	m323	779	operator '||' -> '&&'	\t\tif (indexB == toiIndexA || indexB == toiIndexB)
+M31	33	b2_contact_solver	m290	151	operator '+' -> '-'	\t\tb2ContactPositionConstraint* pc = m_positionConstraints + i;
+M32	34	b2_contact_solver	m271	414	operator '+' -> '-'	\t\t\tb2VelocityConstraintPoint* cp1 = vc->points + 0;
+M33	35	b2_time_of_impact	m012	417	constant 1 -> 2	\t\t\t\tif (rootIterCount & 1)
+M34	37	b2_contact_solver	m158	502	operator '-=' -> '+='	\t\t\t\t\tvA -= mA * (P1 + P2);
+M35	38	b2_contact_solver	m247	576	operator '&&' -> '||'	\t\t\t\tif (vn1 >= 0.0f && vn2 >= 0.0f )
+M36	39	b2_contact_solver	m183	345	operator '*' -> '/'	\t\t\twA -= iA * b2Cross(vcp->rA, P);
+M37	40	b2_island	m035	221	operator '/' -> '*'	\t\t\tv *= 1.0f / (1.0f + h * b->m_linearDamping);
+M38	41	b2_island	m010	323	operator '&&' -> '||'	\t\t\tjointsOkay = jointsOkay && jointOkay;
+M39	42	b2_island	m062	289	operator '>' -> '>='	\t\tif (b2Dot(translation, translation) > b2_maxTranslationSquared)
+M40	43	b2_collide_polygon	m033	220	constant 0 -> 1	\tfor (int32 i = 0; i < b2_maxManifoldPoints; ++i)

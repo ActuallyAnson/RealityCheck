@@ -1,0 +1,3 @@
+24	b2_contact_solver	m150	543	operator '*' -> '/'	\t\t\t\t\tb2Vec2 P2 = d.y * normal;
+28	b2_island	m023	211	operator '*' -> '/'	\t\t\tv += h * b->m_invMass * (b->m_gravityScale * b->m_mass * gravity + b->m_force);
+36	b2_contact_solver	m204	344	operator '*' -> '/'	\t\t\tvA -= mA * P;

@@ -90,3 +90,17 @@ Honest summary of the real-engine tests (before the relative rules): no bug in e
 How to read a report and fix an adapter: `docs/SCAN_GUIDE.md`.
 
 Limits, stated plainly: the learned invariants are candidates from the program's own behavior, so a bug that is in every run looks normal to them and a clean scan is not a certificate; a finding may be an unusual but valid input rather than a bug, and only you can tell. Add your own rules to `card.json`, run `rc_agent --live` for a model-driven hunt, or `rc_spec --live` for model-written rules. It has not yet been tried by anyone but me.
+
+## Planted-mutant recall on Box2D 2.4.1 (declared in `docs/PREREG_FINAL.md`, commit fcc4c3a, before any mutant was built)
+
+This answers "if a bug existed, would the scan notice?" on code we did not write, with bugs we did not choose. 40 mutants were produced mechanically by `rc_mutgen` (seed 1, pooled over five solver and collision files; three sites that did not compile were replaced by the next in the fixed order). Each was built in a private copy and scanned with identical settings (600 scenarios, 200 steps, 10 s probe timeout). A delegated agent ran it; I re-counted its table. Everything is in `results/scan_mutants/` (per-mutant reports, `results.md`, `classification.tsv`).
+
+| class | mutants |
+|---|---|
+| unchanged on 300 fixed requests (equivalent or untriggered) | 9 |
+| crash on start or on part of the requests | 2, both reported by the scan (one aborts with "Segmentation fault", the other gives HARD FAILURE rows) |
+| changed behavior | 29 |
+
+Of the 29 changed mutants, the scan reported a finding absent from the clean build's report for **16** (14 if learned limits that only shifted a number are ignored). Only **6** of those are hard failures (nondeterministic or non-finite values); the other 10 rest on learned-guess rows, which the scan itself calls candidates. **13 of 29 were missed**: mutants in the continuous-collision path, rarely reached branches, and arithmetic that degrades solver quality while the world stays plausible (list in `results/scan_mutants/results.md`; the agent's explanations of why are not verified). The extra rule `n_outside<=0` added nothing, because the clean engine already breaks it. The clean build itself gave one learned-guess finding (`n_outside <= 12`, 3 of 600).
+
+Reading: the scan reliably notices code changes that blow up, crash or go nondeterministic; it mostly does not notice changes that leave the simulation plausible, and it does not tell a user which learned guesses are real. The 9 unchanged mutants are not counted either way, since 300 random requests cannot separate equivalent from rare-trigger.
