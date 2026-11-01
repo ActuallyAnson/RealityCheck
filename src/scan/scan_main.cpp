@@ -255,6 +255,7 @@ int main(int argc, char** argv) {
   if (argc >= 3 && std::string(argv[1]) == "--shim") return shim_main(argv[2]);
   std::string cmd, out = "scan_out", name = "my simulator";
   int steps = 200, n = 400, pool_n = 200;
+  std::vector<std::string> same_specs;  // --same "p=a|p=b:sig,sig[:first=N][:tol=T]": two runs differing only in those parameters must agree on those signals
   std::vector<std::string> requires_;  // --require "signal<=value" / "signal>=value": rules you state yourself
   bool absolute = false;  // --absolute-bounds: keep mined absolute bounds on signals that follow the start (the older, noisier behavior)
   Json params = Json::array();
@@ -265,6 +266,7 @@ int main(int argc, char** argv) {
     if (a == "--cmd") cmd = val(); else if (a == "--out") out = val(); else if (a == "--name") name = val();
     else if (a == "--absolute-bounds") absolute = true;
     else if (a == "--require") requires_.push_back(val());
+    else if (a == "--same") same_specs.push_back(val());
     else if (a == "--steps") steps = std::atoi(val().c_str()); else if (a == "--scenarios") n = std::atoi(val().c_str());
     else if (a == "--param" || a == "--choice") {
       const std::vector<std::string> f = split(val(), a == "--param" ? ':' : ':');
@@ -491,6 +493,25 @@ int main(int argc, char** argv) {
       inv.push_back(c);
     }
 
+    struct Relation { std::vector<std::pair<std::string, double>> a, b; std::vector<std::string> sigs; int first = 10; double tol = 0.01; std::string text; };
+    std::vector<Relation> relations;
+    for (const std::string& spec : same_specs) {
+      const std::vector<std::string> f = split(spec, ':');
+      if (f.size() < 2) { std::cerr << "rc_scan: --same needs p=a|p=b:signal,signal[:first=N][:tol=T], got '" << spec << "'\n"; return 2; }
+      Relation r;
+      const std::vector<std::string> ab = split(f[0], '|');
+      if (ab.size() != 2) { std::cerr << "rc_scan: --same: give two assignments separated by |, got '" << f[0] << "'\n"; return 2; }
+      auto assign = [&](const std::string& t, std::vector<std::pair<std::string, double>>* o) {
+        for (const std::string& kv : split(t, ',')) { const size_t e = kv.find('='); if (e == std::string::npos) { std::cerr << "rc_scan: --same: expected name=value, got '" << kv << "'\n"; std::exit(2); } o->push_back({kv.substr(0, e), std::atof(kv.substr(e + 1).c_str())}); }
+      };
+      assign(ab[0], &r.a); assign(ab[1], &r.b);
+      r.sigs = split(f[1], ',');
+      for (const std::string& sg : r.sigs) if (!pool[0].count(sg)) { std::cerr << "rc_scan: --same: the program has no signal '" << sg << "'\n"; return 2; }
+      for (size_t k = 2; k < f.size(); ++k) { if (f[k].rfind("first=", 0) == 0) r.first = std::atoi(f[k].c_str() + 6); else if (f[k].rfind("tol=", 0) == 0) r.tol = std::atof(f[k].c_str() + 4); }
+      r.text = f[0] + " agree on " + f[1] + " over the first " + std::to_string(r.first) + " steps (within " + num(r.tol) + " of the larger value)";
+      relations.push_back(r);
+    }
+
     std::map<std::string, Finding> found;
     auto record = [&](const std::string& key, const std::string& kind, const std::string& detail, const Scenario& sc) {
       Finding& f = found[key];
@@ -507,6 +528,21 @@ int main(int argc, char** argv) {
         bool same = true;
         for (const auto& kv : sg) { const auto& o = sg2.at(kv.first); for (size_t k = 0; k < kv.second.size() && same; ++k) if (!(kv.second[k] == o[k] || (std::isnan(kv.second[k]) && std::isnan(o[k])))) same = false; }
         if (!same) hits->push_back({"nondeterministic", "the same scenario gives different signals on a second run"});
+      }
+      for (const Relation& rel : relations) {
+        Scenario sa = sc, sb = sc; Signals ga, gb; std::string e1, e2;
+        for (const auto& kv : rel.a) sa.gen.params[kv.first] = kv.second;
+        for (const auto& kv : rel.b) sb.gen.params[kv.first] = kv.second;
+        if (!run(sa, &ga, &e1) || !run(sb, &gb, &e2)) { hits->push_back({"breaks relation: " + rel.text, "one of the two runs failed: " + (e1.empty() ? e2 : e1).substr(0, 120)}); continue; }
+        for (const std::string& sn : rel.sigs) {
+          const auto& x = ga.at(sn); const auto& y = gb.at(sn);
+          const size_t len = std::min<size_t>(std::min(x.size(), y.size()), static_cast<size_t>(rel.first) + 1);
+          double mx = 0; for (size_t k = 0; k < len; ++k) { if (std::isfinite(x[k])) mx = std::max(mx, std::fabs(x[k])); if (std::isfinite(y[k])) mx = std::max(mx, std::fabs(y[k])); }
+          for (size_t k = 0; k < len; ++k) {
+            if (!std::isfinite(x[k]) || !std::isfinite(y[k])) break;
+            if (std::fabs(x[k] - y[k]) > rel.tol * mx + 1e-12) { hits->push_back({"breaks relation: " + rel.text + " [" + sn + "]", sn + " is " + num(x[k]) + " in one run and " + num(y[k]) + " in the other at step " + std::to_string(k)}); break; }
+          }
+        }
       }
       auto covered = [&](const Scaled& sd) { return !sd.has_cond || (sc.gen.params.count(sd.cond) && static_cast<int>(sc.gen.params.at(sd.cond) + 0.5) == static_cast<int>(sd.condv)); };
       for (const Scaled& sd : scaled) {
@@ -563,7 +599,7 @@ int main(int argc, char** argv) {
     }
 
     // Order: hard failures first (hang or error, non-finite, nondeterminism), then rules you stated, then learned guesses; ties by how many scenarios hit.
-    auto rank = [](const std::string& key) { return key.rfind("breaks learned invariant: required by you", 0) == 0 ? 1 : key.rfind("breaks learned invariant", 0) == 0 ? 2 : 0; };
+    auto rank = [](const std::string& key) { return key.rfind("breaks learned invariant: required by you", 0) == 0 || key.rfind("breaks relation", 0) == 0 ? 1 : key.rfind("breaks learned invariant", 0) == 0 ? 2 : 0; };
     auto label = [&](const std::string& key) { const int r = rank(key); return r == 0 ? "HARD FAILURE" : r == 1 ? "your rule" : "learned guess"; };
     std::vector<std::pair<std::string, Finding>> ordered(found.begin(), found.end());
     std::stable_sort(ordered.begin(), ordered.end(), [&](const auto& a, const auto& b) { return rank(a.first) != rank(b.first) ? rank(a.first) < rank(b.first) : a.second.count > b.second.count; });
