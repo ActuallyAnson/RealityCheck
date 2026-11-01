@@ -1,0 +1,30 @@
+# Scan of N10
+
+600 scenarios (half pushed to parameter boundaries), 200 normal runs mined, 13 candidate invariants.
+
+| type | finding | scenarios | smallest example (values left at their default are omitted) |
+|---|---|---|---|
+| your rule | breaks relation: mirror=0|mirror=1 agree on max_abs_x,kinetic,max_speed,min_clearance over the first 2 steps (within 0.2 of the larger value) [max_speed] | 1 of 600 | steps=20, balls=25, size=0.849526, restitution=0.53807, friction=0.909965, viter=12, joints=1 |
+| learned guess | breaks learned invariant: n_outside <= 10.5 (mined) | 4 of 600 | steps=24, balls=30, size=0.1, speed=60, dt=0.0395189 |
+| learned guess | breaks learned invariant: max_abs_x <= 203.623 (mined) | 2 of 600 | steps=143, balls=28, size=0.403771, gravity=13.037, speed=40.1778, dt=0.0397896 |
+| learned guess | breaks learned invariant: kinetic stays within 1.89671 x (|its start| + 58117) of its own start (mined, relative) | 1 of 600 | steps=32, balls=30, size=1.17091, restitution=1, dt=0.00433784, viter=12 |
+| learned guess | breaks learned invariant: max_speed changes by at most 131.267 per step (mined) | 1 of 600 | steps=65, balls=30, size=1.17091, restitution=1, speed=52.761, dt=0.00433784 |
+
+Full parameters of each smallest example, defaults included (the default of a parameter can be what triggers a finding, so check these too):
+
+- breaks relation: mirror=0|mirror=1 agree on max_abs_x,kinetic,max_speed,min_clearance over the first 2 steps (within 0.2 of the larger value) [max_speed]: steps=20, seed=339474, balls=25, size=0.849526, restitution=0.53807, friction=0.909965, density=1, gravity=15, speed=30, dt=0.027, viter=12, piter=3, sleep=0, shape=1, joints=1, bullet=0, ccd=0, mirror=0, shift=0
+- breaks learned invariant: n_outside <= 10.5 (mined): steps=24, seed=679354, balls=30, size=0.1, restitution=0.5, friction=0.5, density=1, gravity=15, speed=60, dt=0.0395189, viter=6, piter=3, sleep=0, shape=1, joints=0, bullet=0, ccd=0, mirror=0, shift=0
+- breaks learned invariant: max_abs_x <= 203.623 (mined): steps=143, seed=911597, balls=28, size=0.403771, restitution=0.5, friction=0.5, density=1, gravity=13.037, speed=40.1778, dt=0.0397896, viter=6, piter=3, sleep=0, shape=1, joints=0, bullet=0, ccd=0, mirror=0, shift=0
+- breaks learned invariant: kinetic stays within 1.89671 x (|its start| + 58117) of its own start (mined, relative): steps=32, seed=485944, balls=30, size=1.17091, restitution=1, friction=0.5, density=1, gravity=15, speed=30, dt=0.00433784, viter=12, piter=3, sleep=0, shape=1, joints=0, bullet=0, ccd=0, mirror=0, shift=0
+- breaks learned invariant: max_speed changes by at most 131.267 per step (mined): steps=65, seed=485944, balls=30, size=1.17091, restitution=1, friction=0.5, density=1, gravity=15, speed=52.761, dt=0.00433784, viter=6, piter=3, sleep=0, shape=1, joints=0, bullet=0, ccd=0, mirror=0, shift=0
+
+Why, per finding:
+
+- breaks relation: mirror=0|mirror=1 agree on max_abs_x,kinetic,max_speed,min_clearance over the first 2 steps (within 0.2 of the larger value) [max_speed]: max_speed is 39.8829 in one run and 68.4809 in the other at step 2. It depends on: balls = 25 (it disappears at 1, 15, 30); size = 1.2 or 0.849526 (it disappears at 0.1, 0.65); restitution = 0.5 or 0.53807 (it disappears at 0, 1); friction = 1 or 0.909965 (it disappears at 0, 0.5); speed = 30 (it disappears at 0, 60); dt = 0.004 or 0.027 (it disappears at 0.05); viter = 6 or 12 (it disappears at 1); piter = 3 (it disappears at 1, 6); shape = 1 (it disappears at 0, 2); joints = 1 (it disappears at 0).
+- breaks learned invariant: n_outside <= 10.5 (mined): n_outside <= 10.5 (mined) (observed 17.000000 vs limit 10.500000 at step 7). It depends on: balls = 30 (it disappears at 1, 15); size = 0.1 (it disappears at 0.65, 1.2); speed = 60 (it disappears at 0, 30); dt = 0.027 or 0.05 or 0.0395189 (it disappears at 0.004); ccd = 0 (it disappears at 1).
+- breaks learned invariant: max_abs_x <= 203.623 (mined): max_abs_x <= 203.623 (mined) (observed 203.713348 vs limit 203.622883 at step 142). It depends on: balls = 30 or 28 (it disappears at 1, 15); size = 0.1 or 0.403771 (it disappears at 0.65, 1.2); gravity = 0 or 13.037 (it disappears at 15, 30); speed = 60 or 40.1778 (it disappears at 0, 30); dt = 0.0397896 (it disappears at 0.004, 0.027, 0.05); shape = 1 (it disappears at 0, 2); joints = 0 (it disappears at 1); ccd = 0 (it disappears at 1).
+- breaks learned invariant: kinetic stays within 1.89671 x (|its start| + 58117) of its own start (mined, relative): kinetic stays within 1.89671 x (|its start| + 58117) of its own start (mined, relative) (observed 422847.403325 vs limit 77502.000765 at step 10). It depends on: balls = 30 (it disappears at 1, 15); size = 1.17091 (it disappears at 0.1, 0.65, 1.2); restitution = 1 (it disappears at 0, 0.5); friction = 0 or 0.5 (it disappears at 1); density = 1 or 10 (it disappears at 0.1); speed = 30 (it disappears at 0, 60); dt = 0.004 or 0.00433784 (it disappears at 0.027, 0.05); viter = 6 or 12 (it disappears at 1); piter = 1 or 3 (it disappears at 6); shape = 1 (it disappears at 0, 2); ccd = 0 (it disappears at 1).
+- breaks learned invariant: max_speed changes by at most 131.267 per step (mined): max_speed changes by at most 131.267 per step (mined) (observed 150.879852 vs limit 131.267040 at step 38). It depends on: balls = 30 (it disappears at 1, 15); size = 1.2 or 1.17091 (it disappears at 0.1, 0.65); restitution = 1 (it disappears at 0, 0.5); friction = 0 or 0.5 (it disappears at 1); density = 0.1 or 1 (it disappears at 10); speed = 30 or 60 or 52.761 (it disappears at 0); dt = 0.004 or 0.00433784 (it disappears at 0.027, 0.05); viter = 6 or 12 (it disappears at 1); shape = 1 (it disappears at 0, 2).
+
+Re-run with the saved card: `RC_MODEL_CARD=scans/N10/card.json rc_hunt --engine card --domain generic --scenarios 1000`; add `rc_agent --live` for a model-driven hunt or `rc_spec --live` for model-written rules.
+Learned invariants are candidates, not specifications: one that fires may be a bug or an unusual but valid input; only you can tell.

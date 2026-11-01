@@ -1,0 +1,41 @@
+id	class	any_literal	any_strict	relation_rows	other_new_rows	hard
+N01	changed	1	1	1	0	0
+N02	changed	8	8	5	3	0
+N03	changed	6	6	6	0	0
+N04	changed	11	11	7	4	1
+N05	changed	8	8	7	1	1
+N07	changed	3	2	0	3	0
+N09	changed	3	3	1	2	0
+N11	crashed	NOREPORT				
+N13	changed	0	0	0	0	0
+N15	changed	8	8	4	4	0
+N17	changed	0	0	0	0	0
+N19	changed	2	2	2	0	0
+N21	changed	6	6	6	0	0
+N23	changed	2	2	0	2	0
+N25	changed	2	2	2	0	0
+N27	changed	0	0	0	0	0
+N29	changed	6	5	2	4	0
+N31	changed	7	7	7	0	0
+N33	unchanged	-	-	-	-	-
+N35	changed	6	6	3	3	0
+N37	changed	16	16	8	8	2
+N39	changed	NOREPORT				
+N06	changed	0	0	0	0	0
+N08	changed	4	4	2	2	0
+N10	changed	5	4	1	4	0
+N12	changed	3	2	2	1	0
+N14	crashed	NOREPORT				
+N16	unchanged	-	-	-	-	-
+N18	changed	1	1	0	1	0
+N20	changed	0	0	0	0	0
+N22	changed	0	0	0	0	0
+N24	unchanged	-	-	-	-	-
+N26	changed	4	4	2	2	0
+N28	unchanged	-	-	-	-	-
+N30	changed	5	5	2	3	0
+N32	unchanged	-	-	-	-	-
+N34	changed	5	5	5	0	0
+N36	changed	0	0	0	0	0
+N38	changed	0	0	0	0	0
+N40	changed	2	2	1	1	0

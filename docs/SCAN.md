@@ -104,3 +104,19 @@ This answers "if a bug existed, would the scan notice?" on code we did not write
 Of the 29 changed mutants, the scan reported a finding absent from the clean build's report for **16** (14 if learned limits that only shifted a number are ignored). Only **6** of those are hard failures (nondeterministic or non-finite values); the other 10 rest on learned-guess rows, which the scan itself calls candidates. **13 of 29 were missed**: mutants in the continuous-collision path, rarely reached branches, and arithmetic that degrades solver quality while the world stays plausible (list in `results/scan_mutants/results.md`; the agent's explanations of why are not verified). The extra rule `n_outside<=0` added nothing, because the clean engine already breaks it. The clean build itself gave one learned-guess finding (`n_outside <= 12`, 3 of 600).
 
 Reading: the scan reliably notices code changes that blow up, crash or go nondeterministic; it mostly does not notice changes that leave the simulation plausible, and it does not tell a user which learned guesses are real. The 9 unchanged mutants are not counted either way, since 300 random requests cannot separate equivalent from rare-trigger.
+
+## Symmetry checks on a fresh set of mutants (declared in `docs/PREREG_FINAL.md`, addendum 2026-11-02 (b))
+
+New option `rc_scan --same "p=a|p=b:signals[:first=N][:tol=T]"`: run each scenario twice with one change that should not alter the result, and report when the signals differ. For Box2D 2.4.1 the adapter has two hooks: `mirror` (reflect the scene left to right) and `shift` (move it 7 units). Settings were calibrated on the clean build only, before any new mutant existed (`results/scan_symmetry/CALIBRATION.md`): the mirror check had false findings at every setting except the loosest (first 2 steps, 20%), shift at first 2 steps, 1%. So the checks are weak by construction.
+
+Test set: 40 fresh mutants (`rc_mutgen --seed 2`; three sites that did not compile were skipped). Counts below are from the 39 scans finished at the time of writing; N39 (changed) was still scanning and is not counted (updated below if it finishes).
+
+| class | mutants |
+|---|---|
+| unchanged on 300 requests | 5 |
+| crashed (scan reported both: exit 2, no report) | 2 |
+| changed | 33 (32 scanned so far) |
+
+Of the 32 changed mutants scanned: finding rows absent from the clean report on **24**. By the rows the scan had before this option: **17** (seed 1 test: 16 of 29). By symmetry rows: **21**. By symmetry rows alone: **7**. Not noticed: **8**. The clean build had one false finding (the learned `n_outside <= 12`) and none from the symmetry rows. Only 3 of the 24 involve a hard failure; most rest on the symmetry rows or learned guesses.
+
+I re-ran one symmetry-only catch by hand (N03, `rB = point - cB` in the collision-time solver): the clean engine's kinetic energy is unchanged by the shift to about 1e-7, N03's differs by about 4% at step 2. Per-mutant counts are in `results/scan_symmetry/classification.tsv`, reports in `report_*.md`. I did not check each catch individually for cause. The checks need two adapter hooks, so they do not apply to the adapter-free command mode.

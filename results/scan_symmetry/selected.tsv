@@ -1,0 +1,40 @@
+N01	1	b2_contact_solver	m245	584	operator '-=' -> '+='	\t\t\t\t\tvA -= mA * (P1 + P2);
+N02	2	b2_contact_solver	m219	728	operator '+' -> '-'	\t\t\tfloat K = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+N03	3	b2_contact_solver	m303	808	operator '-' -> '+'	\t\t\tb2Vec2 rB = point - cB;
+N04	4	b2_island	m077	496	operator '/' -> '*'	\t\t\tfloat ratio = b2_maxRotation / b2Abs(rotation);
+N05	5	b2_time_of_impact	m025	65	constant 1 -> 2	\t\tif (count == 1)
+N06	6	b2_collide_polygon	m019	204	operator '<' -> '<='	\tif (np < 2)
+N07	7	b2_island	m052	315	constant 0 -> 1	\tfor (int32 i = 0; i < step.positionIterations; ++i)
+N08	8	b2_contact_solver	m133	329	operator '-' -> '+'	\t\t\tb2Vec2 dv = vB + b2Cross(wB, vcp->rB) - vA - b2Cross(wA, vcp->rA);
+N09	9	b2_island	m063	280	constant 0 -> 1	\tfor (int32 i = 0; i < m_bodyCount; ++i)
+N10	10	b2_contact_solver	m104	463	operator '+=' -> '-='	\t\t\t\t\twB += iB * (b2Cross(cp1->rB, P1) + b2Cross(cp2->rB, P2));
+N11	11	b2_contact_solver	m230	96	operator '+' -> '-'	\t\tb2ContactPositionConstraint* pc = m_positionConstraints + i;
+N12	12	b2_contact_solver	m256	460	operator '+' -> '-'	\t\t\t\t\twA -= iA * (b2Cross(cp1->rA, P1) + b2Cross(cp2->rA, P2));
+N13	13	b2_island	m074	359	operator '==' -> '!='	\t\t\tif (b->GetType() == b2_staticBody)
+N14	14	b2_island	m069	267	operator '<' -> '<='	\t\tfor (int32 j = 0; j < m_jointCount; ++j)
+N15	15	b2_contact_solver	m255	326	operator '+' -> '-'	\t\t\tb2VelocityConstraintPoint* vcp = vc->points + j;
+N16	16	b2_contact_solver	m058	414	operator '+' -> '-'	\t\t\tb2VelocityConstraintPoint* cp1 = vc->points + 0;
+N17	18	b2_contact_solver	m042	728	operator '*' -> '/'	\t\t\tfloat K = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+N18	19	b2_contact_solver	m029	639	operator '-' -> '+'	\t\t\t\tseparation = b2Dot(pointB - pointA, normal) - pc->radiusA - pc->radiusB;
+N19	20	b2_contact_solver	m249	201	operator '*' -> '/'	\t\t\tfloat kNormal = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+N20	21	b2_contact_solver	m289	585	operator '+' -> '-'	\t\t\t\t\twA -= iA * (b2Cross(cp1->rA, P1) + b2Cross(cp2->rA, P2));
+N21	22	b2_time_of_impact	m035	72	operator '-' -> '+'	\t\t\tm_axis = pointB - pointA;
+N22	23	b2_time_of_impact	m015	280	operator '+' -> '-'	\tfloat totalRadius = proxyA->m_radius + proxyB->m_radius;
+N23	24	b2_collide_circle	m020	76	operator '-' -> '+'	\t\tfloat s = b2Dot(normals[i], cLocal - vertices[i]);
+N24	25	b2_contact_solver	m262	536	operator '>=' -> '>'	\t\t\t\tif (x.y >= 0.0f && vn1 >= 0.0f)
+N25	26	b2_contact_solver	m155	584	operator '+' -> '-'	\t\t\t\t\tvA -= mA * (P1 + P2);
+N26	27	b2_contact_solver	m131	548	operator '+' -> '-'	\t\t\t\t\twB += iB * (b2Cross(cp1->rB, P1) + b2Cross(cp2->rB, P2));
+N27	28	b2_collide_polygon	m001	162	constant 0 -> 1	\t\tflip = 0;
+N28	29	b2_collide_polygon	m024	144	operator '>' -> '>='	\tif (separationB > separationA + k_tol)
+N29	30	b2_contact_solver	m223	348	operator '+=' -> '-='	\t\t\twB += iB * b2Cross(vcp->rB, P);
+N30	33	b2_contact_solver	m282	201	operator '*' -> '/'	\t\t\tfloat kNormal = mA + mB + iA * rnA * rnA + iB * rnB * rnB;
+N31	34	b2_contact_solver	m013	660	operator '-' -> '+'	\t\t\t\tseparation = b2Dot(clipPoint - planePoint, normal) - pc->radiusA - pc->radiusB;
+N32	35	b2_time_of_impact	m022	286	constant 20 -> 21	\tconst int32 k_maxIterations = 20;\t// TODO_ERIN b2Settings
+N33	36	b2_time_of_impact	m013	191	constant 1 -> 2	\t\t\t*indexA = -1;
+N34	37	b2_time_of_impact	m039	420	operator '*' -> '/'	\t\t\t\t\tt = a1 + (target - s1) * (a2 - a1) / (s2 - s1);
+N35	38	b2_contact_solver	m296	234	operator '+' -> '-'	\t\t\tfloat k11 = mA + mB + iA * rn1A * rn1A + iB * rn1B * rn1B;
+N36	39	b2_island	m032	354	operator '*' -> '/'	\t\tconst float angTolSqr = b2_angularSleepTolerance * b2_angularSleepTolerance;
+N37	40	b2_collide_circle	m036	93	operator '+' -> '-'	\tint32 vertIndex2 = vertIndex1 + 1 < vertexCount ? vertIndex1 + 1 : 0;
+N38	41	b2_contact_solver	m195	830	operator '+=' -> '-='	\t\t\taB += iB * b2Cross(rB, P);
+N39	42	b2_contact_solver	m130	415	constant 1 -> 2	\t\t\tb2VelocityConstraintPoint* cp2 = vc->points + 1;
+N40	43	b2_collide_circle	m031	93	constant 1 -> 2	\tint32 vertIndex2 = vertIndex1 + 1 < vertexCount ? vertIndex1 + 1 : 0;
