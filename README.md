@@ -1,8 +1,8 @@
 # RealityCheck
 
-**A C++ verification harness for simulations: a model proposes scenarios and code decides whether they violate declared rules.**
-The engine checks every reported step and value against the recorded run, minimizes failures, and exports regression tests.
-Built for the Meta Global AI Developer Hackathon (Indie Developer track) using Muse Spark.
+**Point it at any simulation that prints numbers. One command finds the runs where it misbehaves, shrinks each to the smallest case, and tells you what the failure depends on.**
+No adapter to write, no key, no model needed for the scan. With a model (Muse Spark), an agent explains a failure and the engine accepts the explanation only if every step and value it cites matches the recorded run.
+Built for the Meta Global AI Developer Hackathon (Indie Developer track, "Push the Frontier") in C++.
 
 ## Try it in one minute (no key, no model)
 
@@ -14,6 +14,7 @@ Point `rc_scan` at any command-line program that prints a table (a header of sig
 ## What it found, and what it did not
 
 - **Real, reproducible findings on code we did not write** (standalone repros, none reported upstream yet, either may already be known): a hang in REBOUND's default IAS15 integrator on a near-symmetric three-body start (`docs/EXTERNAL_ENGINE.md`), and a hang in Chipmunk2D's stock Release build, which adds `-ffast-math` (`docs/SCAN.md`).
+- **Would it notice a bug if there were one?** Measured on Box2D 2.4.1, an engine we did not write, with changes planted mechanically by a tool (not by me or a model): the scan noticed 16 of 29 changed versions; on a fresh set of 40, 18 of 33, and 25 of 33 after adding mirror and shift symmetry checks. It crashes and blow-ups reliably and misses subtle changes that leave the simulation looking plausible (`docs/SCAN.md`).
 - **No bug claimed** in Box2D v3, Box2D 2.4.1, SUNDIALS CVODE, ReactPhysics3D, Bullet, Open Dynamics Engine, GSL or LAMMPS (documented limits and a few odd behaviors, each written up; many false alarms to sort by hand). The generic scanner *missed* the REBOUND hang with random starts, and re-found it (18 of 600 scenarios) once the scenario family contained a symmetric start, a family I added knowing the hang, so that is re-discovery, not discovery (`docs/SCAN.md`).
 - **The oracle gap:** across two model-planted blind sets (39 and 118 variants, locked by hash before any check ran) the hand-written rules fire on only 41% of the variants that change behavior; a reference written by a model from the description alone recovers 58-69% of the rest, with 0 false alarms (`docs/BLIND.md`, `docs/REFERENCE_ORACLE.md`).
 - **Model-driven hunting beats random on planted bugs:** triage localized 53/88 causes versus 37/88 for a no-model localizer (p=0.02); on five hard seeded bugs the boundary-enabled agent found 45/100 versus 17/300 random runs (without the dominant bug, 25/80 versus 17/240), while a model-free boundary sampler alone found 62/200.
