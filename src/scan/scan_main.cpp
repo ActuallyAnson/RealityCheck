@@ -502,12 +502,22 @@ int main(int argc, char** argv) {
       const std::vector<std::string> ab = split(f[0], '|');
       if (ab.size() != 2) { std::cerr << "rc_scan: --same: give two assignments separated by |, got '" << f[0] << "'\n"; return 2; }
       auto assign = [&](const std::string& t, std::vector<std::pair<std::string, double>>* o) {
-        for (const std::string& kv : split(t, ',')) { const size_t e = kv.find('='); if (e == std::string::npos) { std::cerr << "rc_scan: --same: expected name=value, got '" << kv << "'\n"; std::exit(2); } o->push_back({kv.substr(0, e), std::atof(kv.substr(e + 1).c_str())}); }
+        for (const std::string& kv : split(t, ',')) { const size_t e = kv.find('='); if (e == std::string::npos) { std::cerr << "rc_scan: --same: expected name=value, got '" << kv << "'\n"; std::exit(2); } char* end = nullptr; const std::string vs = kv.substr(e + 1); const double v = std::strtod(vs.c_str(), &end); if (vs.empty() || *end != 0) { std::cerr << "rc_scan: --same: '" << kv << "' has no number after =\n"; std::exit(2); } o->push_back({kv.substr(0, e), v}); }
       };
       assign(ab[0], &r.a); assign(ab[1], &r.b);
       r.sigs = split(f[1], ',');
       for (const std::string& sg : r.sigs) if (!pool[0].count(sg)) { std::cerr << "rc_scan: --same: the program has no signal '" << sg << "'\n"; return 2; }
-      for (size_t k = 2; k < f.size(); ++k) { if (f[k].rfind("first=", 0) == 0) r.first = std::atoi(f[k].c_str() + 6); else if (f[k].rfind("tol=", 0) == 0) r.tol = std::atof(f[k].c_str() + 4); }
+      auto number = [&](const std::string& t, const char* what, double* o) {
+        char* end = nullptr; const double v = std::strtod(t.c_str(), &end);
+        if (t.empty() || *end != 0 || !std::isfinite(v) || v < 0) { std::cerr << "rc_scan: --same: " << what << " must be a number of at least 0, got '" << t << "'\n"; std::exit(2); }
+        *o = v;
+      };
+      for (size_t k = 2; k < f.size(); ++k) {
+        double v = 0;
+        if (f[k].rfind("first=", 0) == 0) { number(f[k].substr(6), "first", &v); r.first = static_cast<int>(v); }
+        else if (f[k].rfind("tol=", 0) == 0) number(f[k].substr(4), "tol", &r.tol);
+        else { std::cerr << "rc_scan: --same: unknown option '" << f[k] << "' (use first=N or tol=T)\n"; return 2; }
+      }
       r.text = f[0] + " agree on " + f[1] + " over the first " + std::to_string(r.first) + " steps (within " + num(r.tol) + " of the larger value)";
       relations.push_back(r);
     }
@@ -533,13 +543,16 @@ int main(int argc, char** argv) {
         Scenario sa = sc, sb = sc; Signals ga, gb; std::string e1, e2;
         for (const auto& kv : rel.a) sa.gen.params[kv.first] = kv.second;
         for (const auto& kv : rel.b) sb.gen.params[kv.first] = kv.second;
-        if (!run(sa, &ga, &e1) || !run(sb, &gb, &e2)) { hits->push_back({"breaks relation: " + rel.text, "one of the two runs failed: " + (e1.empty() ? e2 : e1).substr(0, 120)}); continue; }
+        if (!run(sa, &ga, &e1) || !run(sb, &gb, &e2)) { hits->push_back({"run failed", "the program failed or answered an error when run with " + std::string(e1.empty() ? "the second" : "the first") + " setting of a --same pair: " + (e1.empty() ? e2 : e1).substr(0, 120)}); continue; }
         for (const std::string& sn : rel.sigs) {
-          const auto& x = ga.at(sn); const auto& y = gb.at(sn);
+          const auto xi = ga.find(sn), yi = gb.find(sn);
+          if (xi == ga.end() || yi == gb.end()) { hits->push_back({"run failed", "signal " + sn + " is missing from one run of a --same pair"}); continue; }
+          const auto& x = xi->second; const auto& y = yi->second;
           const size_t len = std::min<size_t>(std::min(x.size(), y.size()), static_cast<size_t>(rel.first) + 1);
           double mx = 0; for (size_t k = 0; k < len; ++k) { if (std::isfinite(x[k])) mx = std::max(mx, std::fabs(x[k])); if (std::isfinite(y[k])) mx = std::max(mx, std::fabs(y[k])); }
           for (size_t k = 0; k < len; ++k) {
-            if (!std::isfinite(x[k]) || !std::isfinite(y[k])) break;
+            if (std::isfinite(x[k]) != std::isfinite(y[k])) { hits->push_back({"breaks relation: " + rel.text + " [" + sn + "]", sn + " is finite in one run and not in the other at step " + std::to_string(k)}); break; }
+            if (!std::isfinite(x[k])) break;
             if (std::fabs(x[k] - y[k]) > rel.tol * mx + 1e-12) { hits->push_back({"breaks relation: " + rel.text + " [" + sn + "]", sn + " is " + num(x[k]) + " in one run and " + num(y[k]) + " in the other at step " + std::to_string(k)}); break; }
           }
         }
