@@ -4,6 +4,8 @@
 No adapter to write, no key, no model needed for the scan. With a model (Muse Spark), an agent explains a failure and the engine accepts the explanation only if every step and value it cites matches the recorded run.
 Built for the Meta Global AI Developer Hackathon (Indie Developer track, "Push the Frontier") in C++.
 
+**Demo video (2.5 minutes):** https://youtu.be/rHbK1fGoPsQ
+
 ## Try it in one minute (no key, no model)
 
     cmake -S . -B build && cmake --build build -j
